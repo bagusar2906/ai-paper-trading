@@ -39,7 +39,7 @@ class EMARSIADXStrategy(Strategy):
 
         df["RSI"] = rsi(df["Close"], self.rsi_length)
 
-        df["ADX"], df["+DI"], df["-DI"] = adx_di(
+        df["+DI"], df["-DI"], df["ADX"] = adx_di(
             df,
             self.adx_length,
             self.adx_smoothing,

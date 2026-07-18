@@ -1,33 +1,9 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Optional
 
 import pandas as pd
 
-
-@dataclass
-class TradingSignal:
-    """
-    Output of a trading strategy.
-    """
-
-    symbol: str
-
-    action: str            # BUY | SELL | HOLD
-
-    price: float
-
-    time: str
-
-    reason: str = ""
-
-    stop_loss: Optional[float] = None
-
-    take_profit: Optional[float] = None
-
-    confidence: float = 1.0
-
-    metadata: Optional[dict] = None
+from app.models.signal import TradingSignal
 
 
 class Strategy(ABC):
@@ -42,6 +18,14 @@ class Strategy(ABC):
         Strategy name.
         """
         pass
+
+    @property
+    def minimum_bars(self) -> int:
+        """
+        Minimum number of candles required before
+        the strategy can generate signals.
+        """
+        return 100
 
     @abstractmethod
     def prepare(
@@ -62,9 +46,13 @@ class Strategy(ABC):
         self,
         symbol: str,
         df: pd.DataFrame,
-    ) -> TradingSignal:
+    ) -> Optional[TradingSignal]:
         """
-        Generate BUY / SELL / HOLD signal.
+        Generate a BUY / SELL signal.
+
+        Returns
+        -------
+        TradingSignal or None if no signal.
         """
         pass
 
@@ -73,8 +61,14 @@ class Strategy(ABC):
         df: pd.DataFrame
     ) -> bool:
         """
-        Basic validation before running strategy.
+        Validate input market data.
         """
+
+        if df is None:
+            return False
+
+        if df.empty:
+            return False
 
         required = [
             "Open",
@@ -85,3 +79,16 @@ class Strategy(ABC):
         ]
 
         return all(col in df.columns for col in required)
+
+    def can_run(
+        self,
+        df: pd.DataFrame
+    ) -> bool:
+        """
+        Check whether the strategy has enough data to run.
+        """
+
+        return (
+            self.validate_data(df)
+            and len(df) >= self.minimum_bars
+        )
