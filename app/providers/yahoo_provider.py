@@ -1,3 +1,5 @@
+from venv import logger
+
 import yfinance as yf
 import pandas as pd
 
@@ -55,6 +57,13 @@ class YahooProvider(DataProvider):
         yf_symbol = self._resolve_symbol(symbol)
         interval = _INTERVAL_MAP.get(timeframe, timeframe)
         period = _PERIOD_MAP.get(interval, "60d")
+
+        logger.info(
+            "Downloading %d candles for %s (%s)...",
+            bars,
+            symbol,
+            timeframe,
+        )
 
         df = yf.Ticker(yf_symbol).history(period=period, interval=interval)
 

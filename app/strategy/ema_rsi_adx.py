@@ -1,3 +1,4 @@
+from asyncio.log import logger
 from dataclasses import dataclass
 from typing import Optional
 
@@ -32,6 +33,7 @@ class EMARSIADXStrategy(Strategy):
         """
         Calculate all indicators.
         """
+        logger.info("Calculating EMA, RSI and ADX indicators...")  
 
         df = df.copy()
 
