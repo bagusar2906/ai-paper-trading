@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+from app.enums.signal_action import SignalAction
 
 
 @dataclass
 class TradingSignal:
     symbol: str
-    action: str          # BUY / SELL / HOLD
+    action: SignalAction
     price: float
     time: datetime
 
