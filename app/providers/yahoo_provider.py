@@ -24,9 +24,12 @@ _PERIOD_MAP = {
     "1d": "2y",
 }
 
-# Yahoo doesn't have a plain "XAUUSD" ticker; spot gold vs USD trades as XAUUSD=X.
+# Yahoo doesn't reliably serve the "XAUUSD=X" spot forex-style ticker (Yahoo
+# has intermittently delisted/renamed it). GC=F (COMEX Gold Futures) is the
+# stable alternative with real intraday data and volume. Note this is a
+# futures price, not spot — usually very close to spot but not identical.
 _SYMBOL_MAP = {
-    "XAUUSD": "XAUUSD=X",
+    "XAUUSD": "GC=F",
 }
 
 
