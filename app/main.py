@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from app.providers.factory import create_provider
 from app.strategy import EMARSIADXStrategy
 from app.database.database import init_db, save_signal, get_recent_signals
-from app.config import SYMBOL, TIMEFRAME
+from app.config import TradingConfig
 
 
 @asynccontextmanager
@@ -27,8 +27,8 @@ HISTORY_BARS = 300
 def current_signal():
     provider = create_provider()
     try:
-        df = provider.get_history(SYMBOL, TIMEFRAME, HISTORY_BARS)
-        signal = strategy.generate_signal(SYMBOL, df)
+        df = provider.get_history(TradingConfig.SYMBOL, TradingConfig.TIMEFRAME, HISTORY_BARS)
+        signal = strategy.generate_signal(TradingConfig.SYMBOL, df)
     finally:
         provider.disconnect()
 

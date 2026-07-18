@@ -1,6 +1,6 @@
 from app.providers.factory import create_provider
 from app.strategy import EMARSIADXStrategy
-from app.config import SYMBOL, TIMEFRAME
+from app.config import TradingConfig
 
 
 def run(provider_name="yahoo", bars=500):
@@ -8,8 +8,8 @@ def run(provider_name="yahoo", bars=500):
     strategy = EMARSIADXStrategy()
 
     try:
-        df = provider.get_history(SYMBOL, TIMEFRAME, bars)
-        signal = strategy.generate_signal(SYMBOL, df)
+        df = provider.get_history(TradingConfig.SYMBOL, TradingConfig.TIMEFRAME, bars)
+        signal = strategy.generate_signal(TradingConfig.SYMBOL, df)
         print(signal)
         return signal
     finally:

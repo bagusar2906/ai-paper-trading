@@ -4,15 +4,7 @@ from typing import Optional
 import pandas as pd
 
 from app.indicators import ema, rsi, adx_di
-from app.config import (
-    EMA_LEN,
-    RSI_LEN,
-    RSI_OB,
-    RSI_OS,
-    ADX_LEN,
-    ADX_SMOOTH,
-    ADX_LEVEL,
-)
+from app.config import StrategyConfig
 from app.models.signal import TradingSignal
 from app.strategy.base import Strategy
 
@@ -21,10 +13,10 @@ class EMARSIADXStrategy(Strategy):
 
     def __init__(
         self,
-        ema_length=EMA_LEN,
-        rsi_length=RSI_LEN,
-        adx_length=ADX_LEN,
-        adx_smoothing=ADX_SMOOTH,
+        ema_length=StrategyConfig.EMA_LEN,
+        rsi_length=StrategyConfig.RSI_LEN,
+        adx_length=StrategyConfig.ADX_LEN,
+        adx_smoothing=StrategyConfig.ADX_SMOOTH,
     ):
 
         self.ema_length = ema_length
@@ -77,8 +69,8 @@ class EMARSIADXStrategy(Strategy):
 
         if (
             last["Close"] > last["EMA"]
-            and last["RSI"] < RSI_OS
-            and last["ADX"] > ADX_LEVEL
+            and last["RSI"] < StrategyConfig.RSI_OS
+            and last["ADX"] > StrategyConfig.ADX_LEVEL
             and last["+DI"] > last["-DI"]
         ):
 
@@ -96,8 +88,8 @@ class EMARSIADXStrategy(Strategy):
 
         elif (
             last["Close"] < last["EMA"]
-            and last["RSI"] > RSI_OB
-            and last["ADX"] > ADX_LEVEL
+            and last["RSI"] > StrategyConfig.RSI_OB
+            and last["ADX"] > StrategyConfig.ADX_LEVEL
             and last["-DI"] > last["+DI"]
         ):
 

@@ -6,3 +6,4 @@ requests
 yfinance
 MetaTrader5
 pytest
+httpx2
