@@ -7,3 +7,4 @@ yfinance
 MetaTrader5
 pytest
 httpx2
+sqlalchemy
