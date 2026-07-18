@@ -6,6 +6,9 @@ from app.models.account import Account
 from app.models.position import Position
 from app.models.signal import TradingSignal
 from app.models.trade import Trade
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PaperBroker(Broker):
@@ -29,10 +32,19 @@ class PaperBroker(Broker):
             SignalAction.BUY,
             SignalAction.SELL,
         ):
+            logger.info(
+                "Ignoring %s signal for %s",
+                signal.action,
+                signal.symbol,
+            )
             return
 
-        # Prevent duplicate positions for the same symbol
         if any(p.symbol == signal.symbol for p in self._positions):
+            logger.info(
+                "Position already exists for %s. Ignoring signal.",
+                signal.symbol,
+            )
+
             return
 
         position = Position(
@@ -47,6 +59,15 @@ class PaperBroker(Broker):
         )
 
         self._positions.append(position)
+
+        logger.info(
+            "Opened %s %s @ %.2f (SL=%.2f TP=%.2f)",
+            position.side,
+            position.symbol,
+            position.entry_price,
+            position.stop_loss,
+            position.take_profit,
+        )
 
     def close_position(self, symbol: str, price: float):
 
@@ -82,6 +103,15 @@ class PaperBroker(Broker):
         self._account.balance += pnl
         self._account.equity = self._account.balance
         self._account.free_margin = self._account.balance
+        
+        logger.info(
+            "Closed %s %s @ %.2f | P/L = %.2f | Balance = %.2f",
+            position.side,
+            symbol,
+            price,
+            pnl,
+            self._account.balance,
+        )
 
         return trade
 

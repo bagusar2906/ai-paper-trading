@@ -55,6 +55,10 @@ class EMARSIADXStrategy(Strategy):
         df: pd.DataFrame,
     ) -> TradingSignal:
 
+        logger.info(
+            "Generating trading signal..."
+        )
+
         df = self.prepare(df)
 
         last = df.iloc[-1]
@@ -78,6 +82,12 @@ class EMARSIADXStrategy(Strategy):
 
             action = "BUY"
 
+            logger.info(
+                "BUY signal generated for %s at price %.5f",
+                symbol,
+                price
+            )
+
             reason = (
                 "Price above EMA, "
                 "RSI oversold, "
@@ -96,6 +106,12 @@ class EMARSIADXStrategy(Strategy):
         ):
 
             action = "SELL"
+
+            logger.info(
+                "SELL signal generated for %s at price %.5f",
+                symbol,
+                price
+            )
 
             reason = (
                 "Price below EMA, "
