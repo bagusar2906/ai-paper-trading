@@ -8,6 +8,7 @@ from app.database.models import (
     TradeEntity,
 )
 from app.enums.signal_action import SignalAction
+from app.models.account import Account
 from app.models.signal import TradingSignal
 from app.repositories.factory import RepositoryFactory
 
@@ -26,15 +27,15 @@ class PaperBroker(Broker):
 
         if account is None:
 
-            account = AccountEntity(
+            account = Account(
                 balance=initial_balance,
                 equity=initial_balance,
                 margin=0,
                 free_margin=initial_balance,
                 floating_pnl=0,
-            )
+        )
 
-            self.repos.accounts.add(account)
+        self.repos.accounts.add(account)
 
         self._account = account
 
