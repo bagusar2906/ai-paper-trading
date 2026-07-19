@@ -1,16 +1,21 @@
+from app.enums.signal_action import SignalAction
+
+
 class RiskManager:
+
+    MAX_OPEN_POSITIONS = 3
 
     def can_open_position(
         self,
         signal,
         account,
         positions,
-    ) -> bool:
+    ):
 
-        if signal.action.name == "HOLD":
+        if signal.action == SignalAction.HOLD:
             return False
 
-        if len(positions) >= 3:
+        if len(positions) >= self.MAX_OPEN_POSITIONS:
             return False
 
         return True

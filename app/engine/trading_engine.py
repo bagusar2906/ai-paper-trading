@@ -1,8 +1,13 @@
-from app.engine.base import Engine
+import logging
+
 from app.engine.result import EngineResult
+from app.managers.position_manager import PositionManager
+from app.managers.risk_manager import RiskManager
+
+logger = logging.getLogger(__name__)
 
 
-class TradingEngine(Engine):
+class TradingEngine:
 
     def __init__(
         self,
@@ -21,31 +26,121 @@ class TradingEngine(Engine):
         self.timeframe = timeframe
         self.bars = bars
 
+        self.position_manager = PositionManager(self.broker)
+        self.risk_manager = RiskManager()
+
     def run_once(self):
 
-        df = self.provider.get_history(
-            self.symbol,
-            self.timeframe,
-            self.bars,
-        )
+        #
+        # Load market data
+        #
+
+        df = self._load_data()
+
+        #
+        # Validate data
+        #
 
         if not self.strategy.can_run(df):
+
+            logger.warning("Not enough bars to run strategy")
 
             return EngineResult(
                 account=self.broker.get_account(),
                 message="Not enough data",
             )
 
-        df = self.strategy.prepare(df)
+        #
+        # Calculate indicators
+        #
+
+        df = self._prepare_data(df)
+
+        #
+        # Generate signal
+        #
+
+        signal = self._generate_signal(df)
+
+        #
+        # Execute trade
+        #
+
+        self._execute_signal(signal)
+
+        #
+        # Update existing positions (SL / TP)
+        #
+
+        self.position_manager.update(
+            df.iloc[-1]["Close"]
+        )
+
+        return self._build_result(signal)
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _load_data(self):
+
+        logger.debug(
+            "Loading %d bars for %s",
+            self.bars,
+            self.symbol,
+        )
+
+        return self.provider.get_history(
+            self.symbol,
+            self.timeframe,
+            self.bars,
+        )
+
+    def _prepare_data(self, df):
+
+        logger.debug("Preparing indicators")
+
+        return self.strategy.prepare(df)
+
+    def _generate_signal(self, df):
 
         signal = self.strategy.generate_signal(
             self.symbol,
             df,
         )
 
-        if signal is not None:
+        logger.info(
+            "Signal generated: %s",
+            signal.action if signal else "None",
+        )
+
+        return signal
+
+    def _execute_signal(self, signal):
+
+        if signal is None:
+            return
+
+        if self.risk_manager.can_open_position(
+            signal,
+            self.broker.get_account(),
+            self.broker.get_positions(),
+        ):
+
+            logger.info(
+                "Executing %s signal",
+                signal.action,
+            )
 
             self.broker.execute(signal)
+
+        else:
+
+            logger.info(
+                "Risk manager rejected signal"
+            )
+
+    def _build_result(self, signal):
 
         positions = self.broker.get_positions()
 
