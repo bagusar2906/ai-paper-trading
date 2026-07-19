@@ -11,11 +11,26 @@ class PositionManager:
     def __init__(self, broker: PaperBroker):
         self.broker = broker
 
-    def update(self, current_price: float):
+    def update(
+        self,
+        symbol: str,
+        current_price: float,
+    ):
+        """
+        Check all open positions for the given symbol.
+
+        Returns:
+            list[Trade]: Closed trades.
+        """
+
+        closed_trades = []
 
         positions = self.broker.get_positions()
 
         for position in positions.copy():
+
+            if position.symbol != symbol:
+                continue
 
             #
             # BUY Position
@@ -23,35 +38,53 @@ class PositionManager:
 
             if position.side == SignalAction.BUY:
 
+                #
+                # Take Profit
+                #
+
                 if (
                     position.take_profit is not None
                     and current_price >= position.take_profit
                 ):
-                    logger.info(
-                        "Take Profit hit for %s",
-                        position.symbol,
-                    )
 
-                    self.broker.close_position(
+                    logger.info(
+                        "BUY TP hit: %s @ %.2f",
                         position.symbol,
                         current_price,
                     )
 
+                    trade = self.broker.close_position(
+                        position.symbol,
+                        current_price,
+                    )
+
+                    if trade:
+                        closed_trades.append(trade)
+
                     continue
+
+                #
+                # Stop Loss
+                #
 
                 if (
                     position.stop_loss is not None
                     and current_price <= position.stop_loss
                 ):
-                    logger.info(
-                        "Stop Loss hit for %s",
-                        position.symbol,
-                    )
 
-                    self.broker.close_position(
+                    logger.info(
+                        "BUY SL hit: %s @ %.2f",
                         position.symbol,
                         current_price,
                     )
+
+                    trade = self.broker.close_position(
+                        position.symbol,
+                        current_price,
+                    )
+
+                    if trade:
+                        closed_trades.append(trade)
 
             #
             # SELL Position
@@ -59,32 +92,52 @@ class PositionManager:
 
             elif position.side == SignalAction.SELL:
 
+                #
+                # Take Profit
+                #
+
                 if (
                     position.take_profit is not None
                     and current_price <= position.take_profit
                 ):
-                    logger.info(
-                        "Take Profit hit for %s",
-                        position.symbol,
-                    )
 
-                    self.broker.close_position(
+                    logger.info(
+                        "SELL TP hit: %s @ %.2f",
                         position.symbol,
                         current_price,
                     )
 
+                    trade = self.broker.close_position(
+                        position.symbol,
+                        current_price,
+                    )
+
+                    if trade:
+                        closed_trades.append(trade)
+
                     continue
+
+                #
+                # Stop Loss
+                #
 
                 if (
                     position.stop_loss is not None
                     and current_price >= position.stop_loss
                 ):
-                    logger.info(
-                        "Stop Loss hit for %s",
-                        position.symbol,
-                    )
 
-                    self.broker.close_position(
+                    logger.info(
+                        "SELL SL hit: %s @ %.2f",
                         position.symbol,
                         current_price,
                     )
+
+                    trade = self.broker.close_position(
+                        position.symbol,
+                        current_price,
+                    )
+
+                    if trade:
+                        closed_trades.append(trade)
+
+        return closed_trades

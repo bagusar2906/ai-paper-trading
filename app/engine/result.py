@@ -1,21 +1,20 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
 
+from app.models.account import Account
+from app.models.position import Position
 from app.models.signal import TradingSignal
 from app.models.trade import Trade
-from app.models.position import Position
-from app.models.account import Account
 
 
 @dataclass
 class EngineResult:
 
-    signal: Optional[TradingSignal] = None
+    signal: TradingSignal | None = None
 
-    position: Optional[Position] = None
+    position: Position | None = None
 
-    trade: Optional[Trade] = None
+    closed_trades: list[Trade] = field(default_factory=list)
 
-    account: Optional[Account] = None
+    account: Account | None = None
 
     message: str = ""

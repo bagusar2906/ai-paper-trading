@@ -71,12 +71,21 @@ class TradingEngine:
         #
         # Update existing positions (SL / TP)
         #
+        current_price = df.iloc[-1]["Close"]
 
-        self.position_manager.update(
-            df.iloc[-1]["Close"]
+        closed_trades = self.position_manager.update(
+            self.symbol,
+            current_price,
         )
 
-        return self._build_result(signal)
+        signal = self._generate_signal(df)
+
+        self._execute_signal(signal)
+
+        return self._build_result(
+            signal,
+            closed_trades,
+        )
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -140,13 +149,18 @@ class TradingEngine:
                 "Risk manager rejected signal"
             )
 
-    def _build_result(self, signal):
+    def _build_result(
+            self,
+            signal,
+            closed_trades,
+        ):
 
         positions = self.broker.get_positions()
 
         return EngineResult(
             signal=signal,
             position=positions[-1] if positions else None,
+            closed_trades=closed_trades,
             account=self.broker.get_account(),
             message="Completed",
         )
