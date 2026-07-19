@@ -13,11 +13,15 @@ def dashboard():
 
     account = repos.accounts.get()
 
-    if account is None:
-        return {
-            "account": None
-        }
+    positions = repos.positions.get_all()
+
+    trades = repos.trades.get_all()
+
+    signals = repos.signals.get_recent(20)
 
     return {
         "account": asdict(account),
+        "positions": [asdict(p) for p in positions],
+        "trades": [asdict(t) for t in trades],
+        "signals": [asdict(s) for s in signals],
     }

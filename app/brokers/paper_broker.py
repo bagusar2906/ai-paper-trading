@@ -129,7 +129,7 @@ class PaperBroker(Broker):
         self._account.equity = self._account.balance
         self._account.free_margin = self._account.balance
 
-        self.repos.accounts.update()
+        self.repos.accounts.update(self._account)
 
         logger.info(
             "Closed %s %s @ %.2f | P/L %.2f | Balance %.2f",

@@ -113,6 +113,12 @@ class SignalEntity(Base):
 
     reason: Mapped[str] = mapped_column(String(255))
 
+    stop_loss: Mapped[float] = mapped_column(Float)
+
+    take_profit: Mapped[float] = mapped_column(Float)
+
+    signal_time: Mapped[datetime] = mapped_column(DateTime)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
