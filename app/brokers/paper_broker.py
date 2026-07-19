@@ -157,3 +157,48 @@ class PaperBroker(Broker):
     def close(self):
 
         self.repos.close()
+
+    def update_market_price(
+        self,
+        symbol: str,
+        current_price: float,
+        ):
+
+        positions = self.repos.positions.get_all()
+
+        account = self.repos.accounts.get()
+
+        floating = 0
+
+        for position in positions:
+
+            if position.symbol != symbol:
+                continue
+
+            position.current_price = current_price
+
+            if position.side == SignalAction.BUY:
+
+                pnl = (
+                    current_price
+                    - position.entry_price
+                ) * position.quantity
+
+            else:
+
+                pnl = (
+                    position.entry_price
+                    - current_price
+                ) * position.quantity
+
+            position.profit = pnl
+
+            floating += pnl
+
+            self.repos.positions.update(position)
+
+        account.floating_pnl = floating
+        account.equity = account.balance + floating
+        account.free_margin = account.equity - account.margin
+
+        self.repos.accounts.update(account)

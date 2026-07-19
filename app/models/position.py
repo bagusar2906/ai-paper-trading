@@ -1,23 +1,21 @@
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional
 
 
 @dataclass
 class Position:
 
-    id: Optional[int]
-
     symbol: str
 
-    side: str          # BUY / SELL
+    side: str
 
     quantity: float
 
     entry_price: float
 
-    stop_loss: Optional[float]
+    stop_loss: float
 
-    take_profit: Optional[float]
+    take_profit: float
 
-    opened_at: datetime
+    current_price: float = 0
+
+    profit: float = 0

@@ -61,10 +61,21 @@ class TradingEngine:
         df = self._prepare_data(df)
 
         #
-        # Update existing positions (SL / TP)
+        # Latest market price
         #
-        current_price = df.iloc[-1]["Close"]
+        current_price = self._get_current_price(df)
 
+        #
+        # Update floating P/L
+        #
+        self.broker.update_market_price(
+            self.symbol,
+            current_price,
+        )
+
+        #
+        # Check TP / SL
+        #
         closed_trades = self.position_manager.update(
             self.symbol,
             current_price,
@@ -126,6 +137,17 @@ class TradingEngine:
 
         return self.strategy.prepare(df)
 
+    def _get_current_price(self, df):
+
+        #
+        # Works whether the dataframe still uses
+        # Close or has been renamed to close.
+        #
+        if "close" in df.columns:
+            return float(df.iloc[-1]["close"])
+
+        return float(df.iloc[-1]["Close"])
+
     def _generate_signal(self, df):
 
         signal = self.strategy.generate_signal(
@@ -138,11 +160,16 @@ class TradingEngine:
             signal.action,
         )
 
-        last = self.broker.repos.signals.get_last(self.symbol)
+        last = self.broker.repos.signals.get_last(
+            self.symbol
+        )
 
         if last is None or last.action != signal.action:
+
             self.broker.repos.signals.add(signal)
+
         else:
+
             logger.debug(
                 "Skipping duplicate consecutive %s signal for %s",
                 signal.action,
@@ -157,6 +184,7 @@ class TradingEngine:
             return
 
         account = self.get_account()
+
         positions = self.broker.get_positions()
 
         decision = self.risk_manager.evaluate(

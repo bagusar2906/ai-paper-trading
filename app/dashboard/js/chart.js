@@ -5,6 +5,8 @@ let ema20Series;
 let ema50Series;
 
 let markerPrimitive = null;
+import { updateMarkers } from "./chart-markers.js";
+import { updatePositionLines } from "./chart-position.js";
 
 export function initializeChart() {
 
@@ -133,41 +135,13 @@ export function updateChart(data) {
 
     );
 
-    updateMarkers(data.markers);
+    updateMarkers(candleSeries, data.markers);
+    updatePositionLines(
+        candleSeries,
+        data.positions
+    );
 
     chart.timeScale().fitContent();
 
 }
 
-function updateMarkers(markers) {
-
-    if (!window.LightweightChartsPluginMarkers)
-        return;
-
-    if (markerPrimitive) {
-
-        candleSeries.detachPrimitive(markerPrimitive);
-
-        markerPrimitive = null;
-
-    }
-
-    markerPrimitive =
-        LightweightChartsPluginMarkers.createSeriesMarkers(
-            candleSeries,
-            markers.map(m => ({
-
-                time: Math.floor(new Date(m.time).getTime() / 1000),
-
-                position: m.position,
-
-                color: m.color,
-
-                shape: m.shape,
-
-                text: m.text,
-
-            }))
-        );
-
-}

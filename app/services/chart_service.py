@@ -1,5 +1,6 @@
 from app.config import TradingConfig
 from app.models.chart.candle import Candle
+from app.models.chart.chart_position import ChartPosition
 from app.models.chart.chart_response import ChartResponse
 from app.models.chart.line_series import LinePoint
 from app.models.chart.marker import ChartMarker
@@ -45,11 +46,9 @@ class ChartService:
         )
 
         ema_columns = sorted(
-            [
-                c
-                for c in df.columns
-                if c.upper().startswith("EMA")
-            ]
+            c
+            for c in df.columns
+            if c.upper().startswith("EMA")
         )
 
         fast_ema = ema_columns[0] if len(ema_columns) >= 1 else None
@@ -98,6 +97,8 @@ class ChartService:
 
             signals = repos.signals.get_recent(200)
 
+            positions = repos.positions.get_all()
+
         finally:
 
             repos.close()
@@ -130,9 +131,24 @@ class ChartService:
                     )
                 )
 
+        chart_positions = [
+
+            ChartPosition(
+                symbol=position.symbol,
+                side=position.side,
+                entry=position.entry_price,
+                stop_loss=position.stop_loss,
+                take_profit=position.take_profit,
+            )
+
+            for position in positions
+
+        ]
+
         return ChartResponse(
             candles=candles,
             ema20=ema20,
             ema50=ema50,
             markers=markers,
+            positions=chart_positions,
         )
