@@ -12,7 +12,7 @@ export function updateSignals(signals) {
 
         tbody.innerHTML += `
         <tr>
-            <td>${signal.created_at}</td>
+            <td>${new Date(signal.time).toLocaleString()}</td>
             <td>${signal.symbol}</td>
             <td>${signal.action}</td>
             <td>${signal.price.toFixed(2)}</td>

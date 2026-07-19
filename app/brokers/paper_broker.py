@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 
 class PaperBroker(Broker):
 
-    def __init__(self, initial_balance: float):
+    def __init__(self, initial_balance: float, repos: RepositoryFactory = None):
 
         self.initial_balance = initial_balance
 
-        self.repos = RepositoryFactory()
+        self.repos = repos or RepositoryFactory()
 
         account = self.repos.accounts.get()
 
@@ -33,9 +33,9 @@ class PaperBroker(Broker):
                 margin=0,
                 free_margin=initial_balance,
                 floating_pnl=0,
-        )
+            )
 
-        self.repos.accounts.add(account)
+            self.repos.accounts.add(account)
 
         self._account = account
 
@@ -70,7 +70,7 @@ class PaperBroker(Broker):
         entity = PositionEntity(
             symbol=signal.symbol,
             side=signal.action,
-            quantity=1.0,
+            quantity=signal.quantity or 1.0,
             entry_price=signal.price,
             stop_loss=signal.stop_loss,
             take_profit=signal.take_profit,

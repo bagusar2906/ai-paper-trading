@@ -138,6 +138,17 @@ class TradingEngine:
             signal.action,
         )
 
+        last = self.broker.repos.signals.get_last(self.symbol)
+
+        if last is None or last.action != signal.action:
+            self.broker.repos.signals.add(signal)
+        else:
+            logger.debug(
+                "Skipping duplicate consecutive %s signal for %s",
+                signal.action,
+                self.symbol,
+            )
+
         return signal
 
     def _execute_signal(self, signal):

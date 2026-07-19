@@ -1,13 +1,15 @@
-from asyncio.log import logger
 from dataclasses import dataclass
 from typing import Optional
+import logging
 
 import pandas as pd
 
 from app.indicators import ema, rsi, adx_di
-from app.config import StrategyConfig
+from app.config import StrategyConfig, TradingConfig
 from app.models.signal import TradingSignal
 from app.strategy.base import Strategy
+
+logger = logging.getLogger(__name__)
 
 
 class EMARSIADXStrategy(Strategy):
@@ -123,6 +125,25 @@ class EMARSIADXStrategy(Strategy):
         # HOLD
         ###################################################
 
+        stop_loss = None
+        take_profit = None
+
+        if action in ("BUY", "SELL"):
+
+            sl_distance = (
+                StrategyConfig.STOP_LOSS_PIPS
+                * TradingConfig.PIP_SIZE
+            )
+
+            tp_distance = sl_distance * StrategyConfig.RISK_REWARD_RATIO
+
+            if action == "BUY":
+                stop_loss = price - sl_distance
+                take_profit = price + tp_distance
+            else:
+                stop_loss = price + sl_distance
+                take_profit = price - tp_distance
+
         return TradingSignal(
             symbol=symbol,
 
@@ -130,7 +151,7 @@ class EMARSIADXStrategy(Strategy):
 
             price=price,
 
-            time=str(df.index[-1]),
+            time=df.index[-1],
 
             ema=float(last["EMA"]),
 
@@ -143,6 +164,10 @@ class EMARSIADXStrategy(Strategy):
             minus_di=float(last["-DI"]),
 
             reason=reason,
+
+            stop_loss=stop_loss,
+
+            take_profit=take_profit,
         )
 
     def generate_dataframe(

@@ -20,3 +20,14 @@ engine = create_engine(
 
 def init_database():
     Base.metadata.create_all(bind=engine)
+
+
+def create_isolated_engine(database_url: str = "sqlite:///:memory:"):
+    """
+    Build a standalone SQLAlchemy engine with its own tables, independent of
+    the live paper-trading DB. Used by the backtest engine so replaying
+    history never touches your real positions/trades/account.
+    """
+    isolated_engine = create_engine(database_url, echo=False)
+    Base.metadata.create_all(bind=isolated_engine)
+    return isolated_engine

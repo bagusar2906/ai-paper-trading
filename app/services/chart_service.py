@@ -110,7 +110,7 @@ class ChartService:
 
                 markers.append(
                     ChartMarker(
-                        time=signal.signal_time,
+                        time=str(signal.time),
                         position="belowBar",
                         color="#22c55e",
                         shape="arrowUp",
@@ -122,7 +122,7 @@ class ChartService:
 
                 markers.append(
                     ChartMarker(
-                        time=signal.created_at,
+                        time=str(signal.time),
                         position="aboveBar",
                         color="#ef4444",
                         shape="arrowDown",

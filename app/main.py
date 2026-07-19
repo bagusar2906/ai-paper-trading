@@ -1,18 +1,15 @@
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from contextlib import asynccontextmanager
-from dataclasses import asdict
-
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api.dashboard import router as dashboard_router
-from app.config import TradingConfig
-from app.database.database import init_database
-from app.providers.factory import create_provider
-from app.strategy import EMARSIADXStrategy
+from app.api.backtest import router as backtest_router
 from app.api.chart import router as chart_router
+from app.api.dashboard import router as dashboard_router
+from app.database.database import init_database
+from app.repositories.factory import RepositoryFactory
+from app.services.signal_service import SignalService
 
 
 @asynccontextmanager
@@ -28,8 +25,8 @@ app = FastAPI(
 
 # Register API routes
 app.include_router(dashboard_router)
-
 app.include_router(chart_router)
+app.include_router(backtest_router)
 
 # Serve dashboard UI
 app.mount(
@@ -38,35 +35,32 @@ app.mount(
     name="dashboard",
 )
 
-strategy = EMARSIADXStrategy()
-
-HISTORY_BARS = 300
-
 
 @app.get("/signal")
 def current_signal():
-    provider = create_provider()
+    service = SignalService()
 
     try:
-        df = provider.get_history(
-            TradingConfig.SYMBOL,
-            TradingConfig.TIMEFRAME,
-            HISTORY_BARS,
-        )
-
-        signal = strategy.generate_signal(
-            TradingConfig.SYMBOL,
-            df,
-        )
-
-        if signal is None:
-            return {
-                "signal": None
-            }
-        return asdict(signal)
-
+        signal = service.generate()
     finally:
-        provider.disconnect()
+        service.close()
+
+    if signal is None:
+        return {"signal": None}
+
+    # Persist so this also shows up in signal history / chart markers,
+    # not just when the background trading worker runs. Skip if it's the
+    # same action as the last one saved, to avoid flooding history with
+    # repeated identical signals.
+    repos = RepositoryFactory()
+    try:
+        last = repos.signals.get_last(signal.symbol)
+        if last is None or last.action != signal.action:
+            repos.signals.add(signal)
+    finally:
+        repos.close()
+
+    return asdict(signal)
 
 
 @app.get("/health")

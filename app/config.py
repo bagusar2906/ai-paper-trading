@@ -55,6 +55,12 @@ class StrategyConfig:
 
     MINIMUM_BARS = 100
 
+    # Stop loss / take profit sizing for signals that open a trade.
+    # XAUUSD on this broker: point = 0.01, 1 pip = 0.1 price units,
+    # so 50 pips = 5.0 price units (~$5 on gold).
+    STOP_LOSS_PIPS = 50
+    RISK_REWARD_RATIO = 2.0
+
 
 # ==========================================================
 # Trading

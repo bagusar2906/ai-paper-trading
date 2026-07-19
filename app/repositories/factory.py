@@ -8,9 +8,9 @@ from app.repositories.signal_repository import SignalRepository
 
 class RepositoryFactory:
 
-    def __init__(self):
+    def __init__(self, session=None):
 
-        self.session = SessionLocal()
+        self.session = session or SessionLocal()
 
         self.accounts = AccountRepository(self.session)
         self.positions = PositionRepository(self.session)

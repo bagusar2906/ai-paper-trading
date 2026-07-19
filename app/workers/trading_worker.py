@@ -40,3 +40,8 @@ class TradingWorker:
 
     def close(self):
         self.engine.close()
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    TradingWorker().run()

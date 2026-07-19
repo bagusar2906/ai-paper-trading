@@ -16,7 +16,7 @@ class SignalRepository(BaseRepository):
             take_profit=signal.take_profit,
             reason=signal.reason,
             confidence=signal.confidence,
-            time=signal.time,
+            signal_time=signal.time,
         )
 
         self.session.add(entity)
@@ -25,6 +25,15 @@ class SignalRepository(BaseRepository):
     def get_all(self):
 
         return self.session.query(SignalEntity).all()
+
+    def get_last(self, symbol):
+
+        return (
+            self.session.query(SignalEntity)
+            .filter_by(symbol=symbol)
+            .order_by(SignalEntity.created_at.desc())
+            .first()
+        )
     
     def get_recent(self, limit=200):
 
@@ -43,8 +52,8 @@ class SignalRepository(BaseRepository):
                 time=e.signal_time,
                 confidence=e.confidence,
                 reason=e.reason,
-                stop_loss=0,
-                take_profit=0,
+                stop_loss=e.stop_loss,
+                take_profit=e.take_profit,
             )
             for e in entities
         ]))
