@@ -54,7 +54,10 @@ class PositionEntity(Base):
 
     take_profit: Mapped[float] = mapped_column(Float, nullable=True)
 
-    opened_at: Mapped[datetime] = mapped_column(DateTime)
+    opened_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
 
 
 # ==========================================================
@@ -79,9 +82,15 @@ class TradeEntity(Base):
 
     pnl: Mapped[float] = mapped_column(Float)
 
-    opened_at: Mapped[datetime] = mapped_column(DateTime)
+    opened_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
 
-    closed_at: Mapped[datetime] = mapped_column(DateTime)
+    closed_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
 
 
 # ==========================================================
@@ -104,4 +113,7 @@ class SignalEntity(Base):
 
     reason: Mapped[str] = mapped_column(String(255))
 
-    created_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )

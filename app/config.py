@@ -62,6 +62,8 @@ class StrategyConfig:
 
 class TradingConfig:
 
+    INITIAL_BALANCE = 10000.0
+
     SYMBOL = "XAUUSD"
 
     TIMEFRAME = "5m"

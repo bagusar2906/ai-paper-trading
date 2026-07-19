@@ -1,13 +1,11 @@
 from datetime import datetime
 
-from app.enums.signal_action import SignalAction
 import pytest
 
 from app.brokers.paper_broker import PaperBroker
-from app.models.account import Account
-from app.models.position import Position
+from app.database import Base, engine
+from app.enums.signal_action import SignalAction
 from app.models.signal import TradingSignal
-from app.models.trade import Trade
 
 
 # =============================================================================
@@ -16,6 +14,10 @@ from app.models.trade import Trade
 
 @pytest.fixture
 def broker():
+
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
     return PaperBroker(initial_balance=10_000)
 
 
@@ -49,13 +51,11 @@ def test_initial_account_matches_starting_balance(broker):
 
     account = broker.get_account()
 
-    assert isinstance(account, Account)
-
-    assert account.balance == 10_000
-    assert account.equity == 10_000
-    assert account.margin == 0.0
-    assert account.free_margin == 10_000
-    assert account.floating_pnl == 0.0
+    assert account.balance == 10000
+    assert account.equity == 10000
+    assert account.margin == 0
+    assert account.free_margin == 10000
+    assert account.floating_pnl == 0
 
     assert broker.get_positions() == []
     assert broker.get_trades() == []
@@ -77,8 +77,6 @@ def test_execute_buy_signal_opens_position(broker):
 
     position = positions[0]
 
-    assert isinstance(position, Position)
-
     assert position.symbol == signal.symbol
     assert position.side == SignalAction.BUY
     assert position.quantity == 1.0
@@ -88,9 +86,8 @@ def test_execute_buy_signal_opens_position(broker):
 
     account = broker.get_account()
 
-    # Opening a position should not change balance
-    assert account.balance == 10_000
-    assert account.equity == 10_000
+    assert account.balance == 10000
+    assert account.equity == 10000
 
 
 # =============================================================================
@@ -125,22 +122,9 @@ def test_execute_sell_signal_opens_position(broker):
 
 def test_execute_hold_signal_does_not_open_position(broker):
 
-    signal = _signal(action=SignalAction.HOLD)
-
-    broker.execute(signal)
-
-    assert broker.get_positions() == []
-
-
-# =============================================================================
-# Invalid Action
-# =============================================================================
-
-def test_invalid_signal_does_not_open_position(broker):
-
-    signal = _signal(action=SignalAction.HOLD)  # Using HOLD as a placeholder for an invalid action
-
-    broker.execute(signal)
+    broker.execute(
+        _signal(action=SignalAction.HOLD)
+    )
 
     assert broker.get_positions() == []
 
@@ -152,7 +136,6 @@ def test_invalid_signal_does_not_open_position(broker):
 def test_duplicate_position_is_ignored(broker):
 
     broker.execute(_signal())
-
     broker.execute(_signal())
 
     assert len(broker.get_positions()) == 1
@@ -165,9 +148,7 @@ def test_duplicate_position_is_ignored(broker):
 def test_multiple_symbols_can_be_open(broker):
 
     broker.execute(
-        _signal(
-            symbol="XAUUSD"
-        )
+        _signal(symbol="XAUUSD")
     )
 
     broker.execute(
@@ -198,17 +179,22 @@ def test_close_buy_position(broker):
 
     trade = broker.close_position(
         "XAUUSD",
-        3380.50
+        3380.50,
     )
 
-    assert isinstance(trade, Trade)
+    assert trade is not None
 
     assert len(broker.get_positions()) == 0
     assert len(broker.get_trades()) == 1
 
+    saved_trade = broker.get_trades()[0]
+
+    assert saved_trade.symbol == "XAUUSD"
+    assert saved_trade.exit_price == 3380.50
+
 
 # =============================================================================
-# Profit
+# Profit / Loss
 # =============================================================================
 
 def test_buy_profit_updates_balance(broker):
@@ -217,7 +203,7 @@ def test_buy_profit_updates_balance(broker):
 
     broker.close_position(
         "XAUUSD",
-        3380.50
+        3380.50,
     )
 
     account = broker.get_account()
@@ -231,7 +217,7 @@ def test_buy_loss_updates_balance(broker):
 
     broker.close_position(
         "XAUUSD",
-        3370.50
+        3370.50,
     )
 
     account = broker.get_account()
@@ -244,13 +230,13 @@ def test_sell_profit_updates_balance(broker):
     broker.execute(
         _signal(
             action=SignalAction.SELL,
-            price=3400.0
+            price=3400.0,
         )
     )
 
     broker.close_position(
         "XAUUSD",
-        3390.0
+        3390.0,
     )
 
     account = broker.get_account()
@@ -263,13 +249,13 @@ def test_sell_loss_updates_balance(broker):
     broker.execute(
         _signal(
             action=SignalAction.SELL,
-            price=3400.0
+            price=3400.0,
         )
     )
 
     broker.close_position(
         "XAUUSD",
-        3410.0
+        3410.0,
     )
 
     account = broker.get_account()

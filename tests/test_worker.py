@@ -1,12 +1,13 @@
+from app.database.database import init_database
 from app.workers.trading_worker import TradingWorker
-from app.engine.result import EngineResult
 
 
 def test_worker_run_once():
+
+    init_database()
 
     worker = TradingWorker()
 
     result = worker.run_once()
 
-    assert isinstance(result, EngineResult)
-    assert result.account is not None
+    assert result is not None

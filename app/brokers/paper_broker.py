@@ -1,30 +1,40 @@
 from datetime import datetime
+import logging
 
 from app.brokers.base import Broker
+from app.database.models import (
+    AccountEntity,
+    PositionEntity,
+    TradeEntity,
+)
 from app.enums.signal_action import SignalAction
-from app.models.account import Account
-from app.models.position import Position
 from app.models.signal import TradingSignal
-from app.models.trade import Trade
-import logging
+from app.repositories.factory import RepositoryFactory
 
 logger = logging.getLogger(__name__)
 
 
 class PaperBroker(Broker):
 
-    def __init__(self, initial_balance: float = 10_000):
+    def __init__(self, initial_balance: float):
 
-        self._account = Account(
-            balance=initial_balance,
-            equity=initial_balance,
-            margin=0.0,
-            free_margin=initial_balance,
-            floating_pnl=0.0,
-        )
+        self.repos = RepositoryFactory()
 
-        self._positions: list[Position] = []
-        self._trades: list[Trade] = []
+        account = self.repos.accounts.get()
+
+        if account is None:
+
+            account = AccountEntity(
+                balance=initial_balance,
+                equity=initial_balance,
+                margin=0,
+                free_margin=initial_balance,
+                floating_pnl=0,
+            )
+
+            self.repos.accounts.add(account)
+
+        self._account = account
 
     def execute(self, signal: TradingSignal):
 
@@ -32,23 +42,29 @@ class PaperBroker(Broker):
             SignalAction.BUY,
             SignalAction.SELL,
         ):
+
             logger.info(
                 "Ignoring %s signal for %s",
                 signal.action,
                 signal.symbol,
             )
+
             return
 
-        if any(p.symbol == signal.symbol for p in self._positions):
+        existing = self.repos.positions.get_by_symbol(
+            signal.symbol
+        )
+
+        if existing is not None:
+
             logger.info(
-                "Position already exists for %s. Ignoring signal.",
+                "Position already exists for %s",
                 signal.symbol,
             )
 
             return
 
-        position = Position(
-            id=None,
+        entity = PositionEntity(
             symbol=signal.symbol,
             side=signal.action,
             quantity=1.0,
@@ -58,34 +74,40 @@ class PaperBroker(Broker):
             opened_at=signal.time,
         )
 
-        self._positions.append(position)
+        self.repos.positions.add(entity)
 
         logger.info(
-            "Opened %s %s @ %.2f (SL=%.2f TP=%.2f)",
-            position.side,
-            position.symbol,
-            position.entry_price,
-            position.stop_loss,
-            position.take_profit,
+            "Opened %s %.2f %s @ %.2f",
+            entity.side,
+            entity.quantity,
+            entity.symbol,
+            entity.entry_price,
         )
 
-    def close_position(self, symbol: str, price: float):
+    def close_position(
+        self,
+        symbol: str,
+        price: float,
+    ):
 
-        position = next(
-            (p for p in self._positions if p.symbol == symbol),
-            None
-        )
+        position = self.repos.positions.get_by_symbol(symbol)
 
         if position is None:
             return None
 
         if position.side == SignalAction.BUY:
-            pnl = (price - position.entry_price) * position.quantity
-        else:
-            pnl = (position.entry_price - price) * position.quantity
 
-        trade = Trade(
-            id=None,
+            pnl = (
+                price - position.entry_price
+            ) * position.quantity
+
+        else:
+
+            pnl = (
+                position.entry_price - price
+            ) * position.quantity
+
+        trade = TradeEntity(
             symbol=position.symbol,
             side=position.side,
             quantity=position.quantity,
@@ -96,18 +118,20 @@ class PaperBroker(Broker):
             closed_at=datetime.now(),
         )
 
-        self._trades.append(trade)
+        self.repos.trades.add(trade)
 
-        self._positions.remove(position)
+        self.repos.positions.remove(position)
 
         self._account.balance += pnl
         self._account.equity = self._account.balance
         self._account.free_margin = self._account.balance
-        
+
+        self.repos.accounts.update()
+
         logger.info(
-            "Closed %s %s @ %.2f | P/L = %.2f | Balance = %.2f",
+            "Closed %s %s @ %.2f | P/L %.2f | Balance %.2f",
             position.side,
-            symbol,
+            position.symbol,
             price,
             pnl,
             self._account.balance,
@@ -117,12 +141,12 @@ class PaperBroker(Broker):
 
     def get_positions(self):
 
-        return self._positions
+        return self.repos.positions.get_all()
 
     def get_trades(self):
 
-        return self._trades
+        return self.repos.trades.get_all()
 
     def get_account(self):
 
-        return self._account
+        return self.repos.accounts.get()

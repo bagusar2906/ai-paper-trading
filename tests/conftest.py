@@ -1,9 +1,15 @@
-import sys
-from pathlib import Path
+import pytest
 
-# Ensure the project root (parent of this tests/ folder, which contains the
-# `app` package) is importable regardless of what directory pytest is
-# invoked from.
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+from app.database import Base, engine
+from app.database.database import init_database
+
+
+@pytest.fixture(autouse=True)
+def database():
+
+    Base.metadata.drop_all(bind=engine)
+    init_database()
+
+    yield
+
+    Base.metadata.drop_all(bind=engine)
