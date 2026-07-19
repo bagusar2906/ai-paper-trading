@@ -2,7 +2,7 @@ import logging
 
 from app.engine.result import EngineResult
 from app.managers.position_manager import PositionManager
-from app.managers.risk_manager import RiskManager
+from app.risk.risk_manager import RiskManager
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ class TradingEngine:
         self.position_manager = PositionManager(self.broker)
         self.risk_manager = RiskManager()
 
+    # ------------------------------------------------------------------
+    # Public
+    # ------------------------------------------------------------------
 
     def run_once(self, df=None):
 
@@ -43,10 +46,12 @@ class TradingEngine:
         #
         if not self.strategy.can_run(df):
 
-            logger.warning("Not enough bars to run strategy")
+            logger.warning(
+                "Not enough bars to run strategy"
+            )
 
             return EngineResult(
-                account=self.broker.get_account(),
+                account=self.get_account(),
                 message="Not enough data",
             )
 
@@ -82,18 +87,21 @@ class TradingEngine:
             signal,
             closed_trades,
         )
-    
-    def get_trades(self):
-        return self.broker.get_trades()
-    
+
     def get_account(self):
+
         return self.broker.get_account()
-    
+
+    def get_trades(self):
+
+        return self.broker.get_trades()
+
     def close(self):
+
         self.broker.close()
 
     # ------------------------------------------------------------------
-    # Private helpers
+    # Private Helpers
     # ------------------------------------------------------------------
 
     def _load_data(self):
@@ -112,7 +120,9 @@ class TradingEngine:
 
     def _prepare_data(self, df):
 
-        logger.debug("Preparing indicators")
+        logger.debug(
+            "Preparing indicators"
+        )
 
         return self.strategy.prepare(df)
 
@@ -125,7 +135,7 @@ class TradingEngine:
 
         logger.info(
             "Signal generated: %s",
-            signal.action if signal else "None",
+            signal.action,
         )
 
         return signal
@@ -135,30 +145,39 @@ class TradingEngine:
         if signal is None:
             return
 
-        if self.risk_manager.can_open_position(
+        account = self.get_account()
+        positions = self.broker.get_positions()
+
+        decision = self.risk_manager.evaluate(
             signal,
-            self.broker.get_account(),
-            self.broker.get_positions(),
-        ):
+            account,
+            positions,
+        )
+
+        if not decision.allowed:
 
             logger.info(
-                "Executing %s signal",
-                signal.action,
+                "Trade rejected: %s",
+                decision.reason,
             )
 
-            self.broker.execute(signal)
+            return
 
-        else:
+        signal.quantity = decision.quantity
 
-            logger.info(
-                "Risk manager rejected signal"
-            )
+        logger.info(
+            "Executing %s %.2f lot(s)",
+            signal.action,
+            signal.quantity,
+        )
+
+        self.broker.execute(signal)
 
     def _build_result(
-            self,
-            signal,
-            closed_trades,
-        ):
+        self,
+        signal,
+        closed_trades,
+    ):
 
         positions = self.broker.get_positions()
 
@@ -166,6 +185,6 @@ class TradingEngine:
             signal=signal,
             position=positions[-1] if positions else None,
             closed_trades=closed_trades,
-            account=self.broker.get_account(),
+            account=self.get_account(),
             message="Completed",
         )
