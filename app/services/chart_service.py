@@ -139,6 +139,7 @@ class ChartService:
                 entry=position.entry_price,
                 stop_loss=position.stop_loss,
                 take_profit=position.take_profit,
+                quantity=position.quantity
             )
 
             for position in positions
