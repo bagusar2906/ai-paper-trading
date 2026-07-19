@@ -26,25 +26,25 @@ class SignalRepository(BaseRepository):
 
         return self.session.query(SignalEntity).all()
     
-    def get_recent(self, limit: int = 20):
+    def get_recent(self, limit=200):
 
-            entities = (
-                self.session.query(SignalEntity)
-                .order_by(SignalEntity.created_at.desc())
-                .limit(limit)
-                .all()
+        entities = (
+            self.session.query(SignalEntity)
+            .order_by(SignalEntity.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        return list(reversed([
+            TradingSignal(
+                symbol=e.symbol,
+                action=e.action,
+                price=e.price,
+                time=e.signal_time,
+                confidence=e.confidence,
+                reason=e.reason,
+                stop_loss=0,
+                take_profit=0,
             )
-
-            return [
-                TradingSignal(
-                    symbol=e.symbol,
-                    action=e.action,
-                    price=e.price,
-                    stop_loss=e.stop_loss,
-                    take_profit=e.take_profit,
-                    reason=e.reason,
-                    confidence=e.confidence,
-                    time=e.time,
-                )
-                for e in entities
-            ]
+            for e in entities
+        ]))

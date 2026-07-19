@@ -1,11 +1,10 @@
-from dataclasses import asdict
-
 from app.config import TradingConfig
 from app.models.chart.candle import Candle
 from app.models.chart.chart_response import ChartResponse
 from app.models.chart.line_series import LinePoint
 from app.models.chart.marker import ChartMarker
 from app.providers.factory import create_provider
+from app.repositories.factory import RepositoryFactory
 from app.strategy.factory import create_strategy
 
 
@@ -33,10 +32,8 @@ class ChartService:
 
         df = strategy.prepare(df)
 
-        # Convert index into a normal column
         df = df.reset_index()
 
-        # Normalize OHLC names
         df = df.rename(
             columns={
                 "Time": "time",
@@ -47,20 +44,18 @@ class ChartService:
             }
         )
 
-        # Find EMA columns automatically
-        ema_columns = [
-            c for c in df.columns
-            if c.upper().startswith("EMA")
-        ]
+        ema_columns = sorted(
+            [
+                c
+                for c in df.columns
+                if c.upper().startswith("EMA")
+            ]
+        )
 
-        ema_columns.sort()
+        fast_ema = ema_columns[0] if len(ema_columns) >= 1 else None
+        slow_ema = ema_columns[1] if len(ema_columns) >= 2 else None
 
-        if len(ema_columns) >= 2:
-            fast_ema = ema_columns[0]
-            slow_ema = ema_columns[1]
-        else:
-            fast_ema = None
-            slow_ema = None
+        rows = list(df.itertuples(index=False))
 
         candles = [
             Candle(
@@ -70,34 +65,74 @@ class ChartService:
                 low=row.low,
                 close=row.close,
             )
-            for row in df.itertuples(index=False)
+            for row in rows
         ]
 
-        ema_fast = []
+        ema20 = []
 
         if fast_ema:
-            ema_fast = [
+
+            ema20 = [
                 LinePoint(
                     time=row.time,
                     value=getattr(row, fast_ema),
                 )
-                for row in df.itertuples(index=False)
+                for row in rows
             ]
 
-        ema_slow = []
+        ema50 = []
 
         if slow_ema:
-            ema_slow = [
+
+            ema50 = [
                 LinePoint(
                     time=row.time,
                     value=getattr(row, slow_ema),
                 )
-                for row in df.itertuples(index=False)
+                for row in rows
             ]
+
+        repos = RepositoryFactory()
+
+        try:
+
+            signals = repos.signals.get_recent(200)
+
+        finally:
+
+            repos.close()
+
+        markers = []
+
+        for signal in signals:
+
+            if signal.action == "BUY":
+
+                markers.append(
+                    ChartMarker(
+                        time=signal.signal_time,
+                        position="belowBar",
+                        color="#22c55e",
+                        shape="arrowUp",
+                        text="BUY",
+                    )
+                )
+
+            elif signal.action == "SELL":
+
+                markers.append(
+                    ChartMarker(
+                        time=signal.created_at,
+                        position="aboveBar",
+                        color="#ef4444",
+                        shape="arrowDown",
+                        text="SELL",
+                    )
+                )
 
         return ChartResponse(
             candles=candles,
-            ema20=ema_fast,
-            ema50=ema_slow,
-            markers=[],
+            ema20=ema20,
+            ema50=ema50,
+            markers=markers,
         )

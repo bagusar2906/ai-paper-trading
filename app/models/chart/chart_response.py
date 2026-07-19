@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.models.chart.candle import Candle
 from app.models.chart.line_series import LinePoint
@@ -14,4 +14,4 @@ class ChartResponse:
 
     ema50: list[LinePoint]
 
-    markers: list[ChartMarker]
+    markers: list[ChartMarker] = field(default_factory=list)

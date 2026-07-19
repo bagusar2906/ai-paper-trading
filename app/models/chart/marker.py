@@ -1,16 +1,15 @@
 from dataclasses import dataclass
-from datetime import datetime
 
 
 @dataclass
 class ChartMarker:
 
-    time: datetime
+    time: str
 
-    position: str
+    position: str      # "aboveBar" | "belowBar"
 
     color: str
 
-    shape: str
+    shape: str         # "arrowUp" | "arrowDown"
 
     text: str

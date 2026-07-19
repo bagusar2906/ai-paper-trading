@@ -4,6 +4,8 @@ let candleSeries;
 let ema20Series;
 let ema50Series;
 
+let markerPrimitive = null;
+
 export function initializeChart() {
 
     const container = document.getElementById("chart");
@@ -131,6 +133,41 @@ export function updateChart(data) {
 
     );
 
+    updateMarkers(data.markers);
+
     chart.timeScale().fitContent();
+
+}
+
+function updateMarkers(markers) {
+
+    if (!window.LightweightChartsPluginMarkers)
+        return;
+
+    if (markerPrimitive) {
+
+        candleSeries.detachPrimitive(markerPrimitive);
+
+        markerPrimitive = null;
+
+    }
+
+    markerPrimitive =
+        LightweightChartsPluginMarkers.createSeriesMarkers(
+            candleSeries,
+            markers.map(m => ({
+
+                time: Math.floor(new Date(m.time).getTime() / 1000),
+
+                position: m.position,
+
+                color: m.color,
+
+                shape: m.shape,
+
+                text: m.text,
+
+            }))
+        );
 
 }

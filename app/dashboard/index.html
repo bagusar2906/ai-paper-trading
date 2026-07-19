@@ -5,56 +5,132 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>Paper Trading Dashboard</title>
 
-    <link rel="icon"
-          type="image/x-icon"
-          href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link
-        href="css/dashboard.css"
-        rel="stylesheet">
+    <link href="css/dashboard.css" rel="stylesheet">
 
-   <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
-
+    <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
+    <script
+        src="https://unpkg.com/lightweight-charts-plugin-markers/dist/lightweight-charts-plugin-markers.production.js"></script>
 </head>
 
 <body class="bg-light">
 
-<div class="container-fluid py-3">
+    <div class="container-fluid py-3">
 
-    <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center">
 
-        <h2>Paper Trading Dashboard</h2>
+            <h2>Paper Trading Dashboard</h2>
 
-        <span class="badge bg-success">
-            LIVE
-        </span>
+            <span class="badge bg-success">
+                LIVE
+            </span>
 
-    </div>
+        </div>
 
-    <!-- ====================================================== -->
-    <!-- Account -->
-    <!-- ====================================================== -->
+        <!-- ====================================================== -->
+        <!-- Account -->
+        <!-- ====================================================== -->
 
-    <div class="row g-3 mt-2">
+        <div class="row g-3 mt-2">
 
-        <div class="col-lg-2 col-md-4">
+            <div class="col-lg-2 col-md-4">
 
-            <div class="card shadow-sm">
+                <div class="card shadow-sm">
 
-                <div class="card-body">
+                    <div class="card-body">
 
-                    <small class="text-muted">Balance</small>
+                        <small class="text-muted">Balance</small>
 
-                    <h4 id="balance">0</h4>
+                        <h4 id="balance">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-2 col-md-4">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">Equity</small>
+
+                        <h4 id="equity">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-2 col-md-4">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">Margin</small>
+
+                        <h4 id="margin">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-2 col-md-4">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">Free Margin</small>
+
+                        <h4 id="freeMargin">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-2 col-md-4">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">Floating P/L</small>
+
+                        <h4 id="floatingPnL">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-2 col-md-4">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">Open Positions</small>
+
+                        <h4 id="positionCount">0</h4>
+
+                    </div>
 
                 </div>
 
@@ -62,15 +138,71 @@
 
         </div>
 
-        <div class="col-lg-2 col-md-4">
+        <!-- ====================================================== -->
+        <!-- Statistics -->
+        <!-- ====================================================== -->
 
-            <div class="card shadow-sm">
+        <div class="row g-3 mt-1">
 
-                <div class="card-body">
+            <div class="col-lg-3">
 
-                    <small class="text-muted">Equity</small>
+                <div class="card shadow-sm">
 
-                    <h4 id="equity">0</h4>
+                    <div class="card-body">
+
+                        <small>Total Trades</small>
+
+                        <h4 id="totalTrades">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-3">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small>Win Rate</small>
+
+                        <h4 id="winRate">0%</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-3">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small>Net Profit</small>
+
+                        <h4 id="netProfit">0</h4>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-3">
+
+                <div class="card shadow-sm">
+
+                    <div class="card-body">
+
+                        <small>Current Signal</small>
+
+                        <h4 id="currentSignal">-</h4>
+
+                    </div>
 
                 </div>
 
@@ -78,289 +210,143 @@
 
         </div>
 
-        <div class="col-lg-2 col-md-4">
+        <!-- ====================================================== -->
+        <!-- Chart -->
+        <!-- ====================================================== -->
 
-            <div class="card shadow-sm">
+        <div class="card shadow-sm mt-4">
 
-                <div class="card-body">
+            <div class="card-header">
 
-                    <small class="text-muted">Margin</small>
+                <strong>XAUUSD Chart</strong>
 
-                    <h4 id="margin">0</h4>
+            </div>
 
-                </div>
+            <div class="card-body">
+
+                <div id="chart" style="height:500px;"></div>
 
             </div>
 
         </div>
 
-        <div class="col-lg-2 col-md-4">
+        <!-- ====================================================== -->
+        <!-- Open Positions -->
+        <!-- ====================================================== -->
 
-            <div class="card shadow-sm">
+        <div class="card shadow-sm mt-4">
 
-                <div class="card-body">
+            <div class="card-header">
 
-                    <small class="text-muted">Free Margin</small>
+                <strong>Open Positions</strong>
 
-                    <h4 id="freeMargin">0</h4>
+            </div>
 
-                </div>
+            <div class="card-body">
+
+                <table class="table table-hover" id="positionsTable">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Entry</th>
+                            <th>SL</th>
+                            <th>TP</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody></tbody>
+
+                </table>
 
             </div>
 
         </div>
 
-        <div class="col-lg-2 col-md-4">
+        <!-- ====================================================== -->
+        <!-- Trades -->
+        <!-- ====================================================== -->
 
-            <div class="card shadow-sm">
+        <div class="card shadow-sm mt-4">
 
-                <div class="card-body">
+            <div class="card-header">
 
-                    <small class="text-muted">Floating P/L</small>
+                <strong>Recent Trades</strong>
 
-                    <h4 id="floatingPnL">0</h4>
+            </div>
 
-                </div>
+            <div class="card-body">
+
+                <table class="table table-striped" id="trades">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Entry</th>
+                            <th>Exit</th>
+                            <th>P/L</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody></tbody>
+
+                </table>
 
             </div>
 
         </div>
 
-        <div class="col-lg-2 col-md-4">
+        <!-- ====================================================== -->
+        <!-- Signal History -->
+        <!-- ====================================================== -->
 
-            <div class="card shadow-sm">
+        <div class="card shadow-sm mt-4 mb-5">
 
-                <div class="card-body">
+            <div class="card-header">
 
-                    <small class="text-muted">Open Positions</small>
-
-                    <h4 id="positionCount">0</h4>
-
-                </div>
+                <strong>Signal History</strong>
 
             </div>
 
-        </div>
+            <div class="card-body">
 
-    </div>
+                <table class="table table-striped" id="signals">
 
-    <!-- ====================================================== -->
-    <!-- Statistics -->
-    <!-- ====================================================== -->
+                    <thead>
 
-    <div class="row g-3 mt-1">
+                        <tr>
 
-        <div class="col-lg-3">
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Signal</th>
+                            <th>Price</th>
+                            <th>Confidence</th>
 
-            <div class="card shadow-sm">
+                        </tr>
 
-                <div class="card-body">
+                    </thead>
 
-                    <small>Total Trades</small>
+                    <tbody></tbody>
 
-                    <h4 id="totalTrades">0</h4>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-lg-3">
-
-            <div class="card shadow-sm">
-
-                <div class="card-body">
-
-                    <small>Win Rate</small>
-
-                    <h4 id="winRate">0%</h4>
-
-                </div>
+                </table>
 
             </div>
-
-        </div>
-
-        <div class="col-lg-3">
-
-            <div class="card shadow-sm">
-
-                <div class="card-body">
-
-                    <small>Net Profit</small>
-
-                    <h4 id="netProfit">0</h4>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-lg-3">
-
-            <div class="card shadow-sm">
-
-                <div class="card-body">
-
-                    <small>Current Signal</small>
-
-                    <h4 id="currentSignal">-</h4>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- ====================================================== -->
-    <!-- Chart -->
-    <!-- ====================================================== -->
-
-    <div class="card shadow-sm mt-4">
-
-        <div class="card-header">
-
-            <strong>XAUUSD Chart</strong>
-
-        </div>
-
-        <div class="card-body">
-
-            <div id="chart"
-                 style="height:500px;"></div>
-
-        </div>
-
-    </div>
-
-    <!-- ====================================================== -->
-    <!-- Open Positions -->
-    <!-- ====================================================== -->
-
-    <div class="card shadow-sm mt-4">
-
-        <div class="card-header">
-
-            <strong>Open Positions</strong>
-
-        </div>
-
-        <div class="card-body">
-
-            <table
-                class="table table-hover"
-                id="positionsTable">
-
-                <thead>
-
-                <tr>
-
-                    <th>Symbol</th>
-                    <th>Side</th>
-                    <th>Entry</th>
-                    <th>SL</th>
-                    <th>TP</th>
-
-                </tr>
-
-                </thead>
-
-                <tbody></tbody>
-
-            </table>
-
-        </div>
-
-    </div>
-
-    <!-- ====================================================== -->
-    <!-- Trades -->
-    <!-- ====================================================== -->
-
-    <div class="card shadow-sm mt-4">
-
-        <div class="card-header">
-
-            <strong>Recent Trades</strong>
-
-        </div>
-
-        <div class="card-body">
-
-            <table
-                class="table table-striped"
-                id="trades">
-
-                <thead>
-
-                <tr>
-
-                    <th>Symbol</th>
-                    <th>Side</th>
-                    <th>Entry</th>
-                    <th>Exit</th>
-                    <th>P/L</th>
-
-                </tr>
-
-                </thead>
-
-                <tbody></tbody>
-
-            </table>
-
-        </div>
-
-    </div>
-
-    <!-- ====================================================== -->
-    <!-- Signal History -->
-    <!-- ====================================================== -->
-
-    <div class="card shadow-sm mt-4 mb-5">
-
-        <div class="card-header">
-
-            <strong>Signal History</strong>
-
-        </div>
-
-        <div class="card-body">
-
-            <table
-                class="table table-striped"
-                id="signals">
-
-                <thead>
-
-                <tr>
-
-                    <th>Time</th>
-                    <th>Symbol</th>
-                    <th>Signal</th>
-                    <th>Price</th>
-                    <th>Confidence</th>
-
-                </tr>
-
-                </thead>
-
-                <tbody></tbody>
-
-            </table>
 
         </div>
 
     </div>
 
-</div>
-
-<script type="module"
-        src="js/dashboard.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
 
 </body>
 
