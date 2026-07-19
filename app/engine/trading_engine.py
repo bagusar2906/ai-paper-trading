@@ -28,7 +28,7 @@ class TradingEngine:
 
         self.position_manager = PositionManager(self.broker)
         self.risk_manager = RiskManager()
-        
+
 
     def run_once(self, df=None):
 
@@ -82,6 +82,15 @@ class TradingEngine:
             signal,
             closed_trades,
         )
+    
+    def get_trades(self):
+        return self.broker.get_trades()
+    
+    def get_account(self):
+        return self.broker.get_account()
+    
+    def close(self):
+        self.broker.close()
 
     # ------------------------------------------------------------------
     # Private helpers

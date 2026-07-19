@@ -20,25 +20,23 @@ class TradingWorker:
 
         logger.info("Trading worker started")
 
-        while True:
+        try:
 
-            try:
+            while True:
 
-                result = self.run_once()
+                try:
+                    result = self.run_once()
 
-                logger.info(result.message)
+                    logger.info(result.message)
 
-                if result.signal:
+                except Exception:
+                    logger.exception("Trading cycle failed")
 
-                    logger.info(
-                        "[%s] %s @ %.2f",
-                        result.signal.symbol,
-                        result.signal.action,
-                        result.signal.price,
-                    )
+                time.sleep(WorkerConfig.INTERVAL_SECONDS)
 
-            except Exception:
+        finally:
 
-                logger.exception("Trading cycle failed")
+            self.engine.close()
 
-            time.sleep(WorkerConfig.INTERVAL_SECONDS)
+    def close(self):
+        self.engine.close()

@@ -18,6 +18,8 @@ class PaperBroker(Broker):
 
     def __init__(self, initial_balance: float):
 
+        self.initial_balance = initial_balance
+
         self.repos = RepositoryFactory()
 
         account = self.repos.accounts.get()
@@ -150,3 +152,7 @@ class PaperBroker(Broker):
     def get_account(self):
 
         return self.repos.accounts.get()
+    
+    def close(self):
+
+        self.repos.close()

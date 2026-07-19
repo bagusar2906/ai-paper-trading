@@ -10,9 +10,13 @@ class RepositoryFactory:
 
     def __init__(self):
 
-        session = SessionLocal()
+        self.session = SessionLocal()
 
-        self.accounts = AccountRepository(session)
-        self.positions = PositionRepository(session)
-        self.trades = TradeRepository(session)
-        self.signals = SignalRepository(session)
+        self.accounts = AccountRepository(self.session)
+        self.positions = PositionRepository(self.session)
+        self.trades = TradeRepository(self.session)
+        self.signals = SignalRepository(self.session)
+
+    def close(self):
+
+        self.session.close()

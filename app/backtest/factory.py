@@ -14,7 +14,7 @@ def create_backtest_engine():
     strategy = create_strategy()
 
     broker = PaperBroker(
-        TradingConfig.INITIAL_BALANCE
+        initial_balance=TradingConfig.INITIAL_BALANCE,
     )
 
     engine = TradingEngine(
