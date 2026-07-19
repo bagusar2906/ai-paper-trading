@@ -1,40 +1,47 @@
-async function refreshDashboard() {
+import { getDashboard, getChart } from "./api.js";
 
-    const response = await fetch("/dashboard");
+import { initializeChart, updateChart } from "./chart.js";
 
-    const data = await response.json();
+import { updateAccount } from "./components/account-card.js";
+import { updateStatistics } from "./components/statistics-card.js";
+import { updatePositions } from "./components/positions-table.js";
+import { updateTrades } from "./components/trades-table.js";
+import { updateSignals } from "./components/signals-table.js";
+import { updateCurrentSignal } from "./components/current-signal.js";
 
-    document.getElementById("balance").innerText =
-        data.account.balance.toFixed(2);
+initializeChart();
 
-    document.getElementById("equity").innerText =
-        data.account.equity.toFixed(2);
+async function refresh() {
 
-    document.getElementById("floating").innerText =
-        data.account.floating_pnl.toFixed(2);
+    try {
 
-    document.getElementById("positionCount").innerText =
-        data.positions.length;
+        const dashboard = await getDashboard();
 
-    const tbody =
-        document.querySelector("#positionsTable tbody");
+        updateAccount(dashboard.account);
 
-    tbody.innerHTML = "";
+        updateStatistics(dashboard.statistics);
 
-    data.positions.forEach(position => {
+        updateCurrentSignal(dashboard.current_signal);
 
-        tbody.innerHTML += `
-        <tr>
-            <td>${position.symbol}</td>
-            <td>${position.side}</td>
-            <td>${position.entry_price}</td>
-            <td>${position.stop_loss}</td>
-            <td>${position.take_profit}</td>
-        </tr>`;
-    });
+        updatePositions(dashboard.positions);
+
+        updateTrades(dashboard.trades);
+
+        updateSignals(dashboard.signals);
+
+        const chart = await getChart();
+
+        updateChart(chart);
+
+    }
+    catch (error) {
+
+        console.error(error);
+
+    }
 
 }
 
-refreshDashboard();
+refresh();
 
-setInterval(refreshDashboard, 2000);
+setInterval(refresh, 5000);

@@ -12,6 +12,7 @@ class DashboardService:
     def get_dashboard(self):
 
         account = self.repos.accounts.get()
+        print(f"Account: {account}")
 
         positions = self.repos.positions.get_all()
 
@@ -20,6 +21,8 @@ class DashboardService:
         signals = self.repos.signals.get_recent(20)
 
         statistics = self._calculate_statistics(trades)
+
+        print(f"Statistics: {statistics}")
 
         return DashboardResponse(
             account=account,

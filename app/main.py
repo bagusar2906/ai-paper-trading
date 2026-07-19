@@ -12,6 +12,7 @@ from app.config import TradingConfig
 from app.database.database import init_database
 from app.providers.factory import create_provider
 from app.strategy import EMARSIADXStrategy
+from app.api.chart import router as chart_router
 
 
 @asynccontextmanager
@@ -27,6 +28,8 @@ app = FastAPI(
 
 # Register API routes
 app.include_router(dashboard_router)
+
+app.include_router(chart_router)
 
 # Serve dashboard UI
 app.mount(
