@@ -8,6 +8,7 @@ import { updatePositions } from "./components/positions-table.js";
 import { updateTrades } from "./components/trades-table.js";
 import { updateSignals } from "./components/signals-table.js";
 import { updateCurrentSignal } from "./components/current-signal.js";
+import { updateSignal } from "./components/signals-card.js";
 
 initializeChart();
 
@@ -22,6 +23,7 @@ async function refresh() {
         updateStatistics(dashboard.statistics);
 
         updateCurrentSignal(dashboard.current_signal);
+        updateSignal(dashboard.current_signal);
 
         updatePositions(dashboard.positions);
 

@@ -1,5 +1,6 @@
 from app.models.dashboard.dashboard_response import DashboardResponse
 from app.models.dashboard.dashboard_statistics import DashboardStatistics
+from app.models.dashboard.signal_response import SignalResponse
 from app.repositories.factory import RepositoryFactory
 
 
@@ -22,16 +23,63 @@ class DashboardService:
 
         statistics = self._calculate_statistics(trades)
 
+        current_signal = self._build_signal(
+            signals[0] if signals else None
+        )
+
         print(f"Statistics: {statistics}")
 
         return DashboardResponse(
             account=account,
-            current_signal=signals[0] if signals else None,
+            current_signal=current_signal,
             positions=positions,
             trades=trades,
             signals=signals,
             statistics=statistics,
         )
+    
+    from app.models.dashboard.signal_response import SignalResponse
+
+
+    def _build_signal(
+        self,
+        signal,
+    ) -> SignalResponse | None:
+
+        if signal is None:
+            return None
+
+        risk_reward = 0.0
+
+        if (
+            signal.stop_loss is not None
+            and signal.take_profit is not None
+        ):
+
+            risk = abs(
+                signal.price - signal.stop_loss
+            )
+
+            reward = abs(
+                signal.take_profit - signal.price
+            )
+
+            if risk > 0:
+                risk_reward = reward / risk
+
+        return SignalResponse(
+            symbol=signal.symbol,
+            action=signal.action,
+            price=signal.price,
+            confidence=signal.confidence,
+            stop_loss=signal.stop_loss,
+            take_profit=signal.take_profit,
+            quantity=signal.quantity,
+            reason=signal.reason,
+            time=signal.time,
+            risk_reward=round(risk_reward, 2),
+        )
+    
 
     def _calculate_statistics(self, trades):
 
