@@ -1,0 +1,15 @@
+body {
+    background: #f5f6fa;
+}
+
+.card {
+    border-radius: 12px;
+}
+
+h3 {
+    font-weight: bold;
+}
+
+.table {
+    background: white;
+}

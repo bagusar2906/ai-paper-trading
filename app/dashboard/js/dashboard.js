@@ -1,6 +1,7 @@
-async function loadDashboard() {
+async function refreshDashboard() {
 
     const response = await fetch("/dashboard");
+
     const data = await response.json();
 
     document.getElementById("balance").innerText =
@@ -11,8 +12,29 @@ async function loadDashboard() {
 
     document.getElementById("floating").innerText =
         data.account.floating_pnl.toFixed(2);
+
+    document.getElementById("positionCount").innerText =
+        data.positions.length;
+
+    const tbody =
+        document.querySelector("#positionsTable tbody");
+
+    tbody.innerHTML = "";
+
+    data.positions.forEach(position => {
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${position.symbol}</td>
+            <td>${position.side}</td>
+            <td>${position.entry_price}</td>
+            <td>${position.stop_loss}</td>
+            <td>${position.take_profit}</td>
+        </tr>`;
+    });
+
 }
 
-loadDashboard();
+refreshDashboard();
 
-setInterval(loadDashboard, 2000);
+setInterval(refreshDashboard, 2000);
