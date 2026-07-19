@@ -28,19 +28,19 @@ class TradingEngine:
 
         self.position_manager = PositionManager(self.broker)
         self.risk_manager = RiskManager()
+        
 
-    def run_once(self):
+    def run_once(self, df=None):
 
         #
         # Load market data
         #
-
-        df = self._load_data()
+        if df is None:
+            df = self._load_data()
 
         #
         # Validate data
         #
-
         if not self.strategy.can_run(df):
 
             logger.warning("Not enough bars to run strategy")
@@ -53,20 +53,7 @@ class TradingEngine:
         #
         # Calculate indicators
         #
-
         df = self._prepare_data(df)
-
-        #
-        # Generate signal
-        #
-
-        signal = self._generate_signal(df)
-
-        #
-        # Execute trade
-        #
-
-        self._execute_signal(signal)
 
         #
         # Update existing positions (SL / TP)
@@ -78,10 +65,19 @@ class TradingEngine:
             current_price,
         )
 
+        #
+        # Generate signal
+        #
         signal = self._generate_signal(df)
 
+        #
+        # Execute trade
+        #
         self._execute_signal(signal)
 
+        #
+        # Return result
+        #
         return self._build_result(
             signal,
             closed_trades,
