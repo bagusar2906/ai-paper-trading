@@ -19,7 +19,14 @@ import { updateSignal } from "./components/signals-card.js";
 
 const REFRESH_INTERVAL = 5000;
 
-initialize();
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+        await initialize();
+
+    }
+);
 
 async function initialize() {
 
