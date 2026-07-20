@@ -4,6 +4,8 @@ from dataclasses import dataclass
 @dataclass
 class Position:
 
+    id: int
+
     symbol: str
 
     side: str
@@ -12,10 +14,10 @@ class Position:
 
     entry_price: float
 
-    stop_loss: float
+    current_price: float | None = None
 
-    take_profit: float
+    floating_pnl: float = 0
 
-    current_price: float = 0
+    stop_loss: float | None = None
 
-    profit: float = 0
+    take_profit: float | None = None

@@ -40,25 +40,51 @@ class PositionEntity(Base):
 
     __tablename__ = "positions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
 
-    symbol: Mapped[str] = mapped_column(String(20))
+    symbol: Mapped[str] = mapped_column(
+        String(20)
+    )
 
-    side: Mapped[str] = mapped_column(String(10))
+    side: Mapped[str] = mapped_column(
+        String(10)
+    )
 
-    quantity: Mapped[float] = mapped_column(Float)
+    quantity: Mapped[float] = mapped_column(
+        Float
+    )
 
-    entry_price: Mapped[float] = mapped_column(Float)
+    entry_price: Mapped[float] = mapped_column(
+        Float
+    )
 
-    stop_loss: Mapped[float] = mapped_column(Float, nullable=True)
+    current_price: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+    )
 
-    take_profit: Mapped[float] = mapped_column(Float, nullable=True)
+    floating_pnl: Mapped[float] = mapped_column(
+        Float,
+        default=0,
+    )
+
+    stop_loss: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    take_profit: Mapped[float] = mapped_column(
+        Float,
+        nullable=True,
+    )
 
     opened_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
     )
-
 
 # ==========================================================
 # Trade
