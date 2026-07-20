@@ -10,9 +10,9 @@ router = APIRouter()
 service = OrderService()
 
 
-@router.get("/orders")
+@router.post("/orders")
 def place_order(request: OrderRequest):
 
-    return asdict(
-        service.place_order(request)
-    )
+    result = service.place_order(request)
+
+    return asdict(result)

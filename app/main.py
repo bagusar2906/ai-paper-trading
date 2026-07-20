@@ -7,6 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from app.api.backtest import router as backtest_router
 from app.api.chart import router as chart_router
 from app.api.dashboard import router as dashboard_router
+from app.api.order import router as order_router
+from app.api.quote import router as quote_router
 from app.database.database import init_database
 from app.repositories.factory import RepositoryFactory
 from app.services.signal_service import SignalService
@@ -27,6 +29,8 @@ app = FastAPI(
 app.include_router(dashboard_router)
 app.include_router(chart_router)
 app.include_router(backtest_router)
+app.include_router(order_router)
+app.include_router(quote_router)
 
 # Serve dashboard UI
 app.mount(

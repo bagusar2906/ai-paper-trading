@@ -26,3 +26,7 @@ class PositionRepository(BaseRepository):
             .filter_by(symbol=symbol)
             .first()
         )
+
+    def update(self, position):
+
+        self.session.commit()

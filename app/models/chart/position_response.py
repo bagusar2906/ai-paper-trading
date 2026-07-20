@@ -2,16 +2,20 @@ from dataclasses import dataclass
 
 
 @dataclass
-class ChartPosition:
+class PositionResponse:
 
     symbol: str
 
     side: str
 
-    entry: float
+    quantity: float
+
+    entry_price: float
+
+    current_price: float
 
     stop_loss: float
 
     take_profit: float
 
-    quantity: float
+    floating_pnl: float

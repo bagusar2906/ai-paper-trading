@@ -77,13 +77,13 @@ export async function closePosition(id) {
 }
 
 
-export async function updatePosition(id, request) {
+export async function updatePosition(id, body) {
 
     return request(
         `/positions/${id}`,
         {
             method: "PUT",
-            body: JSON.stringify(request),
+            body: JSON.stringify(body),
         }
     );
 

@@ -194,8 +194,33 @@ def test_close_buy_position(broker):
 
 
 # =============================================================================
-# Profit / Loss
+# Market price update
 # =============================================================================
+
+def test_update_market_price_does_not_crash(broker):
+
+    # Regression test: PositionRepository had no update() method, so this
+    # raised AttributeError as soon as a position was open and the engine
+    # tried to mark it to market.
+
+    broker.execute(_signal())
+
+    broker.update_market_price("XAUUSD", 3380.50)
+
+    positions = broker.get_positions()
+    assert len(positions) == 1
+
+
+def test_update_market_price_updates_floating_pnl(broker):
+
+    broker.execute(_signal())  # BUY @ 3375.50
+
+    broker.update_market_price("XAUUSD", 3380.50)  # +5.0 * qty(1.0)
+
+    account = broker.get_account()
+
+    assert account.floating_pnl == pytest.approx(5.0)
+    assert account.equity == pytest.approx(10005.0)
 
 def test_buy_profit_updates_balance(broker):
 
