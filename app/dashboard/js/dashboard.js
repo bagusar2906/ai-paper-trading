@@ -1,6 +1,13 @@
 import { getDashboard, getChart } from "./api.js";
 
-import { initializeChart, updateChart } from "./chart.js";
+import {
+    initializeChart,
+    updateChart
+} from "./chart.js";
+
+import {
+    initializeOrderTicket
+} from "./components/order-ticket.js";
 
 import { updateAccount } from "./components/account-card.js";
 import { updateStatistics } from "./components/statistics-card.js";
@@ -10,40 +17,83 @@ import { updateSignals } from "./components/signals-table.js";
 import { updateCurrentSignal } from "./components/current-signal.js";
 import { updateSignal } from "./components/signals-card.js";
 
-initializeChart();
+const REFRESH_INTERVAL = 5000;
+
+initialize();
+
+async function initialize() {
+
+    initializeChart();
+
+    initializeOrderTicket();
+
+    window.addEventListener(
+        "dashboard-refresh",
+        refresh
+    );
+
+    await refresh();
+
+    setInterval(
+        refresh,
+        REFRESH_INTERVAL
+    );
+
+}
 
 async function refresh() {
 
     try {
 
-        const dashboard = await getDashboard();
+        const [dashboard, chart] = await Promise.all([
+            getDashboard(),
+            getChart()
+        ]);
 
-        updateAccount(dashboard.account);
-
-        updateStatistics(dashboard.statistics);
-
-        updateCurrentSignal(dashboard.current_signal);
-        updateSignal(dashboard.current_signal);
-
-        updatePositions(dashboard.positions);
-
-        updateTrades(dashboard.trades);
-
-        updateSignals(dashboard.signals);
-
-        const chart = await getChart();
+        renderDashboard(dashboard);
 
         updateChart(chart);
 
     }
     catch (error) {
 
-        console.error(error);
+        console.error(
+            "Dashboard refresh failed",
+            error
+        );
 
     }
 
 }
 
-refresh();
+function renderDashboard(dashboard) {
 
-setInterval(refresh, 5000);
+    updateAccount(
+        dashboard.account
+    );
+
+    updateStatistics(
+        dashboard.statistics
+    );
+
+    updateCurrentSignal(
+        dashboard.current_signal
+    );
+
+    updateSignal(
+        dashboard.current_signal
+    );
+
+    updatePositions(
+        dashboard.positions
+    );
+
+    updateTrades(
+        dashboard.trades
+    );
+
+    updateSignals(
+        dashboard.signals
+    );
+
+}

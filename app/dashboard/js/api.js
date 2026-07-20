@@ -1,19 +1,90 @@
-export async function getDashboard() {
+async function request(url, options = {}) {
 
-    const response = await fetch("/dashboard");
+    const response = await fetch(url, {
 
-    if (!response.ok)
-        throw new Error("Failed to load dashboard.");
+        headers: {
+            "Content-Type": "application/json",
+        },
+
+        ...options,
+
+    });
+
+    if (!response.ok) {
+
+        throw new Error(
+            `HTTP ${response.status}: ${response.statusText}`
+        );
+
+    }
 
     return await response.json();
+
+}
+
+// -----------------------------------------------------
+// Dashboard
+// -----------------------------------------------------
+
+export async function getDashboard() {
+
+    return request("/dashboard");
+
 }
 
 export async function getChart() {
 
-    const response = await fetch("/chart");
+    return request("/chart");
 
-    if (!response.ok)
-        throw new Error("Failed to load chart.");
+}
 
-    return await response.json();
+// -----------------------------------------------------
+// Quotes
+// -----------------------------------------------------
+
+export async function getQuote(symbol = "XAUUSD") {
+
+    return request(
+        `/quote?symbol=${encodeURIComponent(symbol)}`
+    );
+
+}
+
+// -----------------------------------------------------
+// Orders
+// -----------------------------------------------------
+
+export async function placeOrder(order) {
+
+    return request("/orders", {
+
+        method: "POST",
+
+        body: JSON.stringify(order),
+
+    });
+
+}
+
+export async function closePosition(id) {
+
+    return request(`/positions/${id}/close`, {
+
+        method: "POST",
+
+    });
+
+}
+
+
+export async function updatePosition(id, request) {
+
+    return request(
+        `/positions/${id}`,
+        {
+            method: "PUT",
+            body: JSON.stringify(request),
+        }
+    );
+
 }
