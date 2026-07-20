@@ -88,3 +88,19 @@ export async function updatePosition(id, body) {
     );
 
 }
+
+// -----------------------------------------------------
+// Backtest
+// -----------------------------------------------------
+
+export async function runBacktest(backtestRequest) {
+
+    return request("/backtest", {
+
+        method: "POST",
+
+        body: JSON.stringify(backtestRequest),
+
+    });
+
+}

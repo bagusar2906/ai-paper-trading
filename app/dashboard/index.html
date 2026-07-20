@@ -17,8 +17,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script type="module" src="js/dashboard.js"></script>
-
+   
     <link href="css/dashboard.css" rel="stylesheet">
 
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -32,20 +31,30 @@
 
         <div class="d-flex justify-content-between align-items-center">
 
-            <h2>Paper Trading Dashboard
-                <small class="text-muted">
+            <h2>Paper Trading Dashboard</h2>
 
-                    XAUUSD • M5
+            <div class="d-flex align-items-center gap-2">
 
-                </small>
-            </h2>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#backtestModal">
 
-            <span class="badge bg-success">
-                LIVE
-            </span>
+                    <i class="bi bi-graph-up"></i>
+                    Backtest
+
+                </button>
+
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal">
+
+                    New Order
+
+                </button>
+
+                <span class="badge bg-success">
+                    LIVE
+                </span>
+
+            </div>
 
         </div>
-
         <!-- ====================================================== -->
         <!-- Account -->
         <!-- ====================================================== -->
@@ -219,13 +228,7 @@
                     <div class="card-header d-flex justify-content-between">
 
                         <strong>XAUUSD Chart</strong>
-
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#orderModal">
-
-                            New Order
-
-                        </button>
-
+                      
                     </div>
 
                     <div class="card-body">
@@ -583,7 +586,7 @@
         <!-- ====================================================== -->
         <!-- Edit Position Modal -->
         <!-- ====================================================== -->
-         
+
         <div class="modal fade" id="editPositionModal" tabindex="-1">
 
             <div class="modal-dialog">
@@ -646,6 +649,99 @@
                         </button>
 
                     </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Backtest Modal -->
+
+    <div class="modal fade" id="backtestModal" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Run Backtest
+                    </h5>
+
+                    <button class="btn-close" data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Symbol
+                        </label>
+
+                        <input id="btSymbol" class="form-control" value="XAUUSD">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Timeframe
+                        </label>
+
+                        <select id="btTimeframe" class="form-select">
+
+                            <option>M1</option>
+                            <option>M5</option>
+                            <option selected>M15</option>
+                            <option>H1</option>
+                            <option>H4</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Bars
+                        </label>
+
+                        <input id="btBars" class="form-control" type="number" value="5000">
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Initial Balance
+                        </label>
+
+                        <input id="btBalance" class="form-control" type="number" value="10000">
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button id="btnRunBacktest" class="btn btn-primary">
+
+                        Run Backtest
+
+                    </button>
 
                 </div>
 

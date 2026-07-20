@@ -1,31 +1,17 @@
-from dataclasses import asdict
-
 from fastapi import APIRouter
 
-from app.backtest.factory import create_backtest_engine
-from app.config import TradingConfig
+from app.backtest.backtest_request import BacktestRequest
+from app.backtest.backtest_service import BacktestService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/backtest",
+    tags=["Backtest"],
+)
 
 
-@router.get("/backtest")
-def run_backtest(bars: int = 1000):
-    """
-    Replay recent history through the live strategy/risk/broker pipeline
-    and return performance statistics. Runs against an isolated in-memory
-    DB — never touches the live paper-trading account/positions/trades.
-    """
+@router.post("")
+def run_backtest(request: BacktestRequest):
 
-    backtest = create_backtest_engine()
+    service = BacktestService()
 
-    try:
-        result = backtest.run(
-            TradingConfig.SYMBOL,
-            TradingConfig.TIMEFRAME,
-            bars,
-        )
-    finally:
-        backtest.engine.close()
-        backtest.provider.disconnect()
-
-    return asdict(result)
+    return service.run(request)

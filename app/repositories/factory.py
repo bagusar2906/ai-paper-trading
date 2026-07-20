@@ -1,3 +1,5 @@
+from sqlalchemy.orm import sessionmaker
+
 from app.database import SessionLocal
 
 from app.repositories.account_repository import AccountRepository
@@ -8,9 +10,21 @@ from app.repositories.signal_repository import SignalRepository
 
 class RepositoryFactory:
 
-    def __init__(self, session=None):
+    def __init__(
+        self,
+        session=None,
+        session_factory: sessionmaker | None = None,
+    ):
 
-        self.session = session or SessionLocal()
+        if session is not None:
+
+            self.session = session
+
+        else:
+
+            self.session = (
+                session_factory or SessionLocal
+            )()
 
         self.accounts = AccountRepository(self.session)
         self.positions = PositionRepository(self.session)

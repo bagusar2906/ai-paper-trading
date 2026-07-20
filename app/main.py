@@ -13,6 +13,7 @@ from app.api.position import router as position_router
 from app.database.database import init_database
 from app.repositories.factory import RepositoryFactory
 from app.services.signal_service import SignalService
+from app.api.backtest import router as backtest_router
 
 
 @asynccontextmanager
@@ -33,6 +34,7 @@ app.include_router(backtest_router)
 app.include_router(order_router)
 app.include_router(quote_router)
 app.include_router(position_router)
+app.include_router(backtest_router)
 
 # Serve dashboard UI
 app.mount(
