@@ -1,5 +1,5 @@
 import {
-    closePosition,
+    closePosition
 } from "../api.js";
 
 export function updatePositions(positions) {
@@ -10,164 +10,124 @@ export function updatePositions(positions) {
     if (!tbody)
         return;
 
-    tbody.replaceChildren();
+    tbody.innerHTML = "";
 
     positions.forEach(position => {
 
-        tbody.appendChild(
-            createRow(position)
-        );
+        const pnlClass =
+            position.floating_pnl >= 0
+                ? "text-success"
+                : "text-danger";
+
+        tbody.innerHTML += `
+        <tr>
+
+            <td>${position.symbol}</td>
+
+            <td>
+                <span class="badge ${
+                    position.side === "BUY"
+                        ? "bg-success"
+                        : "bg-danger"
+                }">
+                    ${position.side}
+                </span>
+            </td>
+
+            <td>${position.entry_price.toFixed(2)}</td>
+
+            <td>${position.current_price?.toFixed(2) ?? "-"}</td>
+
+            <td class="${pnlClass}">
+                ${(position.floating_pnl ?? 0).toFixed(2)}
+            </td>
+
+            <td>${position.stop_loss.toFixed(2)}</td>
+
+            <td>${position.take_profit.toFixed(2)}</td>
+
+            <td>
+
+                <button
+                    class="btn btn-sm btn-outline-primary edit-position"
+                    data-id="${position.id}">
+
+                    Edit
+
+                </button>
+
+                <button
+                    class="btn btn-sm btn-outline-danger close-position"
+                    data-id="${position.id}">
+
+                    Close
+
+                </button>
+
+            </td>
+
+        </tr>
+        `;
 
     });
+
+    attachEvents();
 
     document.getElementById("positionCount").textContent =
         positions.length;
 
 }
 
-function createRow(position) {
+function attachEvents() {
 
-    const tr = document.createElement("tr");
+    document
+        .querySelectorAll(".close-position")
+        .forEach(button => {
 
-    tr.innerHTML = `
-        <td>${position.symbol}</td>
+            button.onclick = async () => {
 
-        <td>
-            <span class="badge ${
-                position.side === "BUY"
-                    ? "bg-success"
-                    : "bg-danger"
-            }">
-                ${position.side}
-            </span>
-        </td>
+                if (!confirm("Close this position?"))
+                    return;
 
-        <td>${position.entry_price.toFixed(2)}</td>
+                await closePosition(
+                    button.dataset.id
+                );
 
-        <td>${position.stop_loss.toFixed(2)}</td>
+                window.dispatchEvent(
+                    new Event("dashboard-refresh")
+                );
 
-        <td>${position.take_profit.toFixed(2)}</td>
+            };
 
-        <td>${formatProfit(position.floating_pnl)}</td>
+        });
 
-        <td>${position.current_price?.toFixed(2) ?? "-"}</td>
+    document
+        .querySelectorAll(".edit-position")
+        .forEach(button => {
 
-        <td></td>
-    `;
+            button.onclick = () => {
 
-    tr.lastElementChild.appendChild(
-        createActions(position)
-    );
+                openEditModal(
+                    button.dataset.id
+                );
 
-    return tr;
+            };
 
-}
-
-function createActions(position) {
-
-    const container =
-        document.createElement("div");
-
-    container.className = "btn-group btn-group-sm";
-
-    container.appendChild(
-        createEditButton(position)
-    );
-
-    container.appendChild(
-        createCloseButton(position)
-    );
-
-    return container;
+        });
 
 }
 
-function createEditButton(position) {
+function openEditModal(id) {
 
-    const button =
-        document.createElement("button");
-
-    button.className =
-        "btn btn-outline-primary";
-
-    button.innerHTML = "✏";
-
-    button.title = "Modify";
-
-    button.onclick = () => {
-
-        window.dispatchEvent(
-            new CustomEvent(
-                "position-edit",
-                {
-                    detail: position
+    window.dispatchEvent(
+        new CustomEvent(
+            "position-edit",
+            {
+                detail: {
+                    id
                 }
-            )
-        );
-
-    };
-
-    return button;
-
-}
-
-function createCloseButton(position) {
-
-    const button =
-        document.createElement("button");
-
-    button.className =
-        "btn btn-outline-danger";
-
-    button.innerHTML = "✖";
-
-    button.title = "Close";
-
-    button.onclick = async () => {
-
-        if (
-            !confirm(
-                `Close ${position.side} ${position.symbol}?`
-            )
-        ) {
-            return;
-        }
-
-        try {
-
-            await closePosition(position.id);
-
-            window.dispatchEvent(
-                new Event("dashboard-refresh")
-            );
-
-        }
-        catch (error) {
-
-            console.error(error);
-
-            alert("Unable to close position.");
-
-        }
-
-    };
-
-    return button;
-
-}
-
-function formatProfit(value) {
-
-    if (value == null)
-        return "-";
-
-    const color =
-        value >= 0
-            ? "green"
-            : "red";
-
-    return `<span style="color:${color}">
-        ${value.toFixed(2)}
-    </span>`;
+            }
+        )
+    );
 
 }

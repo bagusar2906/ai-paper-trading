@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from app.enums.signal_action import SignalAction
-from app.models.dashboard.order_request import OrderRequest
+from app.models.position.order_request import OrderRequest
 from app.services.order_service import OrderService
 
 

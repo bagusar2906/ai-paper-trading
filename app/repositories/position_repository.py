@@ -27,6 +27,10 @@ class PositionRepository(BaseRepository):
             .first()
         )
 
+    def get_by_id(self, position_id: int):
+
+        return self.session.get(PositionEntity, position_id)
+    
     def update(self, position):
 
         self.session.commit()

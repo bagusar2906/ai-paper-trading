@@ -2,7 +2,7 @@ from dataclasses import asdict
 
 from fastapi import APIRouter
 
-from app.models.dashboard.order_request import OrderRequest
+from app.models.position.order_request import OrderRequest
 from app.services.order_service import OrderService
 
 router = APIRouter()

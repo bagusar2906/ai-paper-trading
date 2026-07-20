@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from app.brokers.paper_broker import PaperBroker
 from app.config import TradingConfig
 from app.enums.signal_action import SignalAction
-from app.models.dashboard.order_request import OrderRequest
+from app.models.position.order_request import OrderRequest
 from app.models.signal import TradingSignal
 from app.services.order_response import OrderResponse
 

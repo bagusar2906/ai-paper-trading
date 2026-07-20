@@ -9,6 +9,10 @@ import {
     initializeOrderTicket
 } from "./components/order-ticket.js";
 
+import {
+    initializeEditPosition
+} from "./components/edit-position.js";
+
 import { updateAccount } from "./components/account-card.js";
 import { updateStatistics } from "./components/statistics-card.js";
 import { updatePositions } from "./components/positions-table.js";
@@ -31,8 +35,8 @@ document.addEventListener(
 async function initialize() {
 
     initializeChart();
-
     initializeOrderTicket();
+    initializeEditPosition();
 
     window.addEventListener(
         "dashboard-refresh",
