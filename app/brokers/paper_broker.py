@@ -17,9 +17,11 @@ logger = logging.getLogger(__name__)
 
 class PaperBroker(Broker):
 
-    def __init__(self, initial_balance: float, repos: RepositoryFactory = None):
-
-        self.initial_balance = initial_balance
+    def __init__(
+            self,
+            repos: RepositoryFactory = None,
+            initial_balance: float = 10000,
+        ):
 
         self.repos = repos or RepositoryFactory()
 

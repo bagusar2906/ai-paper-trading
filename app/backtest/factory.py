@@ -5,9 +5,9 @@ from app.config import TradingConfig
 from app.database.base import Base
 from app.database.session import create_session_factory
 from app.engine.trading_engine import TradingEngine
-from app.providers.factory import create_provider
+from app.factories.provider_factory import create_provider
 from app.repositories.factory import RepositoryFactory
-from app.strategy.factory import create_strategy
+from app.factories.strategy_factory import create_strategy
 
 
 def create_backtest_engine():

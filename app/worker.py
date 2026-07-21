@@ -1,4 +1,4 @@
-from app.providers.factory import create_provider
+from app.factories.provider_factory import create_provider
 from app.strategy import EMARSIADXStrategy
 from app.config import TradingConfig
 

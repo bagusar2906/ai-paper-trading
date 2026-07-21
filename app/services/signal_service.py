@@ -1,6 +1,6 @@
 from app.config import TradingConfig
-from app.providers.factory import create_provider
-from app.strategy.factory import create_strategy
+from app.factories.provider_factory import create_provider
+from app.factories.strategy_factory import create_strategy
 
 
 class SignalService:

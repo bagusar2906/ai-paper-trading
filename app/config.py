@@ -72,7 +72,7 @@ class TradingConfig:
 
     SYMBOL = "XAUUSD"
 
-    TIMEFRAME = "5m"
+    TIMEFRAME = "M5"
 
     HISTORY_BARS = 300
 

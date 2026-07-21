@@ -1,4 +1,4 @@
-from app.engine.factory import create_engine
+from app.factories.engine_factory import create_engine
 
 
 def test_run_engine():

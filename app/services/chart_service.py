@@ -4,9 +4,9 @@ from app.models.chart.chart_position import ChartPosition
 from app.models.chart.chart_response import ChartResponse
 from app.models.chart.line_series import LinePoint
 from app.models.chart.marker import ChartMarker
-from app.providers.factory import create_provider
+from app.factories.provider_factory import create_provider
 from app.repositories.factory import RepositoryFactory
-from app.strategy.factory import create_strategy
+from app.factories.strategy_factory import create_strategy
 
 
 class ChartService:

@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass
 from fastapi import APIRouter
 
 from app.config import TradingConfig
-from app.providers.factory import create_provider
+from app.factories.provider_factory import create_provider
 
 router = APIRouter()
 

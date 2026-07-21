@@ -5,15 +5,15 @@ import pandas as pd
 
 from app.providers.base import DataProvider
 
-# Yahoo Finance uses its own interval codes and ticker conventions.
+# MT5 timeframe -> Yahoo interval
 _INTERVAL_MAP = {
-    "1m": "1m",
-    "5m": "5m",
-    "15m": "15m",
-    "30m": "30m",
-    "1h": "60m",
-    "4h": "60m",   # yfinance has no native 4h bar; resample from 60m if needed
-    "1d": "1d",
+    "M1": "1m",
+    "M5": "5m",
+    "M15": "15m",
+    "M30": "30m",
+    "H1": "60m",
+    "H4": "60m",     # resample later if needed
+    "D1": "1d",
 }
 
 # How far back we can safely ask Yahoo for a given intraday interval.
@@ -81,6 +81,24 @@ class YahooProvider(DataProvider):
 
         df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
         df.index.name = "Time"
+
+        # ---------------------------------------------------
+        # Resample hourly bars into 4-hour bars
+        # ---------------------------------------------------
+        if timeframe == "H4":
+
+            df = (
+                df
+                .resample("4H")
+                .agg({
+                    "Open": "first",
+                    "High": "max",
+                    "Low": "min",
+                    "Close": "last",
+                    "Volume": "sum",
+                })
+                .dropna()
+            )
 
         return df.tail(bars)
 

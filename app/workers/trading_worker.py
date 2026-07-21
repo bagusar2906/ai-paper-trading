@@ -2,7 +2,7 @@ import logging
 import time
 
 from app.config import WorkerConfig
-from app.engine.factory import create_engine
+from app.factories.engine_factory import create_engine
 
 
 logger = logging.getLogger(__name__)

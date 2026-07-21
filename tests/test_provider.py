@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from app.providers.factory import create_provider
+from app.factories.provider_factory import create_provider
 from app.providers.yahoo_provider import YahooProvider
 from app.providers.oanda_provider import OandaProvider
 
