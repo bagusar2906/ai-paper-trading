@@ -149,3 +149,16 @@ class SignalEntity(Base):
         DateTime,
         default=datetime.utcnow,
     )
+
+class SettingEntity(Base):
+
+    __tablename__ = "settings"
+
+    key = mapped_column(
+        String(100),
+        primary_key=True
+    )
+
+    value = mapped_column(
+        String(255)
+    )

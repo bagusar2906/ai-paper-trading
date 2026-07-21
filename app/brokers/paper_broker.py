@@ -202,3 +202,26 @@ class PaperBroker(Broker):
         account.free_margin = account.equity - account.margin
 
         self.repos.accounts.update(account)
+
+    def save_signal(self, signal):
+
+        self.repos.signals.add(signal)
+
+        self.repos.session.commit()
+
+    def get_trading_mode(self):
+
+        return self.repos.settings.get_trading_mode()
+    
+
+    def process_signal(self, signal):
+
+        self.repos.signals.add(signal)
+
+        self.repos.session.commit()
+
+        mode = self.repos.settings.get_trading_mode()
+
+        if mode == "AUTO":
+
+            self.execute(signal)

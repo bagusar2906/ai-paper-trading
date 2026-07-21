@@ -17,7 +17,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
-   
+
     <link href="css/dashboard.css" rel="stylesheet">
 
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
@@ -35,25 +35,45 @@
 
             <div class="d-flex align-items-center gap-2">
 
+                <!-- Trading Mode -->
+                <div style="width:160px">
+
+                    <select id="tradingMode" class="form-select form-select-sm">
+
+                        <option value="MANUAL">
+                            Manual
+                        </option>
+
+                        <option value="AUTO">
+                            Auto
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <!-- Backtest -->
                 <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#backtestModal">
 
-                    <i class="bi bi-graph-up"></i>
                     Backtest
 
                 </button>
 
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal">
+                <!-- Manual Order -->
+                <button id="btnNewOrder" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal">
 
                     New Order
 
                 </button>
 
-                <span class="badge bg-success">
+                <!-- Live Status -->
+                <span id="liveStatus" class="badge bg-success">
+
                     LIVE
+
                 </span>
 
             </div>
-
         </div>
         <!-- ====================================================== -->
         <!-- Account -->
@@ -228,7 +248,7 @@
                     <div class="card-header d-flex justify-content-between">
 
                         <strong>XAUUSD Chart</strong>
-                      
+
                     </div>
 
                     <div class="card-body">

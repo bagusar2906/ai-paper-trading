@@ -104,3 +104,25 @@ export async function runBacktest(backtestRequest) {
     });
 
 }
+
+// -----------------------------------------------------  
+// Trading Mode
+// -----------------------------------------------------
+
+export async function getSettings() {
+
+    return apiRequest("/settings");
+
+}
+
+export async function updateSettings(settings) {
+
+    return apiRequest("/settings", {
+
+        method: "PUT",
+
+        body: JSON.stringify(settings),
+
+    });
+
+}

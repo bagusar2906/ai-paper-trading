@@ -1,6 +1,7 @@
 import logging
 
 from app.engine.result import EngineResult
+from app.enums.trading_mode import TradingMode
 from app.managers.position_manager import PositionManager
 from app.risk.risk_manager import RiskManager
 
@@ -89,7 +90,11 @@ class TradingEngine:
         #
         # Execute trade
         #
-        self._execute_signal(signal)
+        signal = self._generate_signal(df)
+
+        if signal is not None:
+
+            self._execute_signal(signal)
 
         #
         # Return result
@@ -182,6 +187,9 @@ class TradingEngine:
 
         if signal is None:
             return
+
+
+        self.broker.process_signal(signal)
 
         account = self.get_account()
 
