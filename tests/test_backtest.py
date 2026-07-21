@@ -3,6 +3,8 @@ from app.backtest.backtest_result import BacktestResult
 from app.backtest.factory import create_backtest_engine
 from app.config import TradingConfig
 
+import pytest
+
 
 # =============================================================================
 # Normal Backtest
@@ -60,10 +62,16 @@ def test_backtest_runs():
     )
 
     #
-    # Balance should equal initial balance plus net profit
+    # Balance should equal initial balance plus net profit.
+    #
+    # end_balance is a running total updated per-trade in chronological
+    # order; net_profit is computed separately as sum(wins) minus
+    # abs(sum(losses)). Both are mathematically the same value, but
+    # summing floats in a different order/grouping can differ by a few
+    # ULPs, so compare with tolerance rather than exact equality.
     #
 
-    assert result.end_balance == (
+    assert result.end_balance == pytest.approx(
         result.start_balance
         + stats.net_profit
     )

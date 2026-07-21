@@ -61,3 +61,29 @@ def test_yahoo_get_history_returns_expected_columns(monkeypatch):
     assert list(df.columns) == ["Open", "High", "Low", "Close", "Volume"]
     assert len(df) == 5  # tail(bars) applied
     provider.disconnect()
+
+
+def test_yahoo_get_history_rejects_mt_style_timeframe(monkeypatch):
+    """Regression test: the backtest dashboard used to submit MetaTrader-style
+    labels ('M15', 'H1', ...) instead of the app's own '15m' / '1h' format.
+    _INTERVAL_MAP.get(timeframe, timeframe) used to silently fall back to
+    passing the raw (invalid) string straight to yfinance as the interval,
+    which yfinance quietly interpreted as "no data" instead of erroring.
+    Unrecognized timeframes must now fail fast and clearly instead."""
+
+    def _should_not_be_called(*args, **kwargs):
+        raise AssertionError(
+            "yfinance should never be called with an unrecognized timeframe"
+        )
+
+    monkeypatch.setattr(
+        "app.providers.yahoo_provider.yf.Ticker", _should_not_be_called
+    )
+
+    provider = YahooProvider()
+    provider.connect()
+
+    with pytest.raises(ValueError):
+        provider.get_history("XAUUSD", "M15", 5)
+
+    provider.disconnect()

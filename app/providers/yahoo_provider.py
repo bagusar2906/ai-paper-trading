@@ -55,7 +55,14 @@ class YahooProvider(DataProvider):
 
     def get_history(self, symbol: str, timeframe: str, bars: int) -> pd.DataFrame:
         yf_symbol = self._resolve_symbol(symbol)
-        interval = _INTERVAL_MAP.get(timeframe, timeframe)
+
+        if timeframe not in _INTERVAL_MAP:
+            raise ValueError(
+                f"Unsupported timeframe '{timeframe}' for Yahoo provider. "
+                f"Expected one of {sorted(_INTERVAL_MAP)}."
+            )
+
+        interval = _INTERVAL_MAP[timeframe]
         period = _PERIOD_MAP.get(interval, "60d")
 
         logger.info(

@@ -90,8 +90,6 @@ class TradingEngine:
         #
         # Execute trade
         #
-        signal = self._generate_signal(df)
-
         if signal is not None:
 
             self._execute_signal(signal)

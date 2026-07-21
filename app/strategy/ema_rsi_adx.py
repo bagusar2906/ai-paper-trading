@@ -56,6 +56,21 @@ class EMARSIADXStrategy(Strategy):
         symbol: str,
         df: pd.DataFrame,
     ) -> TradingSignal:
+        """
+        Mirrors the original TradingView Pine Script logic 1:1:
+
+          BUY:  close > EMA AND ADX > level AND green candle
+                AND RSI crosses back above the oversold line this bar
+                (RSI[1] < RSI_OS and RSI[0] >= RSI_OS)
+
+          SELL: close < EMA AND ADX > level AND red candle
+                AND RSI crosses back below the overbought line this bar
+                (RSI[1] > RSI_OB and RSI[0] <= RSI_OB)
+
+        A crossing event (not a static "RSI < 20" / "RSI > 80" threshold)
+        is what the indicator actually plots, so we need the previous
+        bar's RSI to detect it.
+        """
 
         logger.info(
             "Generating trading signal..."
@@ -71,55 +86,79 @@ class EMARSIADXStrategy(Strategy):
 
         reason = "No setup"
 
-        ###################################################
-        # BUY
-        ###################################################
+        if len(df) >= 2:
 
-        if (
-            last["Close"] > last["EMA"]
-            and last["RSI"] < StrategyConfig.RSI_OS
-            and last["ADX"] > StrategyConfig.ADX_LEVEL
-            and last["+DI"] > last["-DI"]
-        ):
+            prev = df.iloc[-2]
 
-            action = "BUY"
+            is_green = last["Close"] > last["Open"]
+            is_red = last["Close"] < last["Open"]
 
-            logger.info(
-                "BUY signal generated for %s at price %.5f",
-                symbol,
-                price
+            trend_up = last["Close"] > last["EMA"]
+            trend_down = last["Close"] < last["EMA"]
+
+            strong_trend = last["ADX"] > StrategyConfig.ADX_LEVEL
+
+            rsi_crossed_up = (
+                prev["RSI"] < StrategyConfig.RSI_OS
+                and last["RSI"] >= StrategyConfig.RSI_OS
             )
 
-            reason = (
-                "Price above EMA, "
-                "RSI oversold, "
-                "ADX strong trend"
+            rsi_crossed_down = (
+                prev["RSI"] > StrategyConfig.RSI_OB
+                and last["RSI"] <= StrategyConfig.RSI_OB
             )
 
-        ###################################################
-        # SELL
-        ###################################################
+            ###################################################
+            # BUY
+            ###################################################
 
-        elif (
-            last["Close"] < last["EMA"]
-            and last["RSI"] > StrategyConfig.RSI_OB
-            and last["ADX"] > StrategyConfig.ADX_LEVEL
-            and last["-DI"] > last["+DI"]
-        ):
+            if (
+                trend_up
+                and strong_trend
+                and is_green
+                and rsi_crossed_up
+            ):
 
-            action = "SELL"
+                action = "BUY"
 
-            logger.info(
-                "SELL signal generated for %s at price %.5f",
-                symbol,
-                price
-            )
+                logger.info(
+                    "BUY signal generated for %s at price %.5f",
+                    symbol,
+                    price
+                )
 
-            reason = (
-                "Price below EMA, "
-                "RSI overbought, "
-                "ADX strong trend"
-            )
+                reason = (
+                    "Price above EMA, "
+                    "ADX strong trend, "
+                    "green candle, "
+                    "RSI crossed back above oversold"
+                )
+
+            ###################################################
+            # SELL
+            ###################################################
+
+            elif (
+                trend_down
+                and strong_trend
+                and is_red
+                and rsi_crossed_down
+            ):
+
+                action = "SELL"
+
+                logger.info(
+                    "SELL signal generated for %s at price %.5f",
+                    symbol,
+                    price
+                )
+
+                reason = (
+                    "Price below EMA, "
+                    "ADX strong trend, "
+                    "red candle, "
+                    "RSI crossed back below overbought"
+                )
 
         ###################################################
         # HOLD
