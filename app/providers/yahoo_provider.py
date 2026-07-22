@@ -14,6 +14,16 @@ _INTERVAL_MAP = {
     "H1": "60m",
     "H4": "60m",     # resample later if needed
     "D1": "1d",
+
+      # Yahoo aliases
+
+    "1m": "1m",
+    "5m": "5m",
+    "15m": "15m",
+    "30m": "30m",
+    "1h": "60m",
+    "4h": "60m",
+    "1d": "1d",
 }
 
 # How far back we can safely ask Yahoo for a given intraday interval.

@@ -23,6 +23,7 @@ class PaperBroker(Broker):
             initial_balance: float = 10000,
         ):
 
+        self.initial_balance = initial_balance
         self.repos = repos or RepositoryFactory()
 
         account = self.repos.accounts.get()
@@ -30,10 +31,10 @@ class PaperBroker(Broker):
         if account is None:
 
             account = Account(
-                balance=initial_balance,
-                equity=initial_balance,
+                balance=self.initial_balance,
+                equity=self.initial_balance,
                 margin=0,
-                free_margin=initial_balance,
+                free_margin=self.initial_balance,
                 floating_pnl=0,
             )
 
