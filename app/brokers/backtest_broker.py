@@ -24,6 +24,8 @@ class BacktestBroker(Broker):
 
         self.trades = []
 
+        self.equity_history = []
+
     # -------------------------------------
 
     def execute(self, signal: TradingSignal):
@@ -117,6 +119,7 @@ class BacktestBroker(Broker):
             self,
             symbol,
             current_price,
+            current_time,
         ):
 
         floating = 0
@@ -152,6 +155,11 @@ class BacktestBroker(Broker):
             self.account.balance
             + floating
         )
+
+        self.equity_history.append({
+            "time": current_time,
+            "equity": self.account.equity
+        })
 
         self.account.free_margin = (
             self.account.equity

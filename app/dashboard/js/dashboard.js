@@ -3,7 +3,7 @@ import { getDashboard, getChart } from "./api.js";
 import {
     initializeChart,
     updateChart
-} from "./chart.js";
+} from "./charts/chart.js";
 
 import {
     initializeOrderTicket

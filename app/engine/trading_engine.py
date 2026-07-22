@@ -3,6 +3,7 @@ import logging
 from app.engine.result import EngineResult
 from app.enums.trading_mode import TradingMode
 from app.managers.position_manager import PositionManager
+from app.models import account
 from app.risk.risk_manager import RiskManager
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,8 @@ class TradingEngine:
         self.symbol = symbol
         self.timeframe = timeframe
         self.bars = bars
+
+        self.equity_history = []
 
         self.position_manager = PositionManager(self.broker)
         self.risk_manager = RiskManager()
@@ -65,14 +68,22 @@ class TradingEngine:
         # Latest market price
         #
         current_price = self._get_current_price(df)
+        current_time = df.index[-1]
 
         #
         # Update floating P/L
         #
         self.broker.update_market_price(
             self.symbol,
-            current_price,
+            current_price
         )
+
+        account = self.get_account()
+
+        self.equity_history.append({
+            "time": current_time,
+            "equity": account.equity,
+        })
 
         #
         # Check TP / SL

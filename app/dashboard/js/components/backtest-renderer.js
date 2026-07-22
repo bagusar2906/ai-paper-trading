@@ -1,5 +1,5 @@
 import { renderEquityCurve }
-    from "./equity-chart.js";
+    from "../charts/equity-chart.js";
 
 export function renderBacktest(report) {
 

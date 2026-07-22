@@ -1,18 +1,21 @@
 from dataclasses import dataclass, field
+import datetime
 
 from app.analytics.statistics import TradingStatistics
+from app.backtest.equity_point import EquityPoint
 from app.models.trade import Trade
-
-
+    
 @dataclass
 class BacktestResult:
 
     statistics: TradingStatistics
 
-    trades: list[Trade] = field(default_factory=list)
+    trades: list[Trade]
 
-    start_balance: float = 0.0
+    equity_curve: list[EquityPoint]
 
-    end_balance: float = 0.0
+    start_balance: float
 
-    bars_processed: int = 0
+    end_balance: float
+
+    bars_processed: int
