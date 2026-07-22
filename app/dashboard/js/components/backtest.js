@@ -1,4 +1,8 @@
-import { runBacktest } from "../api.js";
+import {
+    startBacktest,
+    getBacktestProgress,
+} from "../api.js";
+
 import { renderBacktest } from "./backtest-renderer.js";
 
 export function initializeBacktest() {
@@ -9,6 +13,48 @@ export function initializeBacktest() {
             "click",
             executeBacktest
         );
+
+}
+
+function showLoading(status) {
+
+    console.log("SHOW LOADING");
+
+    document
+        .getElementById("backtestLoading")
+        .classList
+        .remove("hidden");
+
+    document
+        .getElementById("backtestStatus")
+        .textContent = status;
+
+    document
+        .getElementById("backtestProgress")
+        .value = 0;
+}
+
+function hideLoading() {
+
+    document
+        .getElementById("backtestLoading")
+        .classList
+        .add("hidden");
+}
+
+function updateProgress(progress, status) {
+
+    document.getElementById(
+        "backtestProgress"
+    ).value = progress;
+
+    document.getElementById(
+        "backtestPercent"
+    ).innerText = progress + "%";
+
+    document.getElementById(
+        "backtestStatus"
+    ).innerText = status;
 
 }
 
@@ -34,17 +80,39 @@ async function executeBacktest() {
 
     };
 
-    const report =
-        await runBacktest(request);
+    showLoading("Starting backtest...");
 
-    console.log(report);
+    const job =
+        await startBacktest(request);
 
-    console.log("REPORT", report);
-    console.log("STATISTICS", report.statistics);
-    console.log("TOTAL", report.statistics.total_trades);
+    pollBacktest(job.jobId);
 
-    renderBacktest(report);
+}
 
-    renderBacktest(report);
+async function pollBacktest(jobId) {
+
+    const timer = setInterval(async () => {
+
+        const job =
+            await getBacktestProgress(jobId);
+
+        updateProgress(
+            job.progress,
+            job.status
+        );
+
+        if (job.finished) {
+
+            clearInterval(timer);
+
+            hideLoading();
+
+            renderBacktest(
+                job.result
+            );
+
+        }
+
+    }, 500);
 
 }

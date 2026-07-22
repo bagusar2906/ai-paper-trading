@@ -1,3 +1,4 @@
+from app.backtest.job_manager import job_manager
 from app.brokers.paper_broker import PaperBroker
 from app.database.base import Base
 from app.database.session import create_session_factory
@@ -14,7 +15,19 @@ from app.api.services.statistic_service import StatisticsService
 
 class BacktestService:
 
-    def run(self, request):
+    def run(
+        self,
+        request,
+        job_id=None,
+    ):
+
+        # <<< NEW
+        if job_id:
+            self._update_progress(
+                job_id,
+                5,
+                "Downloading history..."
+            )
 
         provider = create_provider()
 
@@ -30,11 +43,20 @@ class BacktestService:
 
             provider.disconnect()
 
+        # <<< NEW
+        if job_id:
+            self._update_progress(
+                job_id,
+                20,
+                "Preparing strategy..."
+            )
+
         strategy = create_strategy()
 
         engine, backtest_session = create_session_factory(
             "sqlite:///:memory:"
         )
+
         Base.metadata.create_all(engine)
 
         repos = RepositoryFactory(
@@ -62,7 +84,23 @@ class BacktestService:
 
         minimum = strategy.minimum_bars
 
-        for i in range(minimum, len(df)):
+        
+        total = len(df) - minimum
+
+        for index, i in enumerate(range(minimum, len(df))):
+
+            # <<< NEW
+            if job_id and index % 20 == 0:
+
+                progress = 20 + int(
+                    (index / total) * 70
+                )
+
+                self._update_progress(
+                    job_id,
+                    progress,
+                    f"Processing candle {index}/{total}"
+                )
 
             history = df.iloc[: i + 1].copy()
 
@@ -77,14 +115,35 @@ class BacktestService:
                 )
             )
 
+        # <<< NEW
+        if job_id:
+            self._update_progress(
+                job_id,
+                95,
+                "Calculating statistics..."
+            )
+
         trades = broker.get_trades()
 
         statistics = StatisticsService().build(
             trades
         )
 
+        # <<< NEW
+        if job_id:
+            self._update_progress(
+                job_id,
+                99,
+                "Preparing response..."
+            )
+
         return BacktestResponse(
             statistics=statistics,
             equity=equity,
             trades=trades,
         )
+    
+    def _update_progress(self, job_id, progress, status):
+
+        if job_id:
+            job_manager.update(job_id, progress, status)

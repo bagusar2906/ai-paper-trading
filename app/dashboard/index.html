@@ -788,7 +788,7 @@
 
                     <div id="backtestEquityChart" style=" width:100%; height:300px; margin-bottom:20px;">
 
-                        
+
                     </div>
 
                     <table border="1" width="100%">
@@ -820,6 +820,31 @@
         </div>
 
     </div>
+
+    <!-- Loading overlay -->
+    <div id="backtestLoading" class="loading-overlay hidden">
+
+        <div class="loading-box">
+
+            <div class="loading-spinner"></div>
+
+            <h3>Running Backtest</h3>
+
+            <progress id="backtestProgress" value="0" max="100">
+            </progress>
+
+            <div id="backtestPercent">
+                0%
+            </div>
+
+            <p id="backtestStatus">
+                Waiting...
+            </p>
+
+        </div>
+
+    </div>
+
 
     <script type="module" src="js/dashboard.js"></script>
 

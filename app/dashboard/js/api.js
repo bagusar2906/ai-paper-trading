@@ -93,15 +93,21 @@ export async function updatePosition(id, body) {
 // Backtest
 // -----------------------------------------------------
 
-export async function runBacktest(backtestRequest) {
+export async function startBacktest(backtestRequest) {
 
-    return request("/backtest", {
+    return request("/backtest/start", {
 
         method: "POST",
 
         body: JSON.stringify(backtestRequest),
 
     });
+
+}
+
+export async function getBacktestProgress(jobId) {
+
+    return request(`/backtest/progress/${jobId}`);
 
 }
 
