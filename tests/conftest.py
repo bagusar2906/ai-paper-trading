@@ -1,15 +1,62 @@
+print(">>> LOADED MY CONFTEST <<<")
 import pytest
 
-from app.database import Base, engine
-from app.database.database import init_database
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+    
+from app.database.base import Base
+
+from app.repositories.factory import RepositoryFactory
+from app.brokers.paper_broker import PaperBroker
 
 
-@pytest.fixture(autouse=True)
-def database():
+@pytest.fixture(scope="function")
+def session():
 
-    Base.metadata.drop_all(bind=engine)
-    init_database()
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+    )
 
-    yield
+    Base.metadata.create_all(engine)
 
-    Base.metadata.drop_all(bind=engine)
+    Session = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+    )
+
+    session = Session()
+
+    yield session
+
+    session.close()
+
+
+@pytest.fixture
+def repos(session):
+
+    repos = RepositoryFactory(
+        session=session
+    )
+
+    yield repos
+
+    repos.close()
+
+
+@pytest.fixture
+def broker(repos):
+
+    return PaperBroker(
+        repos=repos,
+        initial_balance=10000,
+    )

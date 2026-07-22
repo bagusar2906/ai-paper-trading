@@ -1,10 +1,13 @@
+import { renderEquityCurve }
+    from "./equity-chart.js";
+
 export function renderBacktest(report) {
 
     renderStatistics(report.statistics);
 
-    renderTrades(report.trades);
+    renderEquityCurve(report.equity);
 
-    renderEquity(report.equity);
+    renderTrades(report.trades);
 
 }
 

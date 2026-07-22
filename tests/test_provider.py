@@ -56,7 +56,7 @@ def test_yahoo_get_history_returns_expected_columns(monkeypatch):
 
     provider = YahooProvider()
     provider.connect()
-    df = provider.get_history("XAUUSD", "5m", 5)
+    df = provider.get_history("XAUUSD", "M5", 5)
 
     assert list(df.columns) == ["Open", "High", "Low", "Close", "Volume"]
     assert len(df) == 5  # tail(bars) applied
