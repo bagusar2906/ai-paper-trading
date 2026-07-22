@@ -1,6 +1,6 @@
 from app.analytics.statistics import TradingStatistics
 from app.backtest.backtest_result import BacktestResult
-from app.backtest.factory import create_backtest_engine
+from app.factories.backtest_factory import create_backtest_engine
 from app.config import TradingConfig
 
 import pytest

@@ -1,7 +1,7 @@
 from dataclasses import asdict
 
 from app.models.position.order_response import OrderResponse
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 
 
 class PositionService:

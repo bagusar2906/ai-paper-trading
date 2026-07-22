@@ -1,7 +1,7 @@
 from app.models.dashboard.dashboard_response import DashboardResponse
 from app.models.dashboard.dashboard_statistics import DashboardStatistics
 from app.models.dashboard.signal_response import SignalResponse
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 
 
 class DashboardService:

@@ -3,7 +3,7 @@ from app.database.base import Base
 from app.database.session import create_session_factory
 from app.engine.trading_engine import TradingEngine
 from app.factories.provider_factory import create_provider
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
 
 from .backtest_response import BacktestResponse

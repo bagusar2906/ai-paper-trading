@@ -1,4 +1,4 @@
-from app.backtest.factory import create_backtest_engine
+from app.factories.backtest_factory import create_backtest_engine
 from app.config import TradingConfig
 
 

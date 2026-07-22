@@ -1,7 +1,7 @@
 from app.brokers.paper_broker import PaperBroker
 from app.engine.trading_engine import TradingEngine
 from app.factories.provider_factory import create_provider
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
 
 

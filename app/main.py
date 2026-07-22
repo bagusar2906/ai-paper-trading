@@ -11,7 +11,7 @@ from app.api.order import router as order_router
 from app.api.quote import router as quote_router
 from app.api.position import router as position_router
 from app.database.database import init_database
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 from app.scheduler.trading_scheduler import TradingScheduler
 from app.services.signal_service import SignalService
 from app.api.backtest import router as backtest_router

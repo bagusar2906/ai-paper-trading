@@ -5,7 +5,7 @@ from app.models.chart.chart_response import ChartResponse
 from app.models.chart.line_series import LinePoint
 from app.models.chart.marker import ChartMarker
 from app.factories.provider_factory import create_provider
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
 
 

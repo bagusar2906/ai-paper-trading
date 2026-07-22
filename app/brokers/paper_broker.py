@@ -10,7 +10,7 @@ from app.database.models import (
 from app.enums.signal_action import SignalAction
 from app.models.account import Account
 from app.models.signal import TradingSignal
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 
 logger = logging.getLogger(__name__)
 

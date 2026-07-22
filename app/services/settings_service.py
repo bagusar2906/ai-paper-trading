@@ -1,7 +1,7 @@
 from app.enums.trading_mode import TradingMode
 from app.models.settings.settings_request import SettingsRequest
 from app.models.settings.settings_response import SettingsResponse
-from app.repositories.factory import RepositoryFactory
+from app.factories.repository_factory import RepositoryFactory
 
 VALID_TRADING_MODES = {mode.value for mode in TradingMode}
 
