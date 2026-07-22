@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
@@ -21,3 +22,5 @@ class Position:
     stop_loss: float | None = None
 
     take_profit: float | None = None
+
+    opened_at: datetime | None = None

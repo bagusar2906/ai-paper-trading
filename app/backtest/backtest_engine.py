@@ -1,6 +1,7 @@
 import logging
 
 from app.backtest.backtest_result import BacktestResult
+from app.backtest.equity_point import EquityPoint
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,14 @@ class BacktestEngine:
 
         account = self.engine.broker.get_account()
 
+        equity_curve = [
+            EquityPoint(
+                time=point["time"],
+                equity=point["equity"],
+            )
+            for point in self.engine.equity_history
+        ]
+
         logger.info(
             "Backtest finished. Trades=%d NetProfit=%.2f",
             statistics.total_trades,
@@ -80,6 +89,7 @@ class BacktestEngine:
         return BacktestResult(
             statistics=statistics,
             trades=trades,
+            equity_curve=equity_curve,
             start_balance=self.engine.broker.initial_balance,
             end_balance=account.balance,
             bars_processed=len(history),

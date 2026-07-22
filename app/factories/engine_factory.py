@@ -17,5 +17,5 @@ def create_engine():
         strategy=strategy,
         broker=broker,
         symbol="XAUUSD",
-        timeframe="M15",
+        timeframe="15m",
     )

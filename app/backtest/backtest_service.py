@@ -11,6 +11,7 @@ from .backtest_response import BacktestResponse
 from .equity_point import EquityPoint
 
 from app.api.services.statistic_service import StatisticsService
+import pandas as pd
 
 
 class BacktestService:
@@ -53,6 +54,11 @@ class BacktestService:
 
         strategy = create_strategy()
 
+        #
+        # Calculate indicators once
+        #
+        df = strategy.prepare(df)
+
         engine, backtest_session = create_session_factory(
             "sqlite:///:memory:"
         )
@@ -75,6 +81,7 @@ class BacktestService:
             symbol=request.symbol,
             timeframe=request.timeframe,
             bars=request.bars,
+            respect_trading_mode=False,
         )
 
         #
@@ -129,7 +136,43 @@ class BacktestService:
             trades
         )
 
-        # <<< NEW
+        #
+        # Build chart data
+        #
+        candles = []
+
+        ema = []
+
+        rsi = []
+
+        adx = []
+
+        for index, row in df.iterrows():
+
+            candles.append({
+                "time": index,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+            })
+
+            ema.append({
+                    "time": index,
+                    "value": self._safe_float(row["EMA"]),
+                })
+
+            rsi.append({
+                    "time": index,
+                    "value": self._safe_float(row["RSI"]),
+                })
+
+            adx.append({
+                    "time": index,
+                    "value": self._safe_float(row["ADX"]),
+                })
+
+        
         if job_id:
             self._update_progress(
                 job_id,
@@ -141,9 +184,17 @@ class BacktestService:
             statistics=statistics,
             equity=equity,
             trades=trades,
+
+            candles=candles,
+            ema=ema,
+            rsi=rsi,
+            adx=adx,
         )
     
     def _update_progress(self, job_id, progress, status):
 
         if job_id:
             job_manager.update(job_id, progress, status)
+
+    def _safe_float(self, value):
+        return None if pd.isna(value) else float(value)

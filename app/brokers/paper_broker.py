@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 
 from app.brokers.base import Broker
+from app.config import TradingConfig
 from app.database.models import (
     AccountEntity,
     PositionEntity,
@@ -113,6 +114,14 @@ class PaperBroker(Broker):
                 position.entry_price - price
             ) * position.quantity
 
+        spread_cost = (
+            TradingConfig.SPREAD_PIPS
+            * TradingConfig.PIP_SIZE
+            * position.quantity
+        )
+
+        pnl -= spread_cost
+
         trade = TradeEntity(
             symbol=position.symbol,
             side=position.side,
@@ -206,25 +215,6 @@ class PaperBroker(Broker):
 
         self.repos.accounts.update(account)
 
-    def save_signal(self, signal):
-
-        self.repos.signals.add(signal)
-
-        self.repos.session.commit()
-
     def get_trading_mode(self):
 
         return self.repos.settings.get_trading_mode()
-    
-
-    def process_signal(self, signal):
-
-        self.repos.signals.add(signal)
-
-        self.repos.session.commit()
-
-        mode = self.repos.settings.get_trading_mode()
-
-        if mode == "AUTO":
-
-            self.execute(signal)

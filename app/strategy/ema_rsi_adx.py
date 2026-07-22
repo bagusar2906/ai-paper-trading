@@ -76,7 +76,10 @@ class EMARSIADXStrategy(Strategy):
             "Generating trading signal..."
         )
 
-        df = self.prepare(df)
+         # Only calculate indicators if they aren't already present
+    #
+        if "EMA" not in df.columns:
+            df = self.prepare(df)        
 
         last = df.iloc[-1]
 

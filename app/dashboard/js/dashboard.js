@@ -3,7 +3,7 @@ import { getDashboard, getChart } from "./api.js";
 import {
     initializeChart,
     updateChart
-} from "./chart.js";
+} from "./charts/chart.js";
 
 import {
     initializeOrderTicket
@@ -12,6 +12,10 @@ import {
 import {
     initializeEditPosition
 } from "./components/edit-position.js";
+
+import {
+    initializeTradingMode
+} from "./components/trading-mode.js";
 
 import { updateAccount } from "./components/account-card.js";
 import { updateStatistics } from "./components/statistics-card.js";
@@ -39,6 +43,7 @@ async function initialize() {
     initializeOrderTicket();
     initializeEditPosition();
     initializeBacktest();
+    initializeTradingMode();
 
     window.addEventListener(
         "dashboard-refresh",

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from app.models.trade import Trade
-from app.models.dashboard.dashboard_statistics import DashboardStatistics
 
-from .equity_point import EquityPoint
+from app.backtest.equity_point import EquityPoint
+from app.models.dashboard.dashboard_statistics import DashboardStatistics
+from app.models.trade import Trade
 
 
 @dataclass
@@ -14,3 +14,11 @@ class BacktestResponse:
     equity: list[EquityPoint]
 
     trades: list[Trade]
+
+    candles: list[dict]
+
+    ema: list[dict]
+
+    rsi: list[dict]
+
+    adx: list[dict]
