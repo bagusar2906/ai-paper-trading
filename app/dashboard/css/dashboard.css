@@ -132,6 +132,52 @@ h3 {
 
 }
 
+.summary-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+
+    gap: 16px;
+
+    margin-top: 15px;
+
+}
+
+.summary-card {
+
+    padding: 18px;
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    border: 1px solid #ddd;
+
+    text-align: center;
+
+    box-shadow: 0 2px 6px rgba(0,0,0,.08);
+
+}
+
+.summary-title {
+
+    font-size: 13px;
+
+    color: #777;
+
+    margin-bottom: 8px;
+
+}
+
+.summary-value {
+
+    font-size: 24px;
+
+    font-weight: bold;
+
+}
+
 @keyframes spin {
 
     from {

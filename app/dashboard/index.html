@@ -9,7 +9,7 @@
 
     <title>Paper Trading Dashboard</title>
 
-   <link rel="icon" href="/ui/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/ui/favicon.ico" type="image/x-icon">
 
 
 
@@ -21,7 +21,7 @@
     <link href="css/dashboard.css" rel="stylesheet">
 
     <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
-    
+
 </head>
 
 <body class="bg-light">
@@ -691,69 +691,21 @@
                         Run Backtest
                     </h5>
 
-                    <button class="btn-close" data-bs-dismiss="modal">
-                    </button>
-
                 </div>
 
                 <div class="modal-body">
 
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Symbol
-                        </label>
-
-                        <input id="btSymbol" class="form-control" value="XAUUSD">
-
-                    </div>
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Timeframe
-                        </label>
-
-                        <select id="btTimeframe" class="form-select">
-
-                            <option value="1m">M1</option>
-                            <option value="5m">M5</option>
-                            <option value="15m" selected>M15</option>
-                            <option value="1h">H1</option>
-                            <option value="4h">H4</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Bars
-                        </label>
-
-                        <input id="btBars" class="form-control" type="number" value="5000">
-
-                    </div>
-
-                    <div class="mb-3">
-
-                        <label class="form-label">
-                            Initial Balance
-                        </label>
-
-                        <input id="btBalance" class="form-control" type="number" value="10000">
-
-                    </div>
+                    <!-- Symbol -->
+                    <!-- Timeframe -->
+                    <!-- Bars -->
+                    <!-- Initial Balance -->
 
                 </div>
 
                 <div class="modal-footer">
 
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">
-
+                    <button class="btn btn-secondary">
                         Cancel
-
                     </button>
 
                     <button id="btnRunBacktest" class="btn btn-primary">
@@ -761,56 +713,6 @@
                         Run Backtest
 
                     </button>
-
-                    <hr>
-
-                    <div>
-
-                        <strong>Total Trades:</strong>
-                        <span id="btTotalTrades">0</span>
-
-                        <br>
-
-                        <strong>Win Rate:</strong>
-                        <span id="btWinRate">0%</span>
-
-                        <br>
-
-                        <strong>Net Profit:</strong>
-                        <span id="btNetProfit">0</span>
-
-                    </div>
-
-                    <br>
-
-                    <h3>Equity Curve</h3>
-
-                    <div id="backtestEquityChart" style=" width:100%; height:300px; margin-bottom:20px;">
-
-
-                    </div>
-
-                    <table border="1" width="100%">
-
-                        <thead>
-
-                            <tr>
-
-                                <th>Symbol</th>
-                                <th>Side</th>
-                                <th>Entry</th>
-                                <th>Exit</th>
-                                <th>P/L</th>
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody id="btTrades">
-
-                        </tbody>
-
-                    </table>
 
                 </div>
 
@@ -844,6 +746,136 @@
 
     </div>
 
+    <!-- ========================================= -->
+    <!-- Backtest Panel -->
+    <!-- ========================================= -->
+
+    <div id="backtestPanel" class="tab-content">
+
+        <!-- =============================== -->
+        <!-- Controls -->
+        <!-- =============================== -->
+
+        <div class="backtest-controls">
+
+            <input id="btSymbol" type="text" value="XAUUSD" />
+
+            <select id="btTimeframe">
+
+                <option value="M5">M5</option>
+                <option value="M15" selected>M15</option>
+                <option value="H1">H1</option>
+
+            </select>
+
+            <input id="btBars" type="number" value="5000" />
+
+            <input id="btBalance" type="number" value="10000" />
+
+            <button id="btnRunBacktest" class="btn btn-primary">
+
+                Run Backtest
+
+            </button>
+
+        </div>
+
+        <!-- =============================== -->
+        <!-- Price Chart -->
+        <!-- =============================== -->
+
+        <div class="backtest-section">
+
+            <h3>Price Chart</h3>
+
+            <div id="backtestPriceChart" class="chart-large">
+            </div>
+
+        </div>
+
+        <!-- =============================== -->
+        <!-- Equity Curve -->
+        <!-- =============================== -->
+
+        <div class="backtest-section">
+
+            <h3>Equity Curve</h3>
+
+            <div id="backtestEquityChart" class="chart-small">
+            </div>
+
+        </div>
+
+        <!-- =============================== -->
+        <!-- Statistics -->
+        <!-- =============================== -->
+
+        <div class="backtest-section">
+
+            <h3>Statistics</h3>
+
+            <div id="backtestStatistics" class="statistics-grid">
+
+                <!-- populated by JavaScript -->
+
+            </div>
+
+        </div>
+
+        <!-- =============================== -->
+        <!-- Trade History -->
+        <!-- =============================== -->
+
+        <div class="backtest-section">
+
+            <h3>Backtest Summary</h3>
+
+            <div id="backtestSummary" class="summary-grid">
+
+            </div>
+            <button id="toggleTradesButton" class="btn btn-secondary">
+
+                ▶ Show Trade History
+
+            </button>
+
+            <div id="tradeHistoryContainer" style="display:none;margin-top:20px;">
+
+                <h3>Trade History</h3>
+
+                <table id="backtestTradesTable" class="table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>#</th>
+
+                            <th>Time</th>
+
+                            <th>Side</th>
+
+                            <th>Entry</th>
+
+                            <th>Exit</th>
+
+                            <th>Profit</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
 
     <script type="module" src="js/dashboard.js"></script>
 
