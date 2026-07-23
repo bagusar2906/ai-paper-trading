@@ -48,12 +48,18 @@ def _run_job(
 
     service = BacktestService()
 
+    print("Starting BacktestService.run()")
+
     result = service.run(
         request,
         job_id,
     )
 
+    print("BacktestService.run() finished")
+
     job_manager.complete(
         job_id,
         result,
     )
+
+    print("job_manager.complete() called")
