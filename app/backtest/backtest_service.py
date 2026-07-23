@@ -81,6 +81,7 @@ class BacktestService:
             symbol=request.symbol,
             timeframe=request.timeframe,
             bars=request.bars,
+            respect_trading_mode=False,
         )
 
         #

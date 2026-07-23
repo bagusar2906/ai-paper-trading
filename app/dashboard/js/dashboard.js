@@ -13,6 +13,10 @@ import {
     initializeEditPosition
 } from "./components/edit-position.js";
 
+import {
+    initializeTradingMode
+} from "./components/trading-mode.js";
+
 import { updateAccount } from "./components/account-card.js";
 import { updateStatistics } from "./components/statistics-card.js";
 import { updatePositions } from "./components/positions-table.js";
@@ -39,6 +43,7 @@ async function initialize() {
     initializeOrderTicket();
     initializeEditPosition();
     initializeBacktest();
+    initializeTradingMode();
 
     window.addEventListener(
         "dashboard-refresh",

@@ -25,7 +25,7 @@ class ApplicationFactory:
             strategy=strategy,
             broker=broker,
             symbol="XAUUSD",
-            timeframe="M15",
+            timeframe="15m",
         )
 
     @staticmethod

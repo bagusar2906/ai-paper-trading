@@ -88,6 +88,8 @@ class TradingConfig:
 
     CONTRACT_SIZE = 100
 
+    SPREAD_PIPS = 0.5
+
 
 # ==========================================================
 # Database

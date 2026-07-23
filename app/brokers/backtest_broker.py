@@ -119,8 +119,11 @@ class BacktestBroker(Broker):
             self,
             symbol,
             current_price,
-            current_time,
+            current_time=None,
         ):
+
+        if current_time is None:
+            current_time = datetime.now()
 
         floating = 0
 

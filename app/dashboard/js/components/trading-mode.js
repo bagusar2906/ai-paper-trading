@@ -8,21 +8,59 @@ export async function initializeTradingMode() {
     const select =
         document.getElementById("tradingMode");
 
-    const settings =
-        await getSettings();
+    let previousValue = select.value;
 
-    select.value =
-        settings.trading_mode;
+    try {
+
+        const settings =
+            await getSettings();
+
+        select.value =
+            settings.trading_mode;
+
+        previousValue = select.value;
+
+    }
+    catch (error) {
+
+        console.error(
+            "Failed to load trading mode",
+            error
+        );
+
+    }
 
     select.addEventListener(
         "change",
         async () => {
 
-            await updateSettings({
+            const newValue = select.value;
 
-                trading_mode: select.value
+            try {
 
-            });
+                await updateSettings({
+
+                    trading_mode: newValue
+
+                });
+
+                previousValue = newValue;
+
+            }
+            catch (error) {
+
+                console.error(
+                    "Failed to update trading mode",
+                    error
+                );
+
+                select.value = previousValue;
+
+                alert(
+                    "Unable to update trading mode. Please try again."
+                );
+
+            }
 
         });
 

@@ -117,13 +117,13 @@ export async function getBacktestProgress(jobId) {
 
 export async function getSettings() {
 
-    return apiRequest("/settings");
+    return request("/settings");
 
 }
 
 export async function updateSettings(settings) {
 
-    return apiRequest("/settings", {
+    return request("/settings", {
 
         method: "PUT",
 

@@ -19,6 +19,7 @@ class TradingEngine:
         symbol,
         timeframe,
         bars=300,
+        respect_trading_mode=True,
     ):
         self.provider = provider
         self.strategy = strategy
@@ -27,6 +28,8 @@ class TradingEngine:
         self.symbol = symbol
         self.timeframe = timeframe
         self.bars = bars
+
+        self.respect_trading_mode = respect_trading_mode
 
         self.equity_history = []
 
@@ -77,6 +80,13 @@ class TradingEngine:
             self.symbol,
             current_price
         )
+
+        account = self.get_account()
+
+        self.equity_history.append({
+            "time": current_time,
+            "equity": account.equity,
+        })
 
         account = self.get_account()
 
@@ -197,8 +207,19 @@ class TradingEngine:
         if signal is None:
             return
 
+        if self.respect_trading_mode:
 
-        self.broker.process_signal(signal)
+            mode = self.broker.get_trading_mode()
+
+            if mode != TradingMode.AUTO:
+
+                logger.info(
+                    "Trading mode is %s - signal recorded, "
+                    "not auto-executing",
+                    mode,
+                )
+
+                return
 
         account = self.get_account()
 
