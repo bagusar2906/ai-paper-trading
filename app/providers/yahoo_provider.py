@@ -1,25 +1,28 @@
-import logging
+from venv import logger
 
 import yfinance as yf
 import pandas as pd
 
 from app.providers.base import DataProvider
 
-logger = logging.getLogger(__name__)
-
-# Yahoo Finance interval codes. The app's canonical timeframe format is
-# '1m'/'5m'/'15m'/.../'1h'/'4h'/'1d' - the same format MT5Provider and
-# OandaProvider expect as input. MetaTrader-style labels ('M5', 'H1', ...)
-# are NOT accepted here; a caller sending those has a bug at the source
-# (e.g. TradingConfig.TIMEFRAME) that should be fixed there, not papered
-# over here.
+# MT5 timeframe -> Yahoo interval
 _INTERVAL_MAP = {
+    "M1": "1m",
+    "M5": "5m",
+    "M15": "15m",
+    "M30": "30m",
+    "H1": "60m",
+    "H4": "60m",     # resample later if needed
+    "D1": "1d",
+
+      # Yahoo aliases
+
     "1m": "1m",
     "5m": "5m",
     "15m": "15m",
     "30m": "30m",
     "1h": "60m",
-    "4h": "60m",     # resampled below
+    "4h": "60m",
     "1d": "1d",
 }
 
@@ -92,7 +95,7 @@ class YahooProvider(DataProvider):
         # ---------------------------------------------------
         # Resample hourly bars into 4-hour bars
         # ---------------------------------------------------
-        if timeframe == "4h":
+        if timeframe == "H4":
 
             df = (
                 df
