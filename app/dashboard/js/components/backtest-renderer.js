@@ -4,13 +4,14 @@ import { renderPriceChart }
 import { renderEquityCurve }
     from "../charts/equity-chart.js";
 
+import { renderSummary }
+    from "../backtest-summary.js";
+
 export function renderBacktest(report) {
 
     renderPriceChart(report);
 
     renderEquityCurve(report.equity);
-
-    renderStatistics(report.statistics);
 
     renderTrades(report.trades);
 
