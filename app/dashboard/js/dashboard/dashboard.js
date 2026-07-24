@@ -1,30 +1,30 @@
-import { getDashboard, getChart } from "./api.js";
+import { getDashboard, getChart } from "../api.js";
 
 import {
     initializeChart,
     updateChart
-} from "./charts/chart.js";
+} from "../charts/chart.js";
 
 import {
     initializeOrderTicket
-} from "./components/order-ticket.js";
+} from "../components/order-ticket.js";
 
 import {
     initializeEditPosition
-} from "./components/edit-position.js";
+} from "../components/edit-position.js";
 
 import {
     initializeTradingMode
-} from "./components/trading-mode.js";
+} from "../components/trading-mode.js";
 
-import { updateAccount } from "./components/account-card.js";
-import { updateStatistics } from "./components/statistics-card.js";
-import { updatePositions } from "./components/positions-table.js";
-import { updateTrades } from "./components/trades-table.js";
-import { updateSignals } from "./components/signals-table.js";
-import { updateCurrentSignal } from "./components/current-signal.js";
-import { updateSignal } from "./components/signals-card.js";
-import { initializeBacktest } from "./components/backtest.js";
+import { updateAccount } from "../components/account-card.js";
+import { updateStatistics } from "../components/statistics-card.js";
+import { updatePositions } from "../components/positions-table.js";
+import { updateTrades } from "../components/trades-table.js";
+import { updateSignals } from "../components/signals-table.js";
+import { updateCurrentSignal } from "../components/current-signal.js";
+import { updateSignal } from "../components/signals-card.js";
+import { initializeBacktest } from "../backtest/backtest.js";
 
 const REFRESH_INTERVAL = 5000;
 

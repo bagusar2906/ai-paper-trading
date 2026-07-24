@@ -5,7 +5,7 @@ import { renderEquityCurve }
     from "../charts/equity-chart.js";
 
 import { renderSummary }
-    from "../backtest-summary.js";
+    from "./backtest-summary.js";
 
 export function renderBacktest(report) {
 

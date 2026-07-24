@@ -52,11 +52,11 @@
                 </div>
 
                 <!-- Backtest -->
-                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#backtestModal">
+                <a href="backtest.html" class="btn btn-primary">
 
                     Backtest
 
-                </button>
+                </a>
 
                 <!-- Manual Order -->
                 <button id="btnNewOrder" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal">
@@ -677,50 +677,6 @@
 
     </div>
 
-    <!-- Backtest Modal -->
-
-    <div class="modal fade" id="backtestModal" tabindex="-1">
-
-        <div class="modal-dialog">
-
-            <div class="modal-content">
-
-                <div class="modal-header">
-
-                    <h5 class="modal-title">
-                        Run Backtest
-                    </h5>
-
-                </div>
-
-                <div class="modal-body">
-
-                    <!-- Symbol -->
-                    <!-- Timeframe -->
-                    <!-- Bars -->
-                    <!-- Initial Balance -->
-
-                </div>
-
-                <div class="modal-footer">
-
-                    <button class="btn btn-secondary">
-                        Cancel
-                    </button>
-
-                    <button id="btnRunBacktest" class="btn btn-primary">
-
-                        Run Backtest
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
 
     <!-- Loading overlay -->
     <div id="backtestLoading" class="loading-overlay hidden">
@@ -877,7 +833,7 @@
 
     </div>
 
-    <script type="module" src="js/dashboard.js"></script>
+    <script type="module" src="js/dashboard/dashboard.js"></script>
 
 </body>
 
