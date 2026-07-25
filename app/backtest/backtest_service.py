@@ -177,11 +177,34 @@ class BacktestService:
 
             )
 
+        #
+        # Calculate Maximum Drawdown
+        #
+
+        peak = float("-inf")
+
+        max_drawdown = 0
+
+        for point in equity:
+
+            peak = max(
+                peak,
+                point.equity,
+            )
+
+            drawdown = peak - point.equity
+
+            max_drawdown = max(
+                max_drawdown,
+                drawdown,
+            )
+
 
         # Build statistics
 
         statistics = StatisticsService().build(
-            trades
+            trades,
+            max_drawdown=max_drawdown
         )
 
         #

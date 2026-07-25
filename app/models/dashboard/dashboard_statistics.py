@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 
+from dataclasses import dataclass
+
 @dataclass
 class DashboardStatistics:
 
@@ -17,3 +19,21 @@ class DashboardStatistics:
     total_loss: float
 
     net_profit: float
+
+    profit_factor: float
+
+    average_win: float
+
+    average_loss: float
+
+    largest_win: float
+
+    largest_loss: float
+
+    max_drawdown: float
+
+    win_probability: float
+
+    loss_probability: float
+
+    expectancy: float

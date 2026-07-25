@@ -1,62 +1,97 @@
 export function renderSummary(stats) {
 
-    const container =
-        document.getElementById(
-            "backtestSummary"
-        );
+    const profitClass =
+        stats.net_profit >= 0
+            ? "summary-positive"
+            : "summary-negative";
 
-    container.innerHTML = "";
+    document.getElementById(
+        "backtestSummary"
+    ).innerHTML = `
 
-    const cards = [
+<div class="summary-grid">
 
-        {
-            title: "Net Profit",
-            value: stats.net_profit.toFixed(2)
-        },
+<div class="summary-card">
 
-        {
-            title: "Win Rate",
-            value: stats.win_rate.toFixed(1) + "%"
-        },
+<div class="summary-title">
 
-        {
-            title: "Trades",
-            value: stats.total_trades
-        },
+Net Profit
 
-        {
-            title: "Winning",
-            value: stats.winning_trades
-        },
+</div>
 
-        {
-            title: "Losing",
-            value: stats.losing_trades
-        }
+<div class="summary-value ${profitClass}">
 
-    ];
+${stats.net_profit.toFixed(2)}
 
-    for (const card of cards) {
+</div>
 
-        container.innerHTML += `
+</div>
 
-            <div class="summary-card">
+<div class="summary-card">
 
-                <div class="summary-title">
+<div class="summary-title">
 
-                    ${card.title}
+Win Rate
 
-                </div>
+</div>
 
-                <div class="summary-value">
+<div class="summary-value summary-neutral">
 
-                    ${card.value}
+${stats.win_rate.toFixed(1)}%
 
-                </div>
+</div>
 
-            </div>
+</div>
 
-        `;
-    }
+<div class="summary-card">
 
+<div class="summary-title">
+
+Trades
+
+</div>
+
+<div class="summary-value">
+
+${stats.total_trades}
+
+</div>
+
+</div>
+
+<div class="summary-card">
+
+<div class="summary-title">
+
+Winning
+
+</div>
+
+<div class="summary-value summary-positive">
+
+${stats.winning_trades}
+
+</div>
+
+</div>
+
+<div class="summary-card">
+
+<div class="summary-title">
+
+Losing
+
+</div>
+
+<div class="summary-value summary-negative">
+
+${stats.losing_trades}
+
+</div>
+
+</div>
+
+</div>
+
+`;
 }
