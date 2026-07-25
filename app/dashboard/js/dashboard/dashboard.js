@@ -24,7 +24,6 @@ import { updateTrades } from "../components/trades-table.js";
 import { updateSignals } from "../components/signals-table.js";
 import { updateCurrentSignal } from "../components/current-signal.js";
 import { updateSignal } from "../components/signals-card.js";
-import { initializeBacktest } from "../backtest/backtest.js";
 
 const REFRESH_INTERVAL = 5000;
 
@@ -42,7 +41,6 @@ async function initialize() {
     initializeChart();
     initializeOrderTicket();
     initializeEditPosition();
-    initializeBacktest();
     initializeTradingMode();
 
     window.addEventListener(
