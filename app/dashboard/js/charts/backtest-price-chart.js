@@ -1,67 +1,99 @@
-import {
-    updateBacktestMarkers
-}
-from "./backtest-markers.js";
+import { ChartManager }
+    from "./chart-manager.js";
 
-let chart;
+import { TradeOverlay }
+    from "./trade-overlay.js";
+
+let manager;
+
 let candleSeries;
+
 let emaSeries;
+
+let tradeOverlay;
 
 export function renderPriceChart(report) {
 
+    if (!manager) {
 
-    const container =
-        document.getElementById("backtestPriceChart");
+        manager =
+            new ChartManager(
+                "backtestPriceChart",
+                550
+            );
 
+        candleSeries =
+            manager.chart.addSeries(
+                LightweightCharts.CandlestickSeries
+            );
 
-    if (!chart) {
+        emaSeries =
+            manager.chart.addSeries(
+                LightweightCharts.LineSeries,
+                {
+                    color: "#2962FF",
+                    lineWidth: 2,
+                }
+            );
 
-        console.log("Creating chart...");
+        //
+        // Create trade overlay
+        //
+        tradeOverlay =
+            new TradeOverlay(
+                manager.chart,
+                candleSeries
+            );
 
-        chart = LightweightCharts.createChart(
-            container,
-            {
-                width: container.clientWidth,
-                height: 550,
-            }
-        );
-
-        candleSeries = chart.addSeries(
-            LightweightCharts.CandlestickSeries
-        );
-
-        emaSeries = chart.addSeries(
-            LightweightCharts.LineSeries,
-            {
-                color: "#2962FF",
-                lineWidth: 2,
-            }
-        );
     }
 
-
+    //
+    // Candles
+    //
     candleSeries.setData(
+
         report.candles.map(c => ({
-            time: Math.floor(new Date(c.time).getTime() / 1000),
+
+            time: Math.floor(
+                new Date(c.time).getTime() / 1000
+            ),
+
             open: c.open,
+
             high: c.high,
+
             low: c.low,
+
             close: c.close,
+
         }))
+
     );
 
+    //
+    // EMA
+    //
     emaSeries.setData(
+
         report.ema.map(e => ({
-            time: Math.floor(new Date(e.time).getTime() / 1000),
+
+            time: Math.floor(
+                new Date(e.time).getTime() / 1000
+            ),
+
             value: e.value,
+
         }))
+
     );
 
-    updateBacktestMarkers(
-        candleSeries,
+    //
+    // Draw trades
+    //
+    tradeOverlay.render(
         report.trades
     );
 
-    chart.timeScale().fitContent();
+    manager.chart.timeScale().fitContent();
 
 }
