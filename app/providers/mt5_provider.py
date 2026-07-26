@@ -11,6 +11,8 @@ except ImportError:
     mt5 = None
 
 _TIMEFRAME_MAP = {
+
+    # Lowercase
     "1m": "TIMEFRAME_M1",
     "5m": "TIMEFRAME_M5",
     "15m": "TIMEFRAME_M15",
@@ -18,8 +20,17 @@ _TIMEFRAME_MAP = {
     "1h": "TIMEFRAME_H1",
     "4h": "TIMEFRAME_H4",
     "1d": "TIMEFRAME_D1",
-}
 
+    # MT5 style
+    "M1": "TIMEFRAME_M1",
+    "M5": "TIMEFRAME_M5",
+    "M15": "TIMEFRAME_M15",
+    "M30": "TIMEFRAME_M30",
+    "H1": "TIMEFRAME_H1",
+    "H4": "TIMEFRAME_H4",
+    "D1": "TIMEFRAME_D1",
+
+}
 
 class MT5Provider(DataProvider):
 
@@ -33,9 +44,30 @@ class MT5Provider(DataProvider):
                 "works on Windows with the MT5 terminal installed."
             )
 
+    def _require_connected(self):
+        self._require_mt5()
+
+        if not self._connected:
+            raise RuntimeError(
+                "MT5Provider is not connected - call connect() first, "
+                "or the connection dropped (terminal closed/logged out)."
+            )
+
     def connect(self):
         self._require_mt5()
+
         self._connected = mt5.initialize()
+
+        if not self._connected:
+            code, message = mt5.last_error()
+            raise RuntimeError(
+                f"MT5 terminal connection failed ({code}: {message}). "
+                "Common causes: the MT5 terminal app isn't running or "
+                "isn't logged in, 'Algo Trading' is disabled in the "
+                "terminal, or a 32-bit/64-bit Python mismatch. See "
+                "mt5.initialize() docs for the full error code list."
+            )
+
         return self._connected
 
     def disconnect(self):
@@ -47,7 +79,7 @@ class MT5Provider(DataProvider):
         return self._connected
 
     def get_history(self, symbol, timeframe, bars):
-        self._require_mt5()
+        self._require_connected()
 
         tf_name = _TIMEFRAME_MAP.get(timeframe)
         if tf_name is None:
@@ -57,9 +89,22 @@ class MT5Provider(DataProvider):
         rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, bars)
 
         if rates is None or len(rates) == 0:
+            code, message = mt5.last_error()
+
+            if code == -10004:
+                # Connection was live at connect() time but has since
+                # dropped (terminal closed, logged out, or lost its
+                # connection to the broker server).
+                self._connected = False
+                raise RuntimeError(
+                    f"Lost connection to the MT5 terminal ({code}: "
+                    f"{message}). Check that the terminal is still open "
+                    "and logged in, then reconnect."
+                )
+
             raise RuntimeError(
                 f"MT5 returned no data for {symbol} ({timeframe}): "
-                f"{mt5.last_error()}"
+                f"{code}: {message}"
             )
 
         df = pd.DataFrame(rates)
@@ -80,7 +125,7 @@ class MT5Provider(DataProvider):
         return self.get_history(symbol, timeframe, 1).iloc[-1]
 
     def get_current_price(self, symbol):
-        self._require_mt5()
+        self._require_connected()
         tick = mt5.symbol_info_tick(symbol)
 
         if tick is None:
