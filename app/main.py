@@ -10,6 +10,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.order import router as order_router
 from app.api.quote import router as quote_router
 from app.api.position import router as position_router
+from app.api.routes.strategy_profile_router import router as strategy_profile_router
 from app.api.settings import router as settings_router
 from app.database.database import init_database
 from app.factories.repository_factory import RepositoryFactory
@@ -47,6 +48,7 @@ app.include_router(order_router)
 app.include_router(quote_router)
 app.include_router(position_router)
 app.include_router(settings_router)
+app.include_router(strategy_profile_router)
 
 # Serve dashboard UI
 app.mount(

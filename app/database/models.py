@@ -162,3 +162,40 @@ class SettingEntity(Base):
     value = mapped_column(
         String(255)
     )
+
+# ==========================================================
+# Strategy Profile
+# ==========================================================
+
+class StrategyProfileEntity(Base):
+
+    __tablename__ = "strategy_profiles"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+    )
+
+    strategy: Mapped[str] = mapped_column(
+        String(50),
+    )
+
+    parameters_json: Mapped[str] = mapped_column(
+        String,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )

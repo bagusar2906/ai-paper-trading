@@ -132,3 +132,65 @@ export async function updateSettings(settings) {
     });
 
 }
+
+export async function getStrategyProfiles() {
+
+    const response = await fetch(
+        "/strategy-profiles"
+    );
+
+    return response.json();
+}
+
+export async function getStrategyProfile(id) {
+
+    const response = await fetch(
+        `/strategy-profiles/${id}`
+    );
+
+    return response.json();
+}
+
+export async function createStrategyProfile(data) {
+
+    const response = await fetch(
+        "/strategy-profiles",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        }
+    );
+
+    return response.json();
+}
+
+export async function updateStrategyProfile(id, data) {
+
+    const response = await fetch(
+        `/strategy-profiles/${id}`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        }
+    );
+
+    return response.json();
+}
+
+export async function deleteStrategyProfile(id) {
+
+    const response = await fetch(
+        `/strategy-profiles/${id}`,
+        {
+            method: "DELETE",
+        }
+    );
+
+    return response.json();
+}
