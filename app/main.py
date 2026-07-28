@@ -16,6 +16,8 @@ from app.database.database import init_database
 from app.factories.repository_factory import RepositoryFactory
 from app.scheduler.trading_scheduler import TradingScheduler
 from app.services.signal_service import SignalService
+from app.strategy.strategy_router import router as strategy_router
+
 
 
 scheduler = TradingScheduler()
@@ -49,6 +51,7 @@ app.include_router(quote_router)
 app.include_router(position_router)
 app.include_router(settings_router)
 app.include_router(strategy_profile_router)
+app.include_router(strategy_router)
 
 # Serve dashboard UI
 app.mount(

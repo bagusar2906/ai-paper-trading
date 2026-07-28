@@ -199,3 +199,40 @@ class StrategyProfileEntity(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+class StrategyEntity(Base):
+
+    __tablename__ = "strategies"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+    )
+
+    description: Mapped[str] = mapped_column(
+        String(500),
+        default="",
+    )
+
+    strategy_type: Mapped[str] = mapped_column(
+        String(50),
+    )
+
+    config_json: Mapped[str] = mapped_column(
+        String,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
