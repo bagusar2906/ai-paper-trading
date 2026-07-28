@@ -26,28 +26,6 @@ export async function openStrategyEditor(id = null) {
 
     if (id == null) {
 
-        document.getElementById(
-            "strategyModalTitle"
-        ).innerText = "New Strategy";
-
-        clearForm();
-
-    }
-    else {
-
-        document.getElementById(
-            "strategyModalTitle"
-        ).innerText = "Edit Strategy";
-
-        const strategy =
-            await getStrategy(id);
-
-        fillForm(strategy);
-
-    }
-
-    if (id == null) {
-
         clearForm();
 
         renderParameterEditor();
@@ -190,6 +168,9 @@ document
 
 async function saveStrategy() {
 
+
+    console.log("Saving strategy...");
+
     const request = {
 
         name:
@@ -210,49 +191,24 @@ async function saveStrategy() {
         config_json: JSON.stringify({
 
             ema_length:
-                parseInt(
-                    document.getElementById(
-                        "emaLength"
-                    ).value
-                ),
+                parseInt(document.getElementById("emaLength").value),
 
             rsi_length:
-                parseInt(
-                    document.getElementById(
-                        "rsiLength"
-                    ).value
-                ),
+                parseInt(document.getElementById("rsiLength").value),
 
             adx_length:
-                parseInt(
-                    document.getElementById(
-                        "adxLength"
-                    ).value
-                ),
+                parseInt(document.getElementById("adxLength").value),
 
             adx_level:
-                parseInt(
-                    document.getElementById(
-                        "adxLevel"
-                    ).value
-                ),
+                parseInt(document.getElementById("adxLevel").value),
 
             oversold:
-                parseInt(
-                    document.getElementById(
-                        "rsiOS"
-                    ).value
-                ),
+                parseInt(document.getElementById("rsiOS").value),
 
             overbought:
-                parseInt(
-                    document.getElementById(
-                        "rsiOB"
-                    ).value
-                )
+                parseInt(document.getElementById("rsiOB").value)
 
         })
-
     };
 
     if (editingId == null) {

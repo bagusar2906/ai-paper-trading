@@ -25,7 +25,7 @@ class StrategyService:
 
             strategy_type=request.strategy_type,
 
-            config=request.config,
+            config=request.config_json,
 
         )
 

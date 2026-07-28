@@ -18,21 +18,30 @@ export async function getStrategy(id) {
 
 export async function createStrategy(request) {
 
-    const response =
-        await fetch("/strategy", {
+    console.log("Request:", request);
 
-            method: "POST",
+    const response = await fetch("/strategy", {
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+        method: "POST",
 
-            body: JSON.stringify(request)
+        headers: {
+            "Content-Type": "application/json"
+        },
 
-        });
+        body: JSON.stringify(request)
 
-    return response.json();
+    });
 
+    const text = await response.text();
+
+    console.log("Status:", response.status);
+    console.log("Response:", text);
+
+    if (!response.ok) {
+        throw new Error(text);
+    }
+
+    return JSON.parse(text);
 }
 
 export async function updateStrategy(id, request) {

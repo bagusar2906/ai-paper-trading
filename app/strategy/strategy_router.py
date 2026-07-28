@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from fastapi import HTTPException
 
 from app.factories.repository_factory import RepositoryFactory
+from app.strategy.strategy_catalog import CATALOG
 from app.strategy.strategy_request import StrategyRequest
 from app.strategy.strategy_service import StrategyService
 
@@ -126,3 +127,8 @@ def delete(strategy_id: int):
     finally:
 
         repos.close()
+
+@router.get("/catalog")
+def get_catalog():
+
+    return CATALOG
