@@ -1,16 +1,20 @@
 from app.strategy.base import Strategy
 from app.strategy.ema_rsi_adx import EMARSIADXStrategy
-from app.config import StrategyConfig
 
 
-def create_strategy() -> Strategy:
-    """
-    Create the configured trading strategy.
-    """
+def create_strategy(
+    strategy_type: str,
+    config: dict,
+) -> Strategy:
 
-    strategy = StrategyConfig.NAME.lower()
+    strategy_type = strategy_type.upper()
 
-    if strategy == "ema_rsi_adx":
-        return EMARSIADXStrategy()
+    if strategy_type == "EMA_RSI_ADX":
 
-    raise ValueError(f"Unsupported strategy: {StrategyConfig.NAME}")
+        return EMARSIADXStrategy(
+            config
+        )
+
+    raise ValueError(
+        f"Unsupported strategy: {strategy_type}"
+    )

@@ -111,6 +111,15 @@ export async function getBacktestProgress(jobId) {
 
 }
 
+export async function getStrategies() {
+
+    const response =
+        await fetch("/strategy");
+
+    return response.json();
+
+}
+
 // -----------------------------------------------------  
 // Trading Mode
 // -----------------------------------------------------

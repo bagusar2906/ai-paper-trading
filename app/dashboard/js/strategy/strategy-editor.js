@@ -157,9 +157,34 @@ function fillForm(strategy) {
 
     document.getElementById(
         "strategyDescription"
-    ).value =
-        strategy.description;
+    ).value = strategy.description;
 
+    document.getElementById(
+        "strategyType"
+    ).value = strategy.strategy_type;
+
+    renderParameterEditor();
+
+    const config =
+        JSON.parse(strategy.config_json);
+
+    document.getElementById("emaLength").value =
+        config.ema_length;
+
+    document.getElementById("rsiLength").value =
+        config.rsi_length;
+
+    document.getElementById("adxLength").value =
+        config.adx_length;
+
+    document.getElementById("adxLevel").value =
+        config.adx_level;
+
+    document.getElementById("rsiOS").value =
+        config.oversold;
+
+    document.getElementById("rsiOB").value =
+        config.overbought;
 }
 
 document

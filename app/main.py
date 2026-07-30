@@ -13,6 +13,7 @@ from app.api.position import router as position_router
 from app.api.routes.strategy_profile_router import router as strategy_profile_router
 from app.api.settings import router as settings_router
 from app.database.database import init_database
+from app.database.database_initializer import initialize_database
 from app.factories.repository_factory import RepositoryFactory
 from app.scheduler.trading_scheduler import TradingScheduler
 from app.services.signal_service import SignalService
@@ -25,12 +26,28 @@ scheduler = TradingScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    #
+    # Create database tables
+    #
     init_database()
+
+    #
+    # Seed default data (only once)
+    #
+    initialize_database()
+
+    #
+    # Start background trading
+    #
     scheduler.start()
+
     try:
+
         yield
+
     finally:
-        # Ensure scheduler is stopped when the application shuts down
+
         scheduler.stop()
 
 

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 @dataclass
 class BacktestRequest:
 
+    strategy_id: int
+
     symbol: str
 
     timeframe: str

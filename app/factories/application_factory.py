@@ -3,6 +3,7 @@ from app.engine.trading_engine import TradingEngine
 from app.factories.provider_factory import create_provider
 from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
+from app.factories.strategy_loader import load_active_strategy
 
 
 class ApplicationFactory:
@@ -14,7 +15,7 @@ class ApplicationFactory:
 
         provider = create_provider()
 
-        strategy = create_strategy()
+        strategy = load_active_strategy()
 
         broker = PaperBroker(
             repos=repos

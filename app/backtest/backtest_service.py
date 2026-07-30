@@ -17,13 +17,16 @@ import pandas as pd
 
 class BacktestService:
 
+    def __init__(self):
+
+        self.repos = RepositoryFactory()
+
     def run(
         self,
         request,
         job_id=None,
     ):
 
-        # <<< NEW
         if job_id:
             self._update_progress(
                 job_id,
@@ -45,7 +48,7 @@ class BacktestService:
 
             provider.disconnect()
 
-        # <<< NEW
+        
         if job_id:
             self._update_progress(
                 job_id,
@@ -53,11 +56,10 @@ class BacktestService:
                 "Preparing strategy..."
             )
 
-        strategy = create_strategy()
+        strategy = self._load_strategy(
+            request.strategy_id
+        )
 
-        #
-        # Calculate indicators once
-        #
         df = strategy.prepare(df)
 
         engine, backtest_session = create_session_factory(
@@ -261,6 +263,34 @@ class BacktestService:
             rsi=rsi,
             adx=adx,
             markers=markers,
+        )
+
+
+    def _load_strategy(
+        self,
+        strategy_id: int,
+    ):
+
+        entity = self.repos.strategies.get(
+            strategy_id
+        )
+
+        if entity is None:
+
+            raise Exception(
+                f"Strategy {strategy_id} not found."
+            )
+
+        config = json.loads(
+            entity.config_json
+        )
+
+        return create_strategy(
+
+            strategy_type=entity.strategy_type,
+
+            config=config,
+
         )
     
     def _update_progress(self, job_id, progress, status):

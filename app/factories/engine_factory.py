@@ -1,14 +1,32 @@
+import json
+
 from app.factories.provider_factory import create_provider
 from app.brokers.paper_broker import PaperBroker
 from app.engine.trading_engine import TradingEngine
+from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
 
 
 def create_engine():
 
+    repos = RepositoryFactory()
+
+    entity = repos.strategies.get_active()
+
+    if entity is None:
+
+        return None
+
+    strategy = create_strategy(
+
+        entity.strategy_type,
+
+        json.loads(entity.config_json),
+
+    )
+
     provider = create_provider()
 
-    strategy = create_strategy()
 
     broker = PaperBroker()
 

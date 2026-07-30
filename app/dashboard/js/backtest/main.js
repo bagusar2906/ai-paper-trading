@@ -1,13 +1,41 @@
+import { getStrategies }
+    from "../strategy/strategy-api.js";
+
 import { initializeBacktest }
     from "./backtest.js";
 
-import {
-    getStrategyProfiles,
-    getStrategyProfile,
-} from "../api.js";
+async function loadStrategies() {
+
+    const strategies =
+        await getStrategies();
+
+    const select =
+        document.getElementById(
+            "btStrategy"
+        );
+
+    select.innerHTML = "";
+
+    for (const strategy of strategies) {
+
+        select.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+            <option value="${strategy.id}">
+                ${strategy.name}
+            </option>
+            `
+        );
+
+    }
+
+}
 
 initializeBacktest();
-loadProfiles();
+
+loadStrategies();
 
 document
     .getElementById("btnToggleTrades")
