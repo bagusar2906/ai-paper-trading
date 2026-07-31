@@ -7,11 +7,109 @@ from app.indicators import ema, rsi, adx_di
 from app.config import TradingConfig
 from app.models.signal import TradingSignal
 from app.strategy.base import Strategy
+from app.strategy.parameter import StrategyParameter
 
 logger = logging.getLogger(__name__)
 
 
 class EMARSIADXStrategy(Strategy):
+
+    @classmethod
+    def schema(cls) -> list[StrategyParameter]:
+
+        return [
+
+            StrategyParameter(
+                key="ema_length",
+                label="EMA Length",
+                type="number",
+                default=200,
+                minimum=10,
+                maximum=500,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="rsi_length",
+                label="RSI Length",
+                type="number",
+                default=14,
+                minimum=2,
+                maximum=50,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="adx_length",
+                label="ADX Length",
+                type="number",
+                default=14,
+                minimum=2,
+                maximum=50,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="adx_smoothing",
+                label="ADX Smoothing",
+                type="number",
+                default=14,
+                minimum=2,
+                maximum=50,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="adx_level",
+                label="ADX Level",
+                type="number",
+                default=25,
+                minimum=5,
+                maximum=80,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="oversold",
+                label="RSI Oversold",
+                type="number",
+                default=20,
+                minimum=1,
+                maximum=50,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="overbought",
+                label="RSI Overbought",
+                type="number",
+                default=80,
+                minimum=50,
+                maximum=99,
+                step=1,
+            ),
+
+            StrategyParameter(
+                key="stop_loss_pips",
+                label="Stop Loss (Pips)",
+                type="number",
+                default=300,
+                minimum=10,
+                maximum=5000,
+                step=10,
+            ),
+
+            StrategyParameter(
+                key="risk_reward_ratio",
+                label="Risk Reward Ratio",
+                type="number",
+                default=2.0,
+                minimum=0.5,
+                maximum=10.0,
+                step=0.1,
+            ),
+
+        ]
 
     def __init__(
         self,
@@ -24,17 +122,35 @@ class EMARSIADXStrategy(Strategy):
         # Strategy Parameters
         #
 
-        self.ema_length = config["ema_length"]
+        self.ema_length = config.get(
+            "ema_length",
+            200,
+        )
 
-        self.rsi_length = config["rsi_length"]
+        self.rsi_length = config.get(
+            "rsi_length",
+            14,
+        )
 
-        self.adx_length = config["adx_length"]
+        self.adx_length = config.get(
+            "adx_length",
+            14,
+        )
 
-        self.adx_level = config["adx_level"]
+        self.adx_level = config.get(
+            "adx_level",
+            25,
+        )
 
-        self.oversold = config["oversold"]
+        self.oversold = config.get(
+            "oversold",
+            20,
+        )
 
-        self.overbought = config["overbought"]
+        self.overbought = config.get(
+            "overbought",
+            80,
+        )
 
         #
         # Optional parameters
@@ -114,7 +230,7 @@ class EMARSIADXStrategy(Strategy):
 
         df: pd.DataFrame,
 
-    ) -> TradingSignal:
+    ) -> Optional[TradingSignal]:
 
         if "EMA" not in df.columns:
 
@@ -229,7 +345,7 @@ class EMARSIADXStrategy(Strategy):
                 )
 
         #
-        # SL / TP
+        # Stop Loss / Take Profit
         #
 
         if action in ("BUY", "SELL"):

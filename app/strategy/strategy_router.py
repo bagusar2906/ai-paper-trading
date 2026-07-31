@@ -5,6 +5,10 @@ from app.factories.repository_factory import RepositoryFactory
 from app.strategy.strategy_catalog import CATALOG
 from app.strategy.strategy_request import StrategyRequest
 from app.strategy.strategy_service import StrategyService
+from app.factories.strategy_factory import (
+    get_strategy_schema,
+    get_supported_strategies,
+)
 
 router = APIRouter(
     prefix="/strategy",
@@ -132,3 +136,14 @@ def delete(strategy_id: int):
 def get_catalog():
 
     return CATALOG
+
+@router.get("/types")
+def get_types():
+
+    return get_supported_strategies()
+
+
+@router.get("/schema/{strategy_type}")
+def get_schema(strategy_type: str):
+
+    return get_strategy_schema(strategy_type)
