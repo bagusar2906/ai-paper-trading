@@ -25,7 +25,9 @@ class StrategyService:
 
             strategy_type=request.strategy_type,
 
-            config=request.config_json,
+            config=request.config,
+
+            is_active=False,
 
         )
 
@@ -40,8 +42,11 @@ class StrategyService:
             return None
 
         strategy.name = request.name
+
         strategy.description = request.description
+
         strategy.strategy_type = request.strategy_type
+
         strategy.config = request.config
 
         self.repos.strategies.update(strategy)
@@ -50,4 +55,24 @@ class StrategyService:
 
     def delete(self, strategy_id):
 
-        self.repos.strategies.delete(strategy_id)
+        strategy = self.repos.strategies.get(strategy_id)
+
+        if strategy is None:
+
+            return False
+
+        self.repos.strategies.delete(strategy)
+
+        return True
+
+    def set_active(self, strategy_id):
+
+        strategies = self.repos.strategies.get_all()
+
+        for strategy in strategies:
+
+            strategy.is_active = strategy.id == strategy_id
+
+            self.repos.strategies.update(strategy)
+
+        return self.repos.strategies.get(strategy_id)

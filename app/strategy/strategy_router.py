@@ -39,29 +39,6 @@ def get_all():
         repos.close()
 
 
-@router.get("/{strategy_id}")
-def get(strategy_id: int):
-
-    repos, service = create_service()
-
-    try:
-
-        strategy = service.get(strategy_id)
-
-        if strategy is None:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Strategy not found",
-            )
-
-        return strategy
-
-    finally:
-
-        repos.close()
-
-
 @router.post("")
 def create(request: StrategyRequest):
 
@@ -147,3 +124,25 @@ def get_types():
 def get_schema(strategy_type: str):
 
     return get_strategy_schema(strategy_type)
+
+@router.get("/{strategy_id}")
+def get(strategy_id: int):
+
+    repos, service = create_service()
+
+    try:
+
+        strategy = service.get(strategy_id)
+
+        if strategy is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Strategy not found",
+            )
+
+        return strategy
+
+    finally:
+
+        repos.close()

@@ -21,7 +21,7 @@ def create_engine():
 
         entity.strategy_type,
 
-        json.loads(entity.config_json),
+        entity.config,
 
     )
 

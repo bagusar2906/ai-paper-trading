@@ -13,3 +13,5 @@ class Strategy:
     strategy_type: str = ""
 
     config: dict | None = None
+
+    is_active: bool = False

@@ -9,4 +9,4 @@ class StrategyRequest(BaseModel):
 
     strategy_type: str
 
-    config_json: str
+    config: str

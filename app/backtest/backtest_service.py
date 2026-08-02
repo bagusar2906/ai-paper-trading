@@ -1,3 +1,5 @@
+import json
+
 from app.backtest.backtest_marker import BacktestMarker
 from app.backtest.job_manager import job_manager
 from app.brokers.paper_broker import PaperBroker
@@ -135,6 +137,14 @@ class BacktestService:
 
         trades = broker.get_trades()
 
+        print("===================================")
+        print("Trades:", len(trades))
+
+        for trade in trades[:5]:
+            print(trade)
+
+        print("===================================")
+        
         # Build markers for trades
 
         markers = []
@@ -271,25 +281,19 @@ class BacktestService:
         strategy_id: int,
     ):
 
-        entity = self.repos.strategies.get(
-            strategy_id
-        )
+        strategy = self.repos.strategies.get(strategy_id)
 
-        if entity is None:
+        if strategy is None:
 
             raise Exception(
                 f"Strategy {strategy_id} not found."
             )
 
-        config = json.loads(
-            entity.config_json
-        )
-
         return create_strategy(
 
-            strategy_type=entity.strategy_type,
+            strategy_type=strategy.strategy_type,
 
-            config=config,
+            config=strategy.config,
 
         )
     

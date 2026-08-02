@@ -72,3 +72,21 @@ export async function deleteStrategy(id) {
     });
 
 }
+
+export async function getStrategyTypes() {
+
+    const response =
+        await fetch("/strategy/types");
+
+    return response.json();
+
+}
+
+export async function getStrategySchema(type) {
+
+    const response =
+        await fetch(`/strategy/schema/${type}`);
+
+    return response.json();
+
+}

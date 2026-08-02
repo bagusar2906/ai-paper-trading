@@ -1,18 +1,47 @@
+import json
+
 from app.database.models import StrategyEntity
+from app.models.strategy import Strategy
 from app.repositories.base_repository import BaseRepository
 
 
 class StrategyRepository(BaseRepository):
 
+    def _to_model(self, entity: StrategyEntity) -> Strategy:
+
+        return Strategy(
+
+            id=entity.id,
+
+            name=entity.name,
+
+            description=entity.description,
+
+            strategy_type=entity.strategy_type,
+
+            # Convert JSON string -> dict
+            config=json.loads(entity.config_json),
+
+            is_active=entity.is_active,
+
+        )
+
     def get_all(self):
 
-        return self.session.query(
-            StrategyEntity
-        ).all()
+        entities = (
+            self.session
+            .query(StrategyEntity)
+            .all()
+        )
+
+        return [
+            self._to_model(entity)
+            for entity in entities
+        ]
 
     def get(self, strategy_id: int):
 
-        return (
+        entity = (
             self.session
             .query(StrategyEntity)
             .filter(
@@ -21,25 +50,83 @@ class StrategyRepository(BaseRepository):
             .first()
         )
 
-    def add(self, entity):
+        if entity is None:
+            return None
+
+        return self._to_model(entity)
+
+    def add(self, strategy: Strategy):
+
+        entity = StrategyEntity(
+
+            name=strategy.name,
+
+            description=strategy.description,
+
+            strategy_type=strategy.strategy_type,
+
+            # Convert dict -> JSON string
+            config_json=json.dumps(strategy.config),
+
+            is_active=strategy.is_active,
+
+        )
 
         self.session.add(entity)
-        self.session.commit()
-
-        return entity
-
-    def update(self):
 
         self.session.commit()
 
-    def delete(self, entity):
+        self.session.refresh(entity)
 
-        self.session.delete(entity)
+        return self._to_model(entity)
+
+    def update(self, strategy: Strategy):
+
+        entity = (
+            self.session
+            .query(StrategyEntity)
+            .filter(
+                StrategyEntity.id == strategy.id
+            )
+            .first()
+        )
+
+        if entity is None:
+            return None
+
+        entity.name = strategy.name
+        entity.description = strategy.description
+        entity.strategy_type = strategy.strategy_type
+
+        # Convert dict -> JSON string
+        entity.config_json = json.dumps(strategy.config)
+
+        entity.is_active = strategy.is_active
+
         self.session.commit()
+
+        return self._to_model(entity)
+
+    def delete(self, strategy: Strategy):
+
+        entity = (
+            self.session
+            .query(StrategyEntity)
+            .filter(
+                StrategyEntity.id == strategy.id
+            )
+            .first()
+        )
+
+        if entity:
+
+            self.session.delete(entity)
+
+            self.session.commit()
 
     def get_active(self):
 
-        return (
+        entity = (
 
             self.session
 
@@ -52,3 +139,8 @@ class StrategyRepository(BaseRepository):
             .first()
 
         )
+
+        if entity is None:
+            return None
+
+        return self._to_model(entity)

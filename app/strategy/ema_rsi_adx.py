@@ -116,6 +116,9 @@ class EMARSIADXStrategy(Strategy):
         config: dict,
     ):
 
+        print(type(config))
+        print(config)
+
         super().__init__()
 
         #
@@ -393,6 +396,23 @@ class EMARSIADXStrategy(Strategy):
                     price - tp_distance
 
                 )
+
+            if action != "HOLD":
+                print(
+                    f"******** {action} ******** "
+                    f"{df.index[-1]} "
+                    f"EMA={last['EMA']:.2f} "
+                    f"RSI={last['RSI']:.2f} "
+                    f"ADX={last['ADX']:.2f}"
+                )
+
+            print(
+                f"{df.index[-1]} | "
+                f"Action={action} | "
+                f"EMA={last['EMA']:.2f} | "
+                f"RSI={last['RSI']:.2f} | "
+                f"ADX={last['ADX']:.2f}"
+            )
 
         return TradingSignal(
 

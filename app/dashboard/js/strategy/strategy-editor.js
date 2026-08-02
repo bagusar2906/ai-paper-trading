@@ -1,42 +1,60 @@
 import {
     getStrategy,
     createStrategy,
-    updateStrategy
+    updateStrategy,
+    getStrategyTypes,
+    getStrategySchema
 }
-    from "./strategy-api.js";
+from "./strategy-api.js";
 
 let modal;
-
 let editingId = null;
+let currentSchema = [];
 
 export async function openStrategyEditor(id = null) {
 
     if (!modal) {
 
-        modal =
-            new bootstrap.Modal(
-                document.getElementById(
-                    "strategyModal"
-                )
-            );
+        modal = new bootstrap.Modal(
+            document.getElementById("strategyModal")
+        );
 
     }
 
     editingId = id;
 
+    await loadStrategyTypes();
+
     if (id == null) {
+
+        document.getElementById(
+            "strategyModalTitle"
+        ).innerText = "New Strategy";
 
         clearForm();
 
-        renderParameterEditor();
+        const schema =
+            await getStrategySchema(
+
+                document.getElementById(
+                    "strategyType"
+                ).value
+
+            );
+
+        renderParameterEditor(schema);
 
     }
     else {
 
+        document.getElementById(
+            "strategyModalTitle"
+        ).innerText = "Edit Strategy";
+
         const strategy =
             await getStrategy(id);
 
-        fillForm(strategy);
+        await fillForm(strategy);
 
     }
 
@@ -44,98 +62,72 @@ export async function openStrategyEditor(id = null) {
 
 }
 
-function renderParameterEditor() {
+
+async function loadStrategyTypes() {
+
+    const select =
+        document.getElementById(
+            "strategyType"
+        );
+
+    const strategies =
+        await getStrategyTypes();
+
+    select.innerHTML = "";
+
+    strategies.forEach(strategy => {
+
+        select.innerHTML += `
+
+            <option value="${strategy.value}">
+                ${strategy.label}
+            </option>
+
+        `;
+
+    });
+
+}
+
+
+function renderParameterEditor(schema) {
+
+    currentSchema = schema;
 
     const div =
         document.getElementById(
             "strategyParameters"
         );
 
-    div.innerHTML = `
+    div.innerHTML = "";
 
-        <div class="row">
+    schema.forEach(field => {
 
-            <div class="col">
+        div.innerHTML += `
 
-                <label>EMA Length</label>
+            <div class="mb-3">
+
+                <label class="form-label">
+                    ${field.label}
+                </label>
 
                 <input
-                    id="emaLength"
+                    id="${field.key}"
                     class="form-control"
-                    type="number"
-                    value="200">
+                    type="${field.type}"
+                    value="${field.default}"
+                    min="${field.minimum ?? ""}"
+                    max="${field.maximum ?? ""}"
+                    step="${field.step ?? ""}">
 
             </div>
 
-            <div class="col">
+        `;
 
-                <label>RSI Length</label>
-
-                <input
-                    id="rsiLength"
-                    class="form-control"
-                    type="number"
-                    value="14">
-
-            </div>
-
-            <div class="col">
-
-                <label>ADX Length</label>
-
-                <input
-                    id="adxLength"
-                    class="form-control"
-                    type="number"
-                    value="14">
-
-            </div>
-
-        </div>
-
-        <div class="row mt-3">
-
-            <div class="col">
-
-                <label>ADX Level</label>
-
-                <input
-                    id="adxLevel"
-                    class="form-control"
-                    type="number"
-                    value="25">
-
-            </div>
-
-            <div class="col">
-
-                <label>Oversold</label>
-
-                <input
-                    id="rsiOS"
-                    class="form-control"
-                    type="number"
-                    value="20">
-
-            </div>
-
-            <div class="col">
-
-                <label>Overbought</label>
-
-                <input
-                    id="rsiOB"
-                    class="form-control"
-                    type="number"
-                    value="80">
-
-            </div>
-
-        </div>
-
-    `;
+    });
 
 }
+
 
 function clearForm() {
 
@@ -149,7 +141,8 @@ function clearForm() {
 
 }
 
-function fillForm(strategy) {
+
+async function fillForm(strategy) {
 
     document.getElementById(
         "strategyName"
@@ -163,38 +156,91 @@ function fillForm(strategy) {
         "strategyType"
     ).value = strategy.strategy_type;
 
-    renderParameterEditor();
+    const schema =
+        await getStrategySchema(
+            strategy.strategy_type
+        );
+
+    renderParameterEditor(schema);
 
     const config =
         JSON.parse(strategy.config_json);
 
-    document.getElementById("emaLength").value =
-        config.ema_length;
+    schema.forEach(field => {
 
-    document.getElementById("rsiLength").value =
-        config.rsi_length;
+        const input =
+            document.getElementById(
+                field.key
+            );
 
-    document.getElementById("adxLength").value =
-        config.adx_length;
+        if (
+            input &&
+            config[field.key] !== undefined
+        ) {
 
-    document.getElementById("adxLevel").value =
-        config.adx_level;
+            input.value =
+                config[field.key];
 
-    document.getElementById("rsiOS").value =
-        config.oversold;
+        }
 
-    document.getElementById("rsiOB").value =
-        config.overbought;
+    });
+
 }
+
+
+document
+    .getElementById("strategyType")
+    .addEventListener(
+        "change",
+        async () => {
+
+            const schema =
+                await getStrategySchema(
+
+                    document.getElementById(
+                        "strategyType"
+                    ).value
+
+                );
+
+            renderParameterEditor(schema);
+
+        }
+    );
+
 
 document
     .getElementById("btnSaveStrategy")
     .onclick = saveStrategy;
 
+
 async function saveStrategy() {
 
-
     console.log("Saving strategy...");
+
+    const config = {};
+
+    currentSchema.forEach(field => {
+
+        const input =
+            document.getElementById(
+                field.key
+            );
+
+        if (!input)
+            return;
+
+        let value = input.value;
+
+        if (field.type === "number") {
+
+            value = Number(value);
+
+        }
+
+        config[field.key] = value;
+
+    });
 
     const request = {
 
@@ -213,27 +259,8 @@ async function saveStrategy() {
                 "strategyType"
             ).value,
 
-        config_json: JSON.stringify({
+        config: JSON.stringify(config)
 
-            ema_length:
-                parseInt(document.getElementById("emaLength").value),
-
-            rsi_length:
-                parseInt(document.getElementById("rsiLength").value),
-
-            adx_length:
-                parseInt(document.getElementById("adxLength").value),
-
-            adx_level:
-                parseInt(document.getElementById("adxLevel").value),
-
-            oversold:
-                parseInt(document.getElementById("rsiOS").value),
-
-            overbought:
-                parseInt(document.getElementById("rsiOB").value)
-
-        })
     };
 
     if (editingId == null) {
@@ -255,4 +282,3 @@ async function saveStrategy() {
     location.reload();
 
 }
-
