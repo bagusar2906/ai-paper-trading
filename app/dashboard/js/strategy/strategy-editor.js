@@ -163,8 +163,7 @@ async function fillForm(strategy) {
 
     renderParameterEditor(schema);
 
-    const config =
-        JSON.parse(strategy.config_json);
+    const config = strategy.config;
 
     schema.forEach(field => {
 
