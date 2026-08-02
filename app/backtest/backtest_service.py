@@ -1,3 +1,4 @@
+from app.backtest.backtest_marker import BacktestMarker
 from app.backtest.job_manager import job_manager
 from app.brokers.paper_broker import PaperBroker
 from app.database.base import Base
@@ -132,8 +133,78 @@ class BacktestService:
 
         trades = broker.get_trades()
 
+        # Build markers for trades
+
+        markers = []
+
+        for trade in trades:
+
+            markers.append(
+
+                BacktestMarker(
+
+                    time=trade.opened_at,
+
+                    position="belowBar",
+
+                    color="#26a69a",
+
+                    shape="arrowUp",
+
+                    text="BUY",
+
+                )
+
+            )
+
+            
+
+            markers.append(
+
+                BacktestMarker(
+
+                    time=trade.closed_at,
+
+                    position="aboveBar",
+
+                    color="#ef5350",
+
+                    shape="arrowDown",
+
+                    text="SELL",
+
+                )
+
+            )
+
+        #
+        # Calculate Maximum Drawdown
+        #
+
+        peak = float("-inf")
+
+        max_drawdown = 0
+
+        for point in equity:
+
+            peak = max(
+                peak,
+                point.equity,
+            )
+
+            drawdown = peak - point.equity
+
+            max_drawdown = max(
+                max_drawdown,
+                drawdown,
+            )
+
+
+        # Build statistics
+
         statistics = StatisticsService().build(
-            trades
+            trades,
+            max_drawdown=max_drawdown
         )
 
         #
@@ -189,6 +260,7 @@ class BacktestService:
             ema=ema,
             rsi=rsi,
             adx=adx,
+            markers=markers,
         )
     
     def _update_progress(self, job_id, progress, status):
