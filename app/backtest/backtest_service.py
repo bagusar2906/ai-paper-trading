@@ -127,7 +127,6 @@ class BacktestService:
                 )
             )
 
-        # <<< NEW
         if job_id:
             self._update_progress(
                 job_id,
@@ -276,25 +275,25 @@ class BacktestService:
         )
 
 
-    def _load_strategy(
-        self,
-        strategy_id: int,
-    ):
+    def _load_strategy(self, strategy_id):
 
-        strategy = self.repos.strategies.get(strategy_id)
+        print("Requested strategy_id:", strategy_id)
+        entity = self.repos.strategies.get(strategy_id)
 
-        if strategy is None:
+        if entity is None:
+            raise Exception(f"Strategy {strategy_id} not found.")
 
-            raise Exception(
-                f"Strategy {strategy_id} not found."
-            )
+        print("Loaded strategy:", entity.id)
+        print("Loaded strategy name:", entity.name)
+        print("Loaded config:", entity.config)
+
+        print("Repository class:", type(self.repos.strategies))
+        print("Repository file :", self.repos.strategies.__class__.__module__)
+        print("Config type     :", type(entity.config))
 
         return create_strategy(
-
-            strategy_type=strategy.strategy_type,
-
-            config=strategy.config,
-
+            strategy_type=entity.strategy_type,
+            config=entity.config,
         )
     
     def _update_progress(self, job_id, progress, status):

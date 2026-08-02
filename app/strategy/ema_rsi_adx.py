@@ -116,8 +116,6 @@ class EMARSIADXStrategy(Strategy):
         config: dict,
     ):
 
-        print(type(config))
-        print(config)
 
         super().__init__()
 

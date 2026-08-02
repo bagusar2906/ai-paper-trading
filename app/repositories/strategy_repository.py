@@ -9,23 +9,28 @@ class StrategyRepository(BaseRepository):
 
     def _to_model(self, entity: StrategyEntity) -> Strategy:
 
+        config = self._decode_config(entity.config_json)
+
+        # Convert JSON string into dict
+        if isinstance(config, str):
+            config = json.loads(config)
+
         return Strategy(
-
             id=entity.id,
-
             name=entity.name,
-
             description=entity.description,
-
             strategy_type=entity.strategy_type,
-
-            # Convert JSON string -> dict
-            config=json.loads(entity.config_json),
-
+            config=config,
             is_active=entity.is_active,
-
         )
 
+    def _decode_config(self, value):
+
+        while isinstance(value, str):
+            value = json.loads(value)
+
+        return value
+     
     def get_all(self):
 
         entities = (
@@ -123,6 +128,32 @@ class StrategyRepository(BaseRepository):
             self.session.delete(entity)
 
             self.session.commit()
+
+
+    def set_active(self, strategy_id: int):
+
+        self.session.query(StrategyEntity).update(
+            {
+                StrategyEntity.is_active: False
+            }
+        )
+
+        entity = (
+            self.session.query(StrategyEntity)
+            .filter(StrategyEntity.id == strategy_id)
+            .first()
+        )
+
+        if entity is None:
+            self.session.rollback()
+            return None
+
+        entity.is_active = True
+
+        self.session.commit()
+
+        return self._to_model(entity)
+
 
     def get_active(self):
 
