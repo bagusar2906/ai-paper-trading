@@ -1,6 +1,6 @@
 # Start the worker and API together using the project's sibling virtual environment.
-$venvPython = Join-Path $PSScriptRoot "..\.venv\Scripts\python.exe"
-$venvUvicorn = Join-Path $PSScriptRoot "..\.venv\Scripts\uvicorn.exe"
+$venvPython = Join-Path $PSScriptRoot ".\.venv\Scripts\python.exe"
+$venvUvicorn = Join-Path $PSScriptRoot ".\.venv\Scripts\uvicorn.exe"
 
 if (-not (Test-Path $venvPython)) {
     throw "Virtual-environment Python was not found: $venvPython"
