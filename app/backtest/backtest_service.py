@@ -21,7 +21,7 @@ class BacktestService:
 
     def __init__(self):
 
-        self.repos = RepositoryFactory()
+        pass
 
     def run(
         self,
@@ -229,6 +229,13 @@ class BacktestService:
 
         adx = []
 
+        # Not every strategy produces these columns (Break & Retest is pure
+        # price-action, no indicators) - check once instead of assuming they
+        # exist, or this crashes with KeyError for any non-EMA/RSI/ADX strategy.
+        has_ema = "EMA" in df.columns
+        has_rsi = "RSI" in df.columns
+        has_adx = "ADX" in df.columns
+
         for index, row in df.iterrows():
 
             candles.append({
@@ -239,20 +246,23 @@ class BacktestService:
                 "close": float(row["Close"]),
             })
 
-            ema.append({
-                    "time": index,
-                    "value": self._safe_float(row["EMA"]),
-                })
+            if has_ema:
+                ema.append({
+                        "time": index,
+                        "value": self._safe_float(row["EMA"]),
+                    })
 
-            rsi.append({
-                    "time": index,
-                    "value": self._safe_float(row["RSI"]),
-                })
+            if has_rsi:
+                rsi.append({
+                        "time": index,
+                        "value": self._safe_float(row["RSI"]),
+                    })
 
-            adx.append({
-                    "time": index,
-                    "value": self._safe_float(row["ADX"]),
-                })
+            if has_adx:
+                adx.append({
+                        "time": index,
+                        "value": self._safe_float(row["ADX"]),
+                    })
 
         
         if job_id:
@@ -278,23 +288,33 @@ class BacktestService:
     def _load_strategy(self, strategy_id):
 
         print("Requested strategy_id:", strategy_id)
-        entity = self.repos.strategies.get(strategy_id)
 
-        if entity is None:
-            raise Exception(f"Strategy {strategy_id} not found.")
+        repos = RepositoryFactory()
 
-        print("Loaded strategy:", entity.id)
-        print("Loaded strategy name:", entity.name)
-        print("Loaded config:", entity.config)
+        try:
 
-        print("Repository class:", type(self.repos.strategies))
-        print("Repository file :", self.repos.strategies.__class__.__module__)
-        print("Config type     :", type(entity.config))
+            entity = repos.strategies.get(strategy_id)
 
-        return create_strategy(
-            strategy_type=entity.strategy_type,
-            config=entity.config,
-        )
+            if entity is None:
+                raise Exception(f"Strategy {strategy_id} not found.")
+
+            print("Loaded strategy:", entity.id)
+            print("Loaded strategy name:", entity.name)
+            print("Loaded config:", entity.config)
+
+            return create_strategy(
+                strategy_type=entity.strategy_type,
+                config=entity.config,
+            )
+
+        finally:
+
+            # Without this, every backtest run permanently leaks one
+            # connection from the main app's pool (RepositoryFactory() opens
+            # a session against SessionLocal that nothing ever closed) -
+            # this is what exhausted the QueuePool and took the trading
+            # scheduler down with it.
+            repos.close()
     
     def _update_progress(self, job_id, progress, status):
 

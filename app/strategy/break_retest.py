@@ -186,6 +186,20 @@ class BreakRetestStrategy(Strategy):
         df: pd.DataFrame,
     ) -> pd.DataFrame:
 
+        if "buy_signal" in df.columns and "setup" in df.columns:
+
+            # TradingEngine._prepare_data() calls strategy.prepare(df)
+            # unconditionally on every replayed candle, even though
+            # backtest_service.run() already prepared the FULL dataframe
+            # once upfront and just hands prepare() a growing prefix slice
+            # of that same frame each time. Since every signal here only
+            # ever looks backward, a prefix slice of an already-prepared
+            # frame is already fully correct - recomputing it again is
+            # pure wasted work. Without this check, a backtest reprocesses
+            # the entire order-block loop from scratch on every single
+            # candle: O(n^2 * lookback) total instead of O(n * lookback).
+            return df
+
         logger.info(
             "Computing break & retest levels..."
         )
@@ -360,9 +374,36 @@ class BreakRetestStrategy(Strategy):
 
         if "buy_signal" not in df.columns:
 
-            df = self.prepare(df)
+            # IMPORTANT: BacktestEngine replays candle-by-candle on an
+            # EXPANDING window (df grows by one row each call). Calling
+            # self.prepare(df) on the full df here - as a naive port of the
+            # standalone script would - re-runs the order-block loop over
+            # the ENTIRE history every single candle: O(n^2 * lookback)
+            # total across a backtest. Measured: ~9s for a 400-bar replay,
+            # which projects to ~20+ minutes at the default bars=5000.
+            #
+            # We only ever read df.iloc[-1] afterward, and every setup here
+            # is bounded-lookback (previous day, opening range, or
+            # ob_lookback_bars), so a recent tail slice is sufficient and
+            # gives an IDENTICAL result to preparing the full frame - just
+            # without redoing years of history on every candle. 6 calendar
+            # days of buffer comfortably covers weekend gaps (XAUUSD closes
+            # ~48h over the weekend) while computing "previous day".
+            window_start = df.index[-1] - pd.Timedelta(days=6)
+            tail = df.loc[df.index >= window_start]
 
-        last = df.iloc[-1]
+            # Fallback for sparse/gappy feeds where 6 calendar days doesn't
+            # translate to enough bars for the order-block lookback + margin.
+            if len(tail) < self.minimum_bars:
+                tail = df.tail(min(len(df), max(self.minimum_bars, len(tail))))
+
+            prepared = self.prepare(tail)
+
+            last = prepared.iloc[-1]
+
+        else:
+
+            last = df.iloc[-1]
 
         price = float(last["Close"])
 

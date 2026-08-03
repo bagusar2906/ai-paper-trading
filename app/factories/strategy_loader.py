@@ -6,18 +6,27 @@ def load_active_strategy():
 
     repos = RepositoryFactory()
 
-    strategy = repos.strategies.get_active()
+    try:
 
-    if strategy is None:
+        strategy = repos.strategies.get_active()
 
-        raise Exception(
-            "No active strategy configured."
+        if strategy is None:
+
+            raise Exception(
+                "No active strategy configured."
+            )
+
+        return create_strategy(
+
+            strategy.strategy_type,
+
+            strategy.config,
+
         )
 
-    return create_strategy(
+    finally:
 
-        strategy.strategy_type,
-
-        strategy.config,
-
-    )
+        # This is called on every /signal and /chart request (and from the
+        # backtest factory) - without closing here, each call permanently
+        # leaks one connection from the main app's pool.
+        repos.close()
