@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime
+from sqlalchemy import Boolean, DateTime
 from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -161,4 +161,84 @@ class SettingEntity(Base):
 
     value = mapped_column(
         String(255)
+    )
+
+# ==========================================================
+# Strategy Profile
+# ==========================================================
+
+class StrategyProfileEntity(Base):
+
+    __tablename__ = "strategy_profiles"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+    )
+
+    strategy: Mapped[str] = mapped_column(
+        String(50),
+    )
+
+    parameters_json: Mapped[str] = mapped_column(
+        String,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+class StrategyEntity(Base):
+
+    __tablename__ = "strategies"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+    )
+
+    description: Mapped[str] = mapped_column(
+        String(500),
+        default="",
+    )
+
+    strategy_type: Mapped[str] = mapped_column(
+        String(50),
+    )
+
+    config_json: Mapped[str] = mapped_column(
+        String,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+    )
+
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )

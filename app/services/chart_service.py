@@ -1,4 +1,5 @@
 from app.config import TradingConfig
+from app.factories.strategy_loader import load_active_strategy
 from app.models.chart.candle import Candle
 from app.models.chart.chart_position import ChartPosition
 from app.models.chart.chart_response import ChartResponse
@@ -29,7 +30,7 @@ class ChartService:
 
             provider.disconnect()
 
-        strategy = create_strategy()
+        strategy = load_active_strategy()
 
         df = strategy.prepare(df)
 

@@ -10,7 +10,7 @@ if (-not (Test-Path $venvUvicorn)) {
     throw "Virtual-environment Uvicorn was not found: $venvUvicorn"
 }
 
-$worker = Start-Process -FilePath $venvPython -ArgumentList "run_worker.py" -WorkingDirectory $PSScriptRoot -NoNewWindow -PassThru
+#$worker = Start-Process -FilePath $venvPython -ArgumentList "run_worker.py" -WorkingDirectory $PSScriptRoot -NoNewWindow -PassThru
 
 try {
     & $venvUvicorn app.main:app --reload

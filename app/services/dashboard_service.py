@@ -8,35 +8,47 @@ class DashboardService:
 
     def __init__(self):
 
-        self.repos = RepositoryFactory()
+        pass
 
     def get_dashboard(self):
 
-        account = self.repos.accounts.get()
-        print(f"Account: {account}")
+        repos = RepositoryFactory()
 
-        positions = self.repos.positions.get_all()
+        try:
 
-        trades = self.repos.trades.get_all()
+            account = repos.accounts.get()
+            print(f"Account: {account}")
 
-        signals = self.repos.signals.get_recent(20)
+            positions = repos.positions.get_all()
 
-        statistics = self._calculate_statistics(trades)
+            trades = repos.trades.get_all()
 
-        current_signal = self._build_signal(
-            signals[0] if signals else None
-        )
+            signals = repos.signals.get_recent(20)
 
-        print(f"Statistics: {statistics}")
+            statistics = self._calculate_statistics(trades)
 
-        return DashboardResponse(
-            account=account,
-            current_signal=current_signal,
-            positions=positions,
-            trades=trades,
-            signals=signals,
-            statistics=statistics,
-        )
+            current_signal = self._build_signal(
+                signals[0] if signals else None
+            )
+
+            print(f"Statistics: {statistics}")
+
+            return DashboardResponse(
+                account=account,
+                current_signal=current_signal,
+                positions=positions,
+                trades=trades,
+                signals=signals,
+                statistics=statistics,
+            )
+
+        finally:
+
+            # DashboardService is a module-level singleton (see api/dashboard.py),
+            # so opening the session in __init__ would either leak permanently
+            # (never closed) or, if closed too early, break every call after the
+            # first. Scoping it here instead keeps each /dashboard request isolated.
+            repos.close()
     
     from app.models.dashboard.signal_response import SignalResponse
 

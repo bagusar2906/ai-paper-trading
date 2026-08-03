@@ -1,3 +1,5 @@
+import json
+
 from app.backtest.backtest_marker import BacktestMarker
 from app.backtest.job_manager import job_manager
 from app.brokers.paper_broker import PaperBroker
@@ -17,13 +19,16 @@ import pandas as pd
 
 class BacktestService:
 
+    def __init__(self):
+
+        pass
+
     def run(
         self,
         request,
         job_id=None,
     ):
 
-        # <<< NEW
         if job_id:
             self._update_progress(
                 job_id,
@@ -45,7 +50,7 @@ class BacktestService:
 
             provider.disconnect()
 
-        # <<< NEW
+        
         if job_id:
             self._update_progress(
                 job_id,
@@ -53,11 +58,10 @@ class BacktestService:
                 "Preparing strategy..."
             )
 
-        strategy = create_strategy()
+        strategy = self._load_strategy(
+            request.strategy_id
+        )
 
-        #
-        # Calculate indicators once
-        #
         df = strategy.prepare(df)
 
         engine, backtest_session = create_session_factory(
@@ -123,7 +127,6 @@ class BacktestService:
                 )
             )
 
-        # <<< NEW
         if job_id:
             self._update_progress(
                 job_id,
@@ -133,6 +136,14 @@ class BacktestService:
 
         trades = broker.get_trades()
 
+        print("===================================")
+        print("Trades:", len(trades))
+
+        for trade in trades[:5]:
+            print(trade)
+
+        print("===================================")
+        
         # Build markers for trades
 
         markers = []
@@ -218,6 +229,13 @@ class BacktestService:
 
         adx = []
 
+        # Not every strategy produces these columns (Break & Retest is pure
+        # price-action, no indicators) - check once instead of assuming they
+        # exist, or this crashes with KeyError for any non-EMA/RSI/ADX strategy.
+        has_ema = "EMA" in df.columns
+        has_rsi = "RSI" in df.columns
+        has_adx = "ADX" in df.columns
+
         for index, row in df.iterrows():
 
             candles.append({
@@ -228,20 +246,23 @@ class BacktestService:
                 "close": float(row["Close"]),
             })
 
-            ema.append({
-                    "time": index,
-                    "value": self._safe_float(row["EMA"]),
-                })
+            if has_ema:
+                ema.append({
+                        "time": index,
+                        "value": self._safe_float(row["EMA"]),
+                    })
 
-            rsi.append({
-                    "time": index,
-                    "value": self._safe_float(row["RSI"]),
-                })
+            if has_rsi:
+                rsi.append({
+                        "time": index,
+                        "value": self._safe_float(row["RSI"]),
+                    })
 
-            adx.append({
-                    "time": index,
-                    "value": self._safe_float(row["ADX"]),
-                })
+            if has_adx:
+                adx.append({
+                        "time": index,
+                        "value": self._safe_float(row["ADX"]),
+                    })
 
         
         if job_id:
@@ -262,6 +283,38 @@ class BacktestService:
             adx=adx,
             markers=markers,
         )
+
+
+    def _load_strategy(self, strategy_id):
+
+        print("Requested strategy_id:", strategy_id)
+
+        repos = RepositoryFactory()
+
+        try:
+
+            entity = repos.strategies.get(strategy_id)
+
+            if entity is None:
+                raise Exception(f"Strategy {strategy_id} not found.")
+
+            print("Loaded strategy:", entity.id)
+            print("Loaded strategy name:", entity.name)
+            print("Loaded config:", entity.config)
+
+            return create_strategy(
+                strategy_type=entity.strategy_type,
+                config=entity.config,
+            )
+
+        finally:
+
+            # Without this, every backtest run permanently leaks one
+            # connection from the main app's pool (RepositoryFactory() opens
+            # a session against SessionLocal that nothing ever closed) -
+            # this is what exhausted the QueuePool and took the trading
+            # scheduler down with it.
+            repos.close()
     
     def _update_progress(self, job_id, progress, status):
 

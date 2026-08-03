@@ -9,6 +9,8 @@
 
     <title>Paper Trading - Backtest</title>
 
+     <link rel="icon" href="/ui/favicon.ico" type="image/x-icon">
+
     <link href="css/site.css" rel="stylesheet">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -29,6 +31,7 @@
 
             </a>
 
+
             <div class="navbar-nav">
 
                 <a class="nav-link" href="index.html">
@@ -43,33 +46,121 @@
 
                 </a>
 
+                <a class="nav-link" href="strategy.html">
+
+                    Strategies
+
+                </a>
+
             </div>
 
         </div>
 
     </nav>
 
-    <div class="container mt-4">
+    <div class="container-fluid mt-4">
 
-        <h2>Backtesting</h2>
+        <h2>
+
+            Backtesting
+
+        </h2>
 
         <hr>
 
-        <!-- Configuration -->
+        <!-- ================================================= -->
+        <!-- Strategy / Profile -->
+        <!-- ================================================= -->
 
-        <!-- Top Row -->
+        <div class="card shadow-sm mb-4">
+
+            <div class="card-body">
+
+                <div class="row align-items-end">
+
+                    <div class="col-md-4">
+
+                        <label class="form-label">
+
+                            Strategy
+
+                        </label>
+
+                        <select id="btStrategy" class="form-select">
+
+                        </select>
+
+                    </div>
+
+              <!--       <div class="col-md-4">
+
+                        <label class="form-label">
+
+                            Profile
+
+                        </label>
+
+                        <select id="btProfile" class="form-select">
+
+                            <option>
+
+                                Loading...
+
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="col-md-4 text-end">
+
+                        <button id="btnSaveProfile" class="btn btn-outline-primary">
+
+                            Save
+
+                        </button>
+
+                        <button id="btnSaveAsProfile" class="btn btn-outline-success">
+
+                            Save As
+
+                        </button>
+
+                        <button id="btnDeleteProfile" class="btn btn-outline-danger">
+
+                            Delete
+
+                        </button>
+
+                    </div>
+ -->
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ================================================= -->
+        <!-- Top -->
+        <!-- ================================================= -->
 
         <div class="row">
 
+            <!-- ========================================= -->
             <!-- Configuration -->
+            <!-- ========================================= -->
 
             <div class="col-lg-4">
 
-                <div class="card shadow-sm mb-4">
+                <div class="card shadow-sm">
 
                     <div class="card-header">
 
-                        <strong>Configuration</strong>
+                        <strong>
+
+                            Configuration
+
+                        </strong>
 
                     </div>
 
@@ -78,7 +169,9 @@
                         <div class="mb-3">
 
                             <label class="form-label">
+
                                 Symbol
+
                             </label>
 
                             <input id="btSymbol" class="form-control" value="XAUUSD">
@@ -88,7 +181,9 @@
                         <div class="mb-3">
 
                             <label class="form-label">
+
                                 Timeframe
+
                             </label>
 
                             <select id="btTimeframe" class="form-select">
@@ -105,7 +200,9 @@
                         <div class="mb-3">
 
                             <label class="form-label">
+
                                 History Bars
+
                             </label>
 
                             <input id="btBars" class="form-control" type="number" value="5000">
@@ -115,12 +212,30 @@
                         <div class="mb-3">
 
                             <label class="form-label">
+
                                 Initial Balance
+
                             </label>
 
                             <input id="btBalance" class="form-control" type="number" value="10000">
 
                         </div>
+
+                        <hr>
+
+                        <h5>
+
+                            Strategy Parameters
+
+                        </h5>
+
+                        <div id="strategyParameters">
+
+                            <!-- Filled dynamically -->
+
+                        </div>
+
+                        <hr>
 
                         <button id="btnRunBacktest" class="btn btn-primary w-100">
 
@@ -134,15 +249,21 @@
 
             </div>
 
+            <!-- ========================================= -->
             <!-- Summary -->
+            <!-- ========================================= -->
 
             <div class="col-lg-8">
 
-                <div class="card shadow-sm mb-4">
+                <div class="card shadow-sm">
 
                     <div class="card-header">
 
-                        <strong>Backtest Summary</strong>
+                        <strong>
+
+                            Backtest Summary
+
+                        </strong>
 
                     </div>
 
@@ -156,9 +277,11 @@
 
         </div>
 
+        <!-- ================================================= -->
         <!-- Progress -->
+        <!-- ================================================= -->
 
-        <div id="backtestLoading" class="card mb-4 hidden">
+        <div id="backtestLoading" class="card mt-4 hidden">
 
             <div class="card-body">
 
@@ -182,23 +305,25 @@
 
         </div>
 
-        <!-- Summary -->
-
-        <div id="backtestSummary"></div>
-
+        <!-- ================================================= -->
         <!-- Price -->
+        <!-- ================================================= -->
 
-        <div class="card mt-4">
+        <div class="card shadow-sm mt-4">
 
             <div class="card-header">
 
-                Price Chart
+                <strong>
+
+                    Price Chart
+
+                </strong>
 
             </div>
 
             <div class="card-body">
 
-                <div id="backtestPriceChart" style="height:550px;">
+                <div id="backtestPriceChart" style="height:550px">
 
                 </div>
 
@@ -206,19 +331,25 @@
 
         </div>
 
+        <!-- ================================================= -->
         <!-- Equity -->
+        <!-- ================================================= -->
 
-        <div class="card mt-4">
+        <div class="card shadow-sm mt-4">
 
             <div class="card-header">
 
-                Equity Curve
+                <strong>
+
+                    Equity Curve
+
+                </strong>
 
             </div>
 
             <div class="card-body">
 
-                <div id="backtestEquityChart" style="height:250px;">
+                <div id="backtestEquityChart" style="height:250px">
 
                 </div>
 
@@ -226,7 +357,9 @@
 
         </div>
 
+        <!-- ================================================= -->
         <!-- Trades -->
+        <!-- ================================================= -->
 
         <div class="mt-4">
 
@@ -266,6 +399,9 @@
         </div>
 
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+    </script>
 
     <script type="module" src="js/backtest/main.js">
     </script>

@@ -10,11 +10,15 @@ from app.api.dashboard import router as dashboard_router
 from app.api.order import router as order_router
 from app.api.quote import router as quote_router
 from app.api.position import router as position_router
+from app.api.routes.strategy_profile_router import router as strategy_profile_router
 from app.api.settings import router as settings_router
 from app.database.database import init_database
+from app.database.database_initializer import initialize_database
 from app.factories.repository_factory import RepositoryFactory
 from app.scheduler.trading_scheduler import TradingScheduler
 from app.services.signal_service import SignalService
+from app.strategy.strategy_router import router as strategy_router
+
 
 
 scheduler = TradingScheduler()
@@ -22,12 +26,28 @@ scheduler = TradingScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    #
+    # Create database tables
+    #
     init_database()
+
+    #
+    # Seed default data (only once)
+    #
+    initialize_database()
+
+    #
+    # Start background trading
+    #
     scheduler.start()
+
     try:
+
         yield
+
     finally:
-        # Ensure scheduler is stopped when the application shuts down
+
         scheduler.stop()
 
 
@@ -47,6 +67,8 @@ app.include_router(order_router)
 app.include_router(quote_router)
 app.include_router(position_router)
 app.include_router(settings_router)
+app.include_router(strategy_profile_router)
+app.include_router(strategy_router)
 
 # Serve dashboard UI
 app.mount(

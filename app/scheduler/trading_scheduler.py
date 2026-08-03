@@ -1,8 +1,10 @@
+import logging
 import threading
 import time
 
 from app.factories.engine_factory import create_engine
 
+logger = logging.getLogger(__name__)
 
 
 class TradingScheduler:
@@ -32,16 +34,28 @@ class TradingScheduler:
 
     def _loop(self):
 
-        engine = create_engine()
-
         while self._running:
 
             try:
 
+                engine = create_engine()
+
+                if engine is None:
+
+                    logger.info(
+                        "No active strategy configured."
+                    )
+
+                    time.sleep(5)
+
+                    continue
+
                 engine.run_once()
 
-            except Exception as ex:
+            except Exception:
 
-                print(ex)
+                logger.exception(
+                    "Trading scheduler failed."
+                )
 
             time.sleep(5)

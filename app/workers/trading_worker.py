@@ -11,37 +11,74 @@ logger = logging.getLogger(__name__)
 class TradingWorker:
 
     def __init__(self):
-        self.engine = create_engine()
+
+        self.engine = None
 
     def run_once(self):
+
+        #
+        # Reload engine so strategy changes are picked up automatically.
+        #
+
+        self.engine = create_engine()
+
+        if self.engine is None:
+
+            logger.info(
+                "No active strategy configured."
+            )
+
+            return None
+
         return self.engine.run_once()
 
     def run(self):
 
-        logger.info("Trading worker started")
+        logger.info(
+            "Trading worker started"
+        )
 
         try:
 
             while True:
 
                 try:
+
                     result = self.run_once()
 
-                    logger.info(result.message)
+                    if result is not None:
+
+                        logger.info(
+                            result.message
+                        )
 
                 except Exception:
-                    logger.exception("Trading cycle failed")
 
-                time.sleep(WorkerConfig.INTERVAL_SECONDS)
+                    logger.exception(
+                        "Trading cycle failed"
+                    )
+
+                time.sleep(
+                    WorkerConfig.INTERVAL_SECONDS
+                )
 
         finally:
 
-            self.engine.close()
+            if self.engine is not None:
+
+                self.engine.close()
 
     def close(self):
-        self.engine.close()
+
+        if self.engine is not None:
+
+            self.engine.close()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+
+    logging.basicConfig(
+        level=logging.INFO
+    )
+
     TradingWorker().run()

@@ -50,6 +50,18 @@ SPREAD_PIPS     = 3.0           # modelled cost per round trip - adjust to your 
 CONTRACT_SIZE   = 100           # oz per 1.0 standard lot (typical XAUUSD contract - verify with Finex)
 # Pip value per 1.0 lot = CONTRACT_SIZE * PIP_SIZE = 100 * 0.1 = $10/pip/lot (standard convention)
 
+# ---- Break & Retest strategy config (alternative to the ADX/RSI/EMA logic above) ----
+# Three setups, price-action only, no indicators:
+#   1. Previous day high/low break + retest
+#   2. Opening range break + retest (first bar of each session at this data's timeframe)
+#   3. Order block retest (last opposite-colored candle before an impulse move)
+BR_RETEST_TOLERANCE_PIPS   = 15.0   # how close price must come back to a level to count as "retest"
+BR_OB_TOLERANCE_PIPS       = 8.0    # tighter tolerance for order block zone touches (scalp setup)
+BR_OB_LOOKBACK_BARS        = 20     # how far back to search for the last opposite-colored candle
+BR_ENABLE_PREV_DAY         = True   # toggle each setup independently for isolated testing
+BR_ENABLE_OPENING_RANGE    = True
+BR_ENABLE_ORDER_BLOCK      = True
+
 
 # ==================== USER INPUT: CAPITAL, LOT SIZE, DATE RANGE ====================
 def resolve_date_range(start_date_str, duration_days, now=None):
@@ -75,6 +87,9 @@ def get_account_inputs():
     parser.add_argument("--lot", type=float, default=None, help="Fixed lot size per trade (e.g. 0.01)")
     parser.add_argument("--start-date", type=str, default=None, help="Backtest start date, format YYYY-MM-DD")
     parser.add_argument("--days", type=int, default=None, help="Backtest duration in days")
+    parser.add_argument("--strategy", type=str, default="adx_rsi_ema",
+                         choices=["adx_rsi_ema", "break_retest"],
+                         help="Which strategy to backtest: 'adx_rsi_ema' (default) or 'break_retest'")
     args, _ = parser.parse_known_args()
 
     capital = args.capital
@@ -157,7 +172,7 @@ def get_account_inputs():
 
         print(f"Sweep enabled    : SL={sl_values}  TP={tp_values}")
 
-    return capital, lot, date_from, date_to, run_sweep, sl_values, tp_values
+    return capital, lot, date_from, date_to, run_sweep, sl_values, tp_values, args.strategy
 
 
 # ==================== DATA FETCH ====================
@@ -411,6 +426,221 @@ def build_signals(df, ema_len=None, rsi_len=None, rsi_ob=None, rsi_os=None,
     return df
 
 
+# ==================== ALTERNATIVE STRATEGY: BREAK & RETEST ====================
+# Price-action only, no indicators. Three setups from the "break and retest"
+# methodology: previous day high/low retest, opening range retest, and order
+# block retest. Produces the same buy_signal / sell_signal columns as
+# build_signals() above so it's a drop-in alternative for run_backtest().
+def compute_prev_day_levels(df):
+    """Attach previous calendar day's High/Low to every intraday row."""
+    daily = df.resample("1D").agg({"High": "max", "Low": "min"}).dropna()
+    daily["prev_day_high"] = daily["High"].shift(1)
+    daily["prev_day_low"] = daily["Low"].shift(1)
+
+    session_date = df.index.normalize()
+    out = df.copy()
+    out["prev_day_high"] = session_date.map(daily["prev_day_high"])
+    out["prev_day_low"] = session_date.map(daily["prev_day_low"])
+    return out
+
+
+def compute_opening_range_levels(df):
+    """Opening range = the first bar of each calendar day at this dataframe's
+    own timeframe (e.g. the first 5m candle of the day on M5 data). This
+    sidesteps timezone mismatches between MT5/OANDA/yfinance feeds - if you
+    want a strict NY-09:30 opening range instead, filter df to session-open
+    bars before calling this."""
+    session_date = df.index.normalize()
+    out = df.copy()
+    out["_date"] = session_date
+    out["opening_range_high"] = out.groupby("_date")["High"].transform("first")
+    out["opening_range_low"] = out.groupby("_date")["Low"].transform("first")
+    out["_is_first_bar_of_day"] = ~out["_date"].duplicated(keep="first")
+    return out.drop(columns="_date")
+
+
+def _break_retest_reaction_signals(df, level_high_col, level_low_col, tolerance_pips):
+    """Vectorized break -> retest -> reaction pattern against a given pair of
+    level columns (e.g. prev_day_high/low or opening_range_high/low):
+      bar t-2: price breaks through the level
+      bar t-1: price comes back to retest it
+      bar t  : reaction candle confirms (closes back on the breakout side)
+    Returns (long_signal, short_signal) boolean Series aligned to df.index.
+    """
+    tol = tolerance_pips * PIP_SIZE
+
+    broke_above = df["High"].shift(2) > df[level_high_col]
+    retested_above = df["Low"].shift(1) <= df[level_high_col] + tol
+    reaction_long = (df["Close"] > df[level_high_col]) & (df["Close"] > df["Open"])
+    long_signal = broke_above & retested_above & reaction_long
+
+    broke_below = df["Low"].shift(2) < df[level_low_col]
+    retested_below = df["High"].shift(1) >= df[level_low_col] - tol
+    reaction_short = (df["Close"] < df[level_low_col]) & (df["Close"] < df["Open"])
+    short_signal = broke_below & retested_below & reaction_short
+
+    return long_signal.fillna(False), short_signal.fillna(False)
+
+
+def _order_block_signals(df, lookback_bars, tolerance_pips):
+    """Loop-based (not vectorized) since each bar needs to look back for the
+    most recent opposite-colored candle - same O(n) cost as run_backtest's
+    own trade-simulation loop, so this doesn't change the script's overall
+    complexity class. Returns (long_signal, short_signal) as plain lists."""
+    tol = tolerance_pips * PIP_SIZE
+    is_up = (df["Close"] > df["Open"]).to_numpy()
+    is_down = (df["Close"] < df["Open"]).to_numpy()
+    open_ = df["Open"].to_numpy()
+    high = df["High"].to_numpy()
+    low = df["Low"].to_numpy()
+    close = df["Close"].to_numpy()
+    n = len(df)
+
+    long_signal = [False] * n
+    short_signal = [False] * n
+
+    for i in range(1, n):
+        window_start = max(0, i - lookback_bars)
+
+        # --- bearish order block: last up-close candle before this bar, for shorts ---
+        ob_idx = None
+        for j in range(i - 1, window_start - 1, -1):
+            if is_up[j]:
+                ob_idx = j
+                break
+        if ob_idx is not None:
+            zone_top = max(open_[ob_idx], close[ob_idx])   # body top
+            zone_bottom = low[ob_idx]                       # candle low (wick)
+            touched = (zone_bottom - tol) <= high[i] <= (zone_top + tol)
+            weak_reaction = is_down[i] and close[i] < close[i - 1]
+            if touched and weak_reaction:
+                short_signal[i] = True
+
+        # --- bullish order block: last down-close candle before this bar, for longs ---
+        ob_idx = None
+        for j in range(i - 1, window_start - 1, -1):
+            if is_down[j]:
+                ob_idx = j
+                break
+        if ob_idx is not None:
+            zone_bottom = min(open_[ob_idx], close[ob_idx])  # body bottom
+            zone_top = high[ob_idx]                            # candle high (wick)
+            touched = (zone_bottom - tol) <= low[i] <= (zone_top + tol)
+            strong_reaction = is_up[i] and close[i] > close[i - 1]
+            if touched and strong_reaction:
+                long_signal[i] = True
+
+    return long_signal, short_signal
+
+
+def build_break_retest_signals(df, retest_tolerance_pips=None, ob_tolerance_pips=None,
+                                ob_lookback_bars=None, enable_prev_day=None,
+                                enable_opening_range=None, enable_order_block=None):
+    """Alternative to build_signals(): price-action break-and-retest logic
+    instead of ADX/RSI/EMA. Produces the same buy_signal/sell_signal columns
+    so it plugs straight into the existing run_backtest() / generate chart /
+    summarize pipeline. Also adds a 'setup' column naming which of the three
+    setups fired, so trade logs and summaries can break results down by setup.
+    """
+    retest_tolerance_pips = BR_RETEST_TOLERANCE_PIPS if retest_tolerance_pips is None else retest_tolerance_pips
+    ob_tolerance_pips = BR_OB_TOLERANCE_PIPS if ob_tolerance_pips is None else ob_tolerance_pips
+    ob_lookback_bars = BR_OB_LOOKBACK_BARS if ob_lookback_bars is None else ob_lookback_bars
+    enable_prev_day = BR_ENABLE_PREV_DAY if enable_prev_day is None else enable_prev_day
+    enable_opening_range = BR_ENABLE_OPENING_RANGE if enable_opening_range is None else enable_opening_range
+    enable_order_block = BR_ENABLE_ORDER_BLOCK if enable_order_block is None else enable_order_block
+
+    df = compute_prev_day_levels(df)
+    df = compute_opening_range_levels(df)
+
+    n = len(df)
+    pdh_long = pdh_short = pd.Series(False, index=df.index)
+    or_long = or_short = pd.Series(False, index=df.index)
+    ob_long = ob_short = pd.Series(False, index=df.index)
+
+    if enable_prev_day:
+        pdh_long, pdh_short = _break_retest_reaction_signals(
+            df, "prev_day_high", "prev_day_low", retest_tolerance_pips)
+
+    if enable_opening_range:
+        or_long, or_short = _break_retest_reaction_signals(
+            df, "opening_range_high", "opening_range_low", retest_tolerance_pips)
+        # don't fire on the opening-range bar itself or before it's established
+        or_long = or_long & ~df["_is_first_bar_of_day"]
+        or_short = or_short & ~df["_is_first_bar_of_day"]
+
+    if enable_order_block:
+        ob_long_list, ob_short_list = _order_block_signals(df, ob_lookback_bars, ob_tolerance_pips)
+        ob_long = pd.Series(ob_long_list, index=df.index)
+        ob_short = pd.Series(ob_short_list, index=df.index)
+
+    df["buy_signal"] = pdh_long | or_long | ob_long
+    df["sell_signal"] = pdh_short | or_short | ob_short
+
+    setup = pd.Series("", index=df.index, dtype=object)
+    setup = setup.mask(pdh_long | pdh_short, "previous_day_high_low_retest")
+    setup = setup.mask(or_long | or_short, "opening_range_retest")
+    setup = setup.mask(ob_long | ob_short, "order_block_retest")
+    df["setup"] = setup
+
+    return df.drop(columns="_is_first_bar_of_day")
+
+
+def generate_break_retest_chart(signals, trades=None, title="XAUUSD - Break & Retest", lookback_bars=500):
+    """Chart variant for the break-retest strategy: overlays previous-day
+    high/low and opening-range levels instead of EMA/RSI/ADX panels, since
+    this strategy has no indicators to plot."""
+    import io
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    df = signals if lookback_bars is None else signals.tail(lookback_bars)
+
+    fig, ax_price = plt.subplots(1, 1, figsize=(13, 6))
+
+    ax_price.plot(df.index, df["Close"], color="#1f77b4", linewidth=1.0, label="Close", zorder=2)
+    ax_price.plot(df.index, df["prev_day_high"], color="#d62728", linewidth=0.8,
+                  linestyle="--", alpha=0.7, label="Prev day high")
+    ax_price.plot(df.index, df["prev_day_low"], color="#2ca02c", linewidth=0.8,
+                  linestyle="--", alpha=0.7, label="Prev day low")
+    ax_price.plot(df.index, df["opening_range_high"], color="#9467bd", linewidth=0.8,
+                  linestyle=":", alpha=0.7, label="Opening range high")
+    ax_price.plot(df.index, df["opening_range_low"], color="#8c564b", linewidth=0.8,
+                  linestyle=":", alpha=0.7, label="Opening range low")
+
+    buys = df[df["buy_signal"]]
+    sells = df[df["sell_signal"]]
+    if len(buys):
+        ax_price.scatter(buys.index, buys["Close"], marker="^", color="lime", s=80,
+                          zorder=5, edgecolors="black", linewidths=0.5, label="BUY signal")
+    if len(sells):
+        ax_price.scatter(sells.index, sells["Close"], marker="v", color="red", s=80,
+                          zorder=5, edgecolors="black", linewidths=0.5, label="SELL signal")
+
+    if trades is not None and len(trades):
+        t = trades[(trades["entry_time"] >= df.index.min()) & (trades["entry_time"] <= df.index.max())]
+        for _, tr in t.iterrows():
+            color = "green" if tr["pnl_usd"] > 0 else "crimson"
+            ax_price.plot([tr["entry_time"], tr["exit_time"]], [tr["entry_price"], tr["exit_price"]],
+                          color=color, linestyle="--", linewidth=1.3, alpha=0.85, zorder=4)
+            entry_marker = "^" if tr["side"] == "BUY" else "v"
+            ax_price.scatter([tr["entry_time"]], [tr["entry_price"]], marker=entry_marker, s=70,
+                             facecolors="none", edgecolors="black", linewidths=1.3, zorder=6)
+            ax_price.scatter([tr["exit_time"]], [tr["exit_price"]], marker="x", s=60,
+                             color=color, linewidths=1.6, zorder=6)
+
+    ax_price.set_title(title)
+    ax_price.legend(loc="upper left", fontsize=8, ncol=2)
+    ax_price.grid(alpha=0.3)
+    fig.autofmt_xdate()
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=110)
+    plt.close(fig)
+    return buf.getvalue()
+
+
 def generate_signal_chart(signals, trades=None, title="XAUUSD - ADX/RSI/EMA", lookback_bars=500,
                            rsi_ob=None, rsi_os=None, adx_level=None):
     """
@@ -542,6 +772,7 @@ def run_backtest(df, lot_size, exit_mode=None, sl_pips=None, tp_pips=None, sprea
                     "entry_volume": position.get("entry_volume"),
                     "entry_rvol": position.get("entry_rvol"),
                     "entry_cmf": position.get("entry_cmf"),
+                    "setup": position.get("setup"),
                 })
                 position = None
 
@@ -553,7 +784,7 @@ def run_backtest(df, lot_size, exit_mode=None, sl_pips=None, tp_pips=None, sprea
                     "sl": row["Close"] - sl_pips * PIP_SIZE,
                     "tp": row["Close"] + tp_pips * PIP_SIZE,
                     "entry_volume": row.get("Volume"), "entry_rvol": row.get("RVOL"),
-                    "entry_cmf": row.get("CMF"),
+                    "entry_cmf": row.get("CMF"), "setup": row.get("setup"),
                 }
             elif row["sell_signal"]:
                 position = {
@@ -561,7 +792,7 @@ def run_backtest(df, lot_size, exit_mode=None, sl_pips=None, tp_pips=None, sprea
                     "sl": row["Close"] + sl_pips * PIP_SIZE,
                     "tp": row["Close"] - tp_pips * PIP_SIZE,
                     "entry_volume": row.get("Volume"), "entry_rvol": row.get("RVOL"),
-                    "entry_cmf": row.get("CMF"),
+                    "entry_cmf": row.get("CMF"), "setup": row.get("setup"),
                 }
 
     return pd.DataFrame(trades)
@@ -610,6 +841,16 @@ def summarize(trades, capital, lot_size):
           f"({trades['pnl_usd'].max()/capital*100:+.2f}%)")
     print(f"Worst trade      : ${trades['pnl_usd'].min():,.2f}  "
           f"({trades['pnl_usd'].min()/capital*100:+.2f}%)")
+
+    if "setup" in trades.columns and trades["setup"].notna().any():
+        print("-" * 55)
+        print("Breakdown by setup:")
+        for setup_name, grp in trades.groupby("setup"):
+            grp_wins = grp[grp["pips"] > 0]
+            print(f"  {setup_name:<32} {len(grp):>3} trades  "
+                  f"win rate {len(grp_wins)/len(grp)*100:5.1f}%  "
+                  f"net ${grp['pnl_usd'].sum():>9,.2f}")
+
     print("=" * 55)
 
     trades.to_csv("backtest_adx_rsi_ema_results.csv", index=False)
@@ -698,9 +939,19 @@ if __name__ == "__main__":
                                help="Output PNG path for the chart (default: backtest_chart.png)")
     chart_args, _ = chart_parser.parse_known_args()
 
-    capital, lot_size, date_from, date_to, run_sweep, sl_values, tp_values = get_account_inputs()
+    capital, lot_size, date_from, date_to, run_sweep, sl_values, tp_values, strategy = get_account_inputs()
     data = get_data(date_from, date_to)
-    data = build_signals(data)
+
+    if strategy == "break_retest":
+        data = build_break_retest_signals(data)
+        chart_fn = generate_break_retest_chart
+        strategy_label = "Break & Retest"
+    else:
+        data = build_signals(data)
+        chart_fn = generate_signal_chart
+        strategy_label = "ADX/RSI/EMA"
+
+    print(f"Strategy         : {strategy_label}")
 
     if run_sweep:
         sweep_results = run_sl_tp_sweep(data, lot_size, capital, sl_values, tp_values)
@@ -710,8 +961,8 @@ if __name__ == "__main__":
         summarize(trades, capital, lot_size)
 
         if not chart_args.no_chart:
-            title = f"XAUUSD  {date_from:%Y-%m-%d} to {date_to:%Y-%m-%d}  |  {len(trades)} trades"
-            png_bytes = generate_signal_chart(data, trades=trades if not trades.empty else None, title=title)
+            title = f"XAUUSD ({strategy_label})  {date_from:%Y-%m-%d} to {date_to:%Y-%m-%d}  |  {len(trades)} trades"
+            png_bytes = chart_fn(data, trades=trades if not trades.empty else None, title=title)
             with open(chart_args.chart_file, "wb") as f:
                 f.write(png_bytes)
             print(f"Saved chart -> {chart_args.chart_file}")

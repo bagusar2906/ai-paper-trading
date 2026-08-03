@@ -62,6 +62,15 @@ async function executeBacktest() {
 
     const request = {
 
+        strategy_id:
+
+            parseInt(
+                document.getElementById(
+                    "btStrategy"
+                ).value
+            ),
+
+
         symbol:
             document.getElementById("btSymbol").value,
 

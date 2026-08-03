@@ -1,6 +1,7 @@
 from app.config import TradingConfig
 from app.factories.provider_factory import create_provider
 from app.factories.strategy_factory import create_strategy
+from app.factories.strategy_loader import load_active_strategy
 
 
 class SignalService:
@@ -10,7 +11,7 @@ class SignalService:
     def __init__(self):
 
         self.provider = create_provider()
-        self.strategy = create_strategy()
+        self.strategy = load_active_strategy()
 
     def generate(self):
 

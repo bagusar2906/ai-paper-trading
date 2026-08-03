@@ -7,6 +7,8 @@ from app.repositories.position_repository import PositionRepository
 from app.repositories.settings_repository import SettingsRepository
 from app.repositories.trade_repository import TradeRepository
 from app.repositories.signal_repository import SignalRepository
+from app.repositories.strategy_repository import StrategyRepository
+
 
 
 class RepositoryFactory:
@@ -32,6 +34,7 @@ class RepositoryFactory:
         self.trades = TradeRepository(self.session)
         self.signals = SignalRepository(self.session)
         self.settings = SettingsRepository(self.session)
+        self.strategies = StrategyRepository(self.session)
 
     def close(self):
 

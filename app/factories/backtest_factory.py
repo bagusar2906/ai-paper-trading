@@ -8,13 +8,14 @@ from app.engine.trading_engine import TradingEngine
 from app.factories.provider_factory import create_provider
 from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
+from app.factories.strategy_loader import load_active_strategy
 
 
 def create_backtest_engine():
 
     provider = create_provider()
 
-    strategy = create_strategy()
+    strategy = load_active_strategy()
 
     # Backtests get their own in-memory DB so replaying history never
     # touches the live paper-trading account/positions/trades.

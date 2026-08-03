@@ -25,6 +25,8 @@ class PaperBroker(Broker):
         ):
 
         self.initial_balance = initial_balance
+
+        self._owns_repo = repos is None
         self.repos = repos or RepositoryFactory()
 
         account = self.repos.accounts.get()
@@ -218,3 +220,9 @@ class PaperBroker(Broker):
     def get_trading_mode(self):
 
         return self.repos.settings.get_trading_mode()
+
+    def close(self):
+
+        if self._owns_repo:
+
+            self.repos.close()

@@ -4,6 +4,7 @@ from typing import Optional
 import pandas as pd
 
 from app.models.signal import TradingSignal
+from app.strategy.parameter import StrategyParameter
 
 
 class Strategy(ABC):
@@ -15,7 +16,17 @@ class Strategy(ABC):
     @abstractmethod
     def name(self) -> str:
         """
-        Strategy name.
+        Strategy display name.
+        """
+        pass
+
+    # NEW
+    @classmethod
+    @abstractmethod
+    def schema(cls) -> list[StrategyParameter]:
+        """
+        Returns the editable parameter schema
+        used by the UI.
         """
         pass
 
@@ -30,14 +41,10 @@ class Strategy(ABC):
     @abstractmethod
     def prepare(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
     ) -> pd.DataFrame:
         """
         Calculate indicators.
-
-        Returns
-        -------
-        DataFrame with indicator columns added.
         """
         pass
 
@@ -48,21 +55,14 @@ class Strategy(ABC):
         df: pd.DataFrame,
     ) -> Optional[TradingSignal]:
         """
-        Generate a BUY / SELL signal.
-
-        Returns
-        -------
-        TradingSignal or None if no signal.
+        Generate BUY / SELL signal.
         """
         pass
 
     def validate_data(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
     ) -> bool:
-        """
-        Validate input market data.
-        """
 
         if df is None:
             return False
@@ -78,15 +78,15 @@ class Strategy(ABC):
             "Volume",
         ]
 
-        return all(col in df.columns for col in required)
+        return all(
+            column in df.columns
+            for column in required
+        )
 
     def can_run(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
     ) -> bool:
-        """
-        Check whether the strategy has enough data to run.
-        """
 
         return (
             self.validate_data(df)
