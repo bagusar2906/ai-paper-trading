@@ -20,6 +20,13 @@ class TradingWorker:
         # Reload engine so strategy changes are picked up automatically.
         #
 
+        # The engine owns a PaperBroker and its database session.  Close the
+        # previous cycle's engine before replacing it so long-running workers
+        # do not accumulate checked-out SQLAlchemy connections.
+        if self.engine is not None:
+            self.engine.close()
+            self.engine = None
+
         self.engine = create_engine()
 
         if self.engine is None:

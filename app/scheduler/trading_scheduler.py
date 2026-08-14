@@ -36,6 +36,8 @@ class TradingScheduler:
 
         while self._running:
 
+            engine = None
+
             try:
 
                 engine = create_engine()
@@ -57,5 +59,14 @@ class TradingScheduler:
                 logger.exception(
                     "Trading scheduler failed."
                 )
+
+            finally:
+
+                # create_engine() creates a PaperBroker with a database
+                # session.  This loop builds a fresh engine every cycle so
+                # strategy changes take effect; it must also release that
+                # session before starting the next cycle.
+                if engine is not None:
+                    engine.close()
 
             time.sleep(5)
