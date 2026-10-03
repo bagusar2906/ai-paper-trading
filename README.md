@@ -156,6 +156,33 @@ All tunable parameters live in `app/config.py`:
   `OANDA_ACCOUNT_ID`, `OANDA_ENV`) rather than hardcoded — set these before
   using `DATA_PROVIDER = "oanda"`.
 
+## AI buy/sell signals
+
+The strategy editor now offers **AI Agent (OpenAI)**. It sends the selected
+recent OHLCV candles to the OpenAI Responses API and returns a constrained
+`BUY`, `SELL`, or `HOLD` signal. Set `OPENAI_API_KEY` in the environment, then
+create and activate the strategy in `/ui`. Optionally set
+`OPENAI_TRADING_MODEL` (default: `gpt-5-mini`) and
+`OPENAI_TRADING_TIMEOUT_SECONDS` (default: `20`).
+
+The API key is never stored in the database or exposed to the dashboard. The
+AI agent only chooses direction and confidence; this app calculates stop loss /
+take profit locally and continues to apply the existing risk manager before an
+order is placed. Missing credentials, API failures, malformed responses, and
+low-confidence decisions safely become `HOLD`.
+
+On Windows, you can start the API with `./start_ai_trading.ps1`. The launcher
+uses `OPENAI_API_KEY` if it is already set, otherwise prompts securely for it.
+
+### OmniRoute
+
+OmniRoute is supported through its OpenAI-compatible Responses endpoint. Start
+OmniRoute, then run `./start_ai_trading.ps1`. The launcher defaults to
+`http://localhost:20128/v1` and model `gpt-5.5`; pass `-Model "<your OmniRoute
+model or combo>"` to override the model. Set its key in `OMNIROUTE_API_KEY` (or
+enter it when the launcher prompts). The default OmniRoute HTTP API port is
+`20128`.
+
 ## Notes on the providers
 
 - **Yahoo** (`yahoo_provider.py`) — works out of the box, no credentials.
