@@ -73,6 +73,17 @@ class TradingEngine:
         current_price = self._get_current_price(df)
         current_time = df.index[-1]
 
+        # Cost-aware backtests queue a decision at candle close and fill it at
+        # the following candle open. Production paper brokers do not expose
+        # this optional hook, so their current execution behavior is unchanged.
+        advance_candle = getattr(self.broker, "advance_candle", None)
+        if advance_candle is not None:
+            advance_candle(
+                self.symbol,
+                self._get_current_open(df),
+                current_time,
+            )
+
         #
         # Update floating P/L
         #
@@ -172,6 +183,11 @@ class TradingEngine:
 
         return float(df.iloc[-1]["Close"])
 
+    def _get_current_open(self, df):
+        if "open" in df.columns:
+            return float(df.iloc[-1]["open"])
+        return float(df.iloc[-1]["Open"])
+
     def _generate_signal(self, df):
 
         signal = self.strategy.generate_signal(
@@ -184,7 +200,11 @@ class TradingEngine:
             signal.action,
         )
 
-        self.broker.repos.signals.upsert_for_candle(signal)
+        # Live paper execution persists decisions through its repository. Pure
+        # in-memory backtest brokers intentionally have no database session.
+        repos = getattr(self.broker, "repos", None)
+        if repos is not None:
+            repos.signals.upsert_for_candle(signal)
 
         return signal
 

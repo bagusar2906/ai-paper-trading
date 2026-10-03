@@ -2,6 +2,7 @@ import logging
 
 from app.backtest.backtest_result import BacktestResult
 from app.backtest.equity_point import EquityPoint
+from app.backtest.metrics import maximum_drawdown, sharpe_ratio
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,17 @@ class BacktestEngine:
             for point in self.engine.equity_history
         ]
 
+        # The legacy engine is sampled at each completed candle. A caller can
+        # set this explicitly later based on its timeframe; zero means that no
+        # annualized Sharpe estimate is reported.
+        periods_per_year = getattr(self.engine.broker, "periods_per_year", 0)
+        costs = getattr(self.engine.broker, "get_cost_breakdown", lambda: None)()
+        fill_timing = getattr(
+            getattr(self.engine.broker, "assumptions", None),
+            "fill_timing",
+            "current_candle_close",
+        )
+
         logger.info(
             "Backtest finished. Trades=%d NetProfit=%.2f",
             statistics.total_trades,
@@ -93,4 +105,9 @@ class BacktestEngine:
             start_balance=self.engine.broker.initial_balance,
             end_balance=account.balance,
             bars_processed=len(history),
+            max_drawdown=maximum_drawdown(equity_curve),
+            sharpe_ratio=sharpe_ratio(equity_curve, periods_per_year),
+            periods_per_year=periods_per_year,
+            cost_breakdown=costs,
+            fill_timing=fill_timing,
         )
