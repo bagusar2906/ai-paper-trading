@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.api.backtest import router as backtest_router
+from app.api.account import router as account_router
 from app.api.chart import router as chart_router
 from app.api.dashboard import router as dashboard_router
 from app.api.order import router as order_router
@@ -63,6 +64,7 @@ app = FastAPI(
 app.include_router(dashboard_router)
 app.include_router(chart_router)
 app.include_router(backtest_router)
+app.include_router(account_router)
 app.include_router(order_router)
 app.include_router(quote_router)
 app.include_router(position_router)

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from app.brokers.paper_broker import PaperBroker
 from app.config import TradingConfig
 from app.enums.signal_action import SignalAction
+from app.enums.trading_mode import TradingMode
 from app.models.position.order_request import OrderRequest
 from app.models.signal import TradingSignal
 from app.services.order_response import OrderResponse
@@ -30,6 +31,12 @@ class OrderService:
         broker = PaperBroker(initial_balance=TradingConfig.INITIAL_BALANCE)
 
         try:
+            if broker.get_trading_mode() == TradingMode.AUTO:
+                return OrderResponse(
+                    success=False,
+                    message="Manual orders are disabled while auto trading is active.",
+                )
+
             existing = broker.repos.positions.get_by_symbol(request.symbol)
 
             if existing is not None:

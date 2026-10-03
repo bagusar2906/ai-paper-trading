@@ -104,6 +104,12 @@
 
                 </button>
 
+                <button id="btnAdjustFunds" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#fundsModal">
+
+                    Adjust Funds
+
+                </button>
+
                 <!-- Live Status -->
                 <span id="liveStatus" class="badge bg-success">
 
@@ -113,6 +119,26 @@
 
             </div>
         </div>
+
+    <div class="modal fade" id="fundsModal" tabindex="-1" aria-labelledby="fundsModalTitle" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="fundsModalTitle" class="modal-title">Adjust Trading Funds</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="fundAdjustmentAmount" class="form-label">Amount</label>
+                    <input id="fundAdjustmentAmount" class="form-control" type="number" step="0.01" placeholder="Positive = deposit; negative = withdraw">
+                    <div class="form-text">This is available in both Manual and Auto mode. Withdrawals cannot exceed free margin.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="btnSaveFunds" type="button" class="btn btn-primary">Save Funds</button>
+                </div>
+            </div>
+        </div>
+    </div>
         <!-- ====================================================== -->
         <!-- Account -->
         <!-- ====================================================== -->

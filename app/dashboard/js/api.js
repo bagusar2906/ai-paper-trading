@@ -32,6 +32,17 @@ export async function getDashboard() {
 
 }
 
+export async function adjustFunds(amount) {
+
+    return request("/account/funds", {
+
+        method: "POST",
+        body: JSON.stringify({ amount }),
+
+    });
+
+}
+
 export async function getChart() {
 
     return request("/chart");

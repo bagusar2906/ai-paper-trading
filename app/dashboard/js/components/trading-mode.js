@@ -20,6 +20,8 @@ export async function initializeTradingMode() {
 
         previousValue = select.value;
 
+        updateManualOrderAvailability(select.value);
+
     }
     catch (error) {
 
@@ -46,6 +48,8 @@ export async function initializeTradingMode() {
 
                 previousValue = newValue;
 
+                updateManualOrderAvailability(newValue);
+
             }
             catch (error) {
 
@@ -63,5 +67,23 @@ export async function initializeTradingMode() {
             }
 
         });
+
+}
+
+function updateManualOrderAvailability(mode) {
+
+    const button = document.getElementById("btnNewOrder");
+    const isAuto = mode === "AUTO";
+
+    button.disabled = isAuto;
+    button.title = isAuto
+        ? "Manual orders are disabled while auto trading is active."
+        : "Place a manual order";
+
+    if (isAuto) {
+        bootstrap.Modal.getInstance(
+            document.getElementById("orderModal")
+        )?.hide();
+    }
 
 }

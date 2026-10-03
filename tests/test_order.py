@@ -133,6 +133,26 @@ def test_place_order_rejects_hold_action():
     assert result.success is False
 
 
+def test_manual_order_is_rejected_in_auto_mode(monkeypatch):
+
+    class AutoBroker:
+        def __init__(self, *args, **kwargs):
+            self.repos = type("Repos", (), {})()
+
+        def get_trading_mode(self):
+            return "AUTO"
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr("app.services.order_service.PaperBroker", AutoBroker)
+
+    result = OrderService().place_order(_order())
+
+    assert result.success is False
+    assert "disabled" in result.message.lower()
+
+
 def test_duplicate_order_for_open_symbol_is_rejected():
 
     service = OrderService()
