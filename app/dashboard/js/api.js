@@ -111,6 +111,16 @@ export async function getBacktestProgress(jobId) {
 
 }
 
+export async function cancelBacktest(jobId) {
+
+    return request(`/backtest/cancel/${jobId}`, {
+
+        method: "POST",
+
+    });
+
+}
+
 export async function getStrategies() {
 
     const response =

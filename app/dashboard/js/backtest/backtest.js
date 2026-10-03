@@ -1,9 +1,12 @@
 import {
     startBacktest,
     getBacktestProgress,
+    cancelBacktest,
 } from "../api.js";
 
 import { renderBacktest } from "./backtest-renderer.js";
+
+let activeJobId = null;
 
 export function initializeBacktest() {
 
@@ -11,7 +14,7 @@ export function initializeBacktest() {
         .getElementById("btnRunBacktest")
         .addEventListener(
             "click",
-            executeBacktest
+            handleBacktestButton
         );
 
 }
@@ -91,10 +94,66 @@ async function executeBacktest() {
 
     showLoading("Starting backtest...");
 
-    const job =
-        await startBacktest(request);
+    try {
 
-    pollBacktest(job.jobId);
+        const job =
+            await startBacktest(request);
+
+        activeJobId = job.jobId;
+        setBacktestButtonRunning();
+        pollBacktest(job.jobId);
+
+    }
+    catch (error) {
+
+        hideLoading();
+        setBacktestButtonIdle();
+        alert(`Could not start backtest: ${error.message}`);
+
+    }
+
+}
+
+async function handleBacktestButton() {
+
+    if (activeJobId) {
+
+        const button = document.getElementById("btnRunBacktest");
+        button.disabled = true;
+        button.textContent = "Stopping…";
+
+        try {
+            await cancelBacktest(activeJobId);
+        }
+        catch (error) {
+            button.disabled = false;
+            button.textContent = "■ Stop Backtest";
+            alert(`Could not stop backtest: ${error.message}`);
+        }
+
+        return;
+
+    }
+
+    executeBacktest();
+
+}
+
+function setBacktestButtonRunning() {
+
+    const button = document.getElementById("btnRunBacktest");
+    button.className = "btn btn-danger w-100";
+    button.textContent = "■ Stop Backtest";
+    button.disabled = false;
+
+}
+
+function setBacktestButtonIdle() {
+
+    const button = document.getElementById("btnRunBacktest");
+    button.className = "btn btn-primary w-100";
+    button.textContent = "▶ Run Backtest";
+    button.disabled = false;
 
 }
 
@@ -114,7 +173,21 @@ async function pollBacktest(jobId) {
 
             clearInterval(timer);
 
-            hideLoading();
+            activeJobId = null;
+            setBacktestButtonIdle();
+
+            if (job.failed) {
+                hideLoading();
+                alert(job.status);
+                return;
+            }
+
+            if (job.cancelled) {
+                updateProgress(job.progress, job.status);
+            }
+            else {
+                hideLoading();
+            }
 
             renderBacktest(
                 job.result

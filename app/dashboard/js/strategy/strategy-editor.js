@@ -23,42 +23,50 @@ export async function openStrategyEditor(id = null) {
 
     editingId = id;
 
-    await loadStrategyTypes();
+    document.getElementById(
+        "strategyModalTitle"
+    ).innerText = id == null ? "New Strategy" : "Edit Strategy";
 
-    if (id == null) {
-
-        document.getElementById(
-            "strategyModalTitle"
-        ).innerText = "New Strategy";
-
-        clearForm();
-
-        const schema =
-            await getStrategySchema(
-
-                document.getElementById(
-                    "strategyType"
-                ).value
-
-            );
-
-        renderParameterEditor(schema);
-
-    }
-    else {
-
-        document.getElementById(
-            "strategyModalTitle"
-        ).innerText = "Edit Strategy";
-
-        const strategy =
-            await getStrategy(id);
-
-        await fillForm(strategy);
-
-    }
-
+    // Show the dialog before awaiting API calls. This gives the user immediate
+    // feedback and avoids a click that appears to do nothing on a failed call.
     modal.show();
+
+    try {
+
+        await loadStrategyTypes();
+
+        if (id == null) {
+
+            clearForm();
+
+            const schema =
+                await getStrategySchema(
+
+                    document.getElementById(
+                        "strategyType"
+                    ).value
+
+                );
+
+            renderParameterEditor(schema);
+
+        }
+        else {
+
+            const strategy =
+                await getStrategy(id);
+
+            await fillForm(strategy);
+
+        }
+
+    }
+    catch (error) {
+
+        modal.hide();
+        throw error;
+
+    }
 
 }
 
@@ -163,7 +171,9 @@ async function fillForm(strategy) {
 
     renderParameterEditor(schema);
 
-    const config = strategy.config;
+    const config = typeof strategy.config === "string"
+        ? JSON.parse(strategy.config)
+        : (strategy.config || {});
 
     schema.forEach(field => {
 

@@ -125,6 +125,30 @@ def get_schema(strategy_type: str):
 
     return get_strategy_schema(strategy_type)
 
+
+@router.post("/{strategy_id}/activate")
+def activate(strategy_id: int):
+
+    repos, service = create_service()
+
+    try:
+
+        strategy = service.set_active(strategy_id)
+
+        if strategy is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Strategy not found",
+            )
+
+        return strategy
+
+    finally:
+
+        repos.close()
+
+
 @router.get("/{strategy_id}")
 def get(strategy_id: int):
 

@@ -137,4 +137,17 @@ CATALOG = {
 
     },
 
+    "AI_AGENT": {
+
+        "name": "AI Agent (OpenAI)",
+
+        "parameters": [
+            {"name": "lookback_bars", "label": "Candles supplied to AI", "type": "int", "default": 30},
+            {"name": "min_confidence", "label": "Minimum AI confidence", "type": "float", "default": 0.65},
+            {"name": "stop_loss_pips", "label": "Stop Loss", "type": "int", "default": 300},
+            {"name": "risk_reward_ratio", "label": "Risk Reward", "type": "float", "default": 2.0},
+        ],
+
+    },
+
 }

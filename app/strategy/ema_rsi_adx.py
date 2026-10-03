@@ -113,7 +113,7 @@ class EMARSIADXStrategy(Strategy):
 
     def __init__(
         self,
-        config: dict,
+        config: dict | None = None,
     ):
 
 
@@ -122,6 +122,8 @@ class EMARSIADXStrategy(Strategy):
         #
         # Strategy Parameters
         #
+
+        config = config or {}
 
         self.ema_length = config.get(
             "ema_length",

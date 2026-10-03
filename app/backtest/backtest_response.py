@@ -25,3 +25,5 @@ class BacktestResponse:
     adx: list[dict]
 
     markers: list[BacktestMarker]
+
+    stopped: bool = False

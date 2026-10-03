@@ -1,6 +1,7 @@
 from app.strategy.base import Strategy
 from app.strategy.ema_rsi_adx import EMARSIADXStrategy
 from app.strategy.break_retest import BreakRetestStrategy
+from app.strategy.ai_agent import AIAgentStrategy
 
 
 def create_strategy(
@@ -17,6 +18,10 @@ def create_strategy(
     if strategy_type == "BREAK_RETEST":
 
         return BreakRetestStrategy(config)
+
+    if strategy_type == "AI_AGENT":
+
+        return AIAgentStrategy(config)
 
     raise ValueError(
         f"Unsupported strategy: {strategy_type}"
@@ -37,6 +42,10 @@ def get_strategy_schema(
 
         return BreakRetestStrategy.schema()
 
+    if strategy_type == "AI_AGENT":
+
+        return AIAgentStrategy.schema()
+
     raise ValueError(
         f"Unsupported strategy: {strategy_type}"
     )
@@ -54,6 +63,11 @@ def get_supported_strategies():
         {
             "value": "BREAK_RETEST",
             "label": "Break & Retest",
+        },
+
+        {
+            "value": "AI_AGENT",
+            "label": "AI Agent (OpenAI)",
         },
 
     ]

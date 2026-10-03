@@ -1,4 +1,5 @@
 import {
+    activateStrategy,
     deleteStrategy
 } from "./strategy-api.js";
 
@@ -25,6 +26,7 @@ export function renderStrategies(strategies) {
 
                 <td>
                     ${strategy.name}
+                    ${strategy.is_active ? '<span class="badge text-bg-success ms-1">Active</span>' : ''}
                 </td>
 
                 <td>
@@ -35,9 +37,22 @@ export function renderStrategies(strategies) {
                     ${strategy.description}
                 </td>
 
-                <td>
+                <td class="strategy-actions-cell">
+
+                    <div class="d-flex flex-nowrap gap-1 align-items-center">
 
                     <button
+                        type="button"
+                        class="btn btn-sm btn-success activateStrategy"
+                        data-id="${strategy.id}"
+                        ${strategy.is_active ? "disabled" : ""}>
+
+                        ${strategy.is_active ? "Active" : "Activate"}
+
+                    </button>
+
+                    <button
+                        type="button"
                         class="btn btn-sm btn-primary editStrategy"
                         data-id="${strategy.id}">
 
@@ -46,12 +61,15 @@ export function renderStrategies(strategies) {
                     </button>
 
                     <button
+                        type="button"
                         class="btn btn-sm btn-danger deleteStrategy"
                         data-id="${strategy.id}">
 
                         Delete
 
                     </button>
+
+                    </div>
 
                 </td>
 
@@ -66,6 +84,20 @@ export function renderStrategies(strategies) {
 }
 
 function wireButtons() {
+
+    document
+        .querySelectorAll(".activateStrategy")
+        .forEach(button => {
+
+            button.onclick = async () => {
+
+                await activateStrategy(button.dataset.id);
+
+                location.reload();
+
+            };
+
+        });
 
     document
         .querySelectorAll(".deleteStrategy")
@@ -96,14 +128,17 @@ function wireButtons() {
         .querySelectorAll(".editStrategy")
         .forEach(button => {
 
-            button.onclick =
-                () => {
+            button.onclick = async () => {
 
-                    openStrategyEditor(
-                        button.dataset.id
-                    );
+                try {
+                    await openStrategyEditor(button.dataset.id);
+                }
+                catch (error) {
+                    console.error("Could not open strategy editor", error);
+                    alert(`Could not open strategy editor: ${error.message}`);
+                }
 
-                };
+            };
 
         });
 
