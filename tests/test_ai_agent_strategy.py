@@ -63,7 +63,32 @@ def test_ai_strategy_schema_is_serializable_for_the_editor():
         "min_confidence",
         "stop_loss_pips",
         "risk_reward_ratio",
+        "backtest_stride",
     ]
+
+
+def test_ai_strategy_reduces_backtest_api_calls(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"output_text": '{"action":"HOLD","confidence":0.5,"reason":"wait"}'}
+
+    calls = []
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.strategy.ai_agent.requests.post",
+        lambda *args, **kwargs: (calls.append(1) or Response()),
+    )
+    strategy = AIAgentStrategy({"backtest_stride": 3})
+    strategy.start_backtest()
+
+    for _ in range(5):
+        strategy.generate_signal("XAUUSD", _candles())
+
+    strategy.end_backtest()
+    assert len(calls) == 2
 
 
 def test_ai_strategy_uses_configured_gateway_url(monkeypatch):

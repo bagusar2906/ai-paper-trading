@@ -116,6 +116,11 @@ async function pollBacktest(jobId) {
 
             hideLoading();
 
+            if (job.failed) {
+                alert(job.status);
+                return;
+            }
+
             renderBacktest(
                 job.result
             );

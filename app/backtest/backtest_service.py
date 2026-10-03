@@ -96,36 +96,54 @@ class BacktestService:
 
         minimum = strategy.minimum_bars
 
-        
         total = len(df) - minimum
 
-        for index, i in enumerate(range(minimum, len(df))):
-
-            # <<< NEW
-            if job_id and index % 20 == 0:
-
-                progress = 20 + int(
-                    (index / total) * 70
-                )
-
-                self._update_progress(
-                    job_id,
-                    progress,
-                    f"Processing candle {index}/{total}"
-                )
-
-            history = df.iloc[: i + 1].copy()
-
-            engine.run_once(history)
-
-            account = broker.get_account()
-
-            equity.append(
-                EquityPoint(
-                    time=history.iloc[-1].name,
-                    equity=account.equity,
-                )
+        if total <= 0:
+            raise ValueError(
+                f"Not enough history for this strategy; need more than {minimum} bars."
             )
+
+        start_backtest = getattr(strategy, "start_backtest", None)
+        end_backtest = getattr(strategy, "end_backtest", None)
+
+        if start_backtest:
+            start_backtest()
+
+        try:
+
+            for index, i in enumerate(range(minimum, len(df))):
+
+                # AI signals can involve a network request, so report a visible
+                # update more often than a purely local indicator strategy.
+                if job_id and index % 5 == 0:
+
+                    progress = 20 + max(
+                        1,
+                        int(((index + 1) / total) * 70),
+                    )
+
+                    self._update_progress(
+                        job_id,
+                        progress,
+                        f"Processing candle {index + 1}/{total}",
+                    )
+
+                history = df.iloc[: i + 1].copy()
+
+                engine.run_once(history)
+
+                account = broker.get_account()
+
+                equity.append(
+                    EquityPoint(
+                        time=history.iloc[-1].name,
+                        equity=account.equity,
+                    )
+                )
+        finally:
+
+            if end_backtest:
+                end_backtest()
 
         if job_id:
             self._update_progress(

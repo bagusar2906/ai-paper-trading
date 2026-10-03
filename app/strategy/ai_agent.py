@@ -58,6 +58,10 @@ class AIAgentStrategy(Strategy):
                 key="risk_reward_ratio", label="Risk Reward Ratio",
                 type="number", default=2.0, minimum=0.5, maximum=10, step=0.1,
             ),
+            StrategyParameter(
+                key="backtest_stride", label="Backtest AI evaluation interval",
+                type="number", default=20, minimum=1, maximum=200, step=1,
+            ),
         ]
 
     def __init__(self, config: dict):
@@ -65,6 +69,7 @@ class AIAgentStrategy(Strategy):
         self.min_confidence = float(config.get("min_confidence", 0.65))
         self.stop_loss_pips = float(config.get("stop_loss_pips", 300))
         self.risk_reward_ratio = float(config.get("risk_reward_ratio", 2.0))
+        self.backtest_stride = max(1, int(config.get("backtest_stride", 20)))
         self.model = os.environ.get("OPENAI_TRADING_MODEL", "gpt-5-mini")
         self.api_key = (
             os.environ.get("AI_API_KEY")
@@ -75,6 +80,7 @@ class AIAgentStrategy(Strategy):
             "AI_API_BASE_URL", "https://api.openai.com/v1"
         ).rstrip("/")
         self.timeout_seconds = float(os.environ.get("OPENAI_TRADING_TIMEOUT_SECONDS", "20"))
+        self._backtest_evaluation_count: Optional[int] = None
 
     @property
     def name(self) -> str:
@@ -91,6 +97,14 @@ class AIAgentStrategy(Strategy):
         last = df.iloc[-1]
         price = float(last["Close"])
         timestamp = df.index[-1]
+
+        if not self._should_evaluate_backtest_candle():
+            return self._hold(
+                symbol,
+                price,
+                timestamp,
+                f"AI skipped for backtest interval ({self.backtest_stride} candles)",
+            )
 
         if not self.api_key:
             return self._hold(symbol, price, timestamp, "No AI gateway API key is configured")
@@ -122,6 +136,21 @@ class AIAgentStrategy(Strategy):
             stop_loss=stop_loss,
             take_profit=take_profit,
         )
+
+    def start_backtest(self) -> None:
+        """Evaluate AI only periodically while a backtest replays each candle."""
+        self._backtest_evaluation_count = 0
+
+    def end_backtest(self) -> None:
+        self._backtest_evaluation_count = None
+
+    def _should_evaluate_backtest_candle(self) -> bool:
+        if self._backtest_evaluation_count is None:
+            return True
+
+        count = self._backtest_evaluation_count
+        self._backtest_evaluation_count += 1
+        return count % self.backtest_stride == 0
 
     def _request_decision(self, symbol: str, df: pd.DataFrame) -> dict:
         candles = []

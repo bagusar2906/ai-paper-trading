@@ -1,4 +1,5 @@
 from threading import Thread
+import logging
 
 from fastapi import APIRouter
 
@@ -10,6 +11,8 @@ router = APIRouter(
     prefix="/backtest",
     tags=["Backtest"],
 )
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("")
@@ -50,16 +53,21 @@ def _run_job(
 
     print("Starting BacktestService.run()")
 
-    result = service.run(
-        request,
-        job_id,
-    )
+    try:
 
-    print("BacktestService.run() finished")
+        result = service.run(
+            request,
+            job_id,
+        )
 
-    job_manager.complete(
-        job_id,
-        result,
-    )
+        job_manager.complete(
+            job_id,
+            result,
+        )
 
-    print("job_manager.complete() called")
+        print("job_manager.complete() called")
+
+    except Exception as exc:
+
+        logger.exception("Backtest job %s failed", job_id)
+        job_manager.fail(job_id, exc)

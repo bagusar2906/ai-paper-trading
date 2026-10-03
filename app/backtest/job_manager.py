@@ -16,6 +16,7 @@ class JobManager:
             "status": "Waiting...",
             "result": None,
             "finished": False,
+            "failed": False,
         }
 
         return job_id
@@ -45,6 +46,14 @@ class JobManager:
 
         job["finished"] = True
         job["result"] = result
+
+    def fail(self, job_id, error):
+
+        job = self.jobs[job_id]
+
+        job["status"] = f"Failed: {str(error)[:250]}"
+        job["finished"] = True
+        job["failed"] = True
 
     def get(self, job_id):
 
