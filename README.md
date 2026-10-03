@@ -198,3 +198,22 @@ enter it when the launcher prompts). The default OmniRoute HTTP API port is
 - **OANDA** (`oanda_provider.py`) — talks to the practice or live v3 REST API
   depending on `OANDA_ENV`. Requires `OANDA_API_KEY` (and `OANDA_ACCOUNT_ID`
   for `get_current_price`).
+
+## AI Trading Lab foundation
+
+The first AI Trading Lab phase adds additive, paper-only database records for
+completed normalized candles, data-quality events, and decision journaling.
+They are intentionally not yet wired into the trading cycle, so existing
+provider, strategy, risk, broker, and API behavior remains unchanged.
+
+- Candle times enter the lab only as timezone-aware UTC timestamps. SQLite
+  stores normalized UTC values without timezone metadata.
+- Candle upserts are idempotent by source, symbol, timeframe, and candle-open
+  time. The recorded candle must be complete; in-progress candles remain out
+  of scope for this foundation layer.
+- Decision journal entries are structurally paper-only and can capture future
+  model, regime, risk, gate, and reason metadata without changing `/signal`.
+- The app's current SQLAlchemy initialization creates these new additive tables
+  at startup. Existing tables are not altered. Before deploying this beyond a
+  local paper database, introduce the project's first versioned migration
+  mechanism rather than relying on `create_all`.

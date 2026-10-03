@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, DateTime
 from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import Text, UniqueConstraint
 
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -241,4 +242,85 @@ class StrategyEntity(Base):
         DateTime,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+
+
+# ==========================================================
+# AI Trading Lab foundation (additive, paper-trading only)
+# ==========================================================
+
+class MarketCandleEntity(Base):
+    """A normalized, completed market candle captured from a data provider."""
+
+    __tablename__ = "market_candles"
+    __table_args__ = (
+        UniqueConstraint(
+            "source", "symbol", "timeframe", "candle_open_time",
+            name="uq_market_candle_source_symbol_timeframe_time",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source: Mapped[str] = mapped_column(String(50))
+    symbol: Mapped[str] = mapped_column(String(20))
+    timeframe: Mapped[str] = mapped_column(String(10))
+    candle_open_time: Mapped[datetime] = mapped_column(DateTime)
+    open: Mapped[float] = mapped_column(Float)
+    high: Mapped[float] = mapped_column(Float)
+    low: Mapped[float] = mapped_column(Float)
+    close: Mapped[float] = mapped_column(Float)
+    volume: Mapped[float] = mapped_column(Float, default=0.0)
+    spread: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ingested_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+
+class DataQualityEventEntity(Base):
+    """An observable data-contract violation or collection anomaly."""
+
+    __tablename__ = "data_quality_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source: Mapped[str] = mapped_column(String(50))
+    symbol: Mapped[str] = mapped_column(String(20))
+    timeframe: Mapped[str] = mapped_column(String(10))
+    candle_open_time: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(100))
+    details_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+
+class DecisionJournalEntity(Base):
+    """Paper-only audit record for a decision and its optional ML context."""
+
+    __tablename__ = "decision_journal"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    decision_id: Mapped[str] = mapped_column(String(64), unique=True)
+    symbol: Mapped[str] = mapped_column(String(20))
+    timeframe: Mapped[str] = mapped_column(String(10))
+    decision_time: Mapped[datetime] = mapped_column(DateTime)
+    action: Mapped[str] = mapped_column(String(10))
+    entry_reference_price: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+    signal_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    regime: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    risk_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    gate_outcomes_json: Mapped[str] = mapped_column(Text, default="{}")
+    reasons_json: Mapped[str] = mapped_column(Text, default="[]")
+    paper_only: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
     )
