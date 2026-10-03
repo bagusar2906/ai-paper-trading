@@ -76,7 +76,7 @@ class SignalRepository(BaseRepository):
 
         entities = (
             self.session.query(SignalEntity)
-            .order_by(SignalEntity.created_at.desc(), SignalEntity.id.desc())
+            .order_by(SignalEntity.signal_time.desc(), SignalEntity.id.desc())
             .limit(limit)
             .all()
         )

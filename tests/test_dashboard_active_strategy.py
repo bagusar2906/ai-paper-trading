@@ -15,6 +15,7 @@ def test_dashboard_includes_active_strategy(monkeypatch):
                 id=2,
                 name="Gold AI",
                 strategy_type="AI_AGENT",
+                config={"stop_loss_pips": 300, "risk_reward_ratio": 2},
                 is_active=True,
             )
         ),
@@ -29,3 +30,5 @@ def test_dashboard_includes_active_strategy(monkeypatch):
 
     assert dashboard.active_strategy.name == "Gold AI"
     assert dashboard.active_strategy.strategy_type == "AI_AGENT"
+    assert dashboard.active_strategy.stop_loss_pips == 300
+    assert dashboard.active_strategy.take_profit_pips == 600

@@ -62,10 +62,36 @@ class DashboardService:
         if strategy is None:
             return None
 
+        config = strategy.config or {}
+        stop_loss_pips = config.get("stop_loss_pips")
+        risk_reward_ratio = config.get(
+            "risk_reward_ratio",
+            config.get("risk_reward"),
+        )
+
+        try:
+            stop_loss_pips = float(stop_loss_pips)
+        except (TypeError, ValueError):
+            stop_loss_pips = None
+
+        try:
+            risk_reward_ratio = float(risk_reward_ratio)
+        except (TypeError, ValueError):
+            risk_reward_ratio = None
+
+        take_profit_pips = (
+            stop_loss_pips * risk_reward_ratio
+            if stop_loss_pips is not None and risk_reward_ratio is not None
+            else None
+        )
+
         return ActiveStrategyResponse(
             id=strategy.id,
             name=strategy.name,
             strategy_type=strategy.strategy_type,
+            stop_loss_pips=stop_loss_pips,
+            take_profit_pips=take_profit_pips,
+            risk_reward_ratio=risk_reward_ratio,
         )
     
     from app.models.dashboard.signal_response import SignalResponse
