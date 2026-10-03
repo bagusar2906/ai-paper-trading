@@ -24,7 +24,10 @@ class DashboardService:
 
             trades = repos.trades.get_all()
 
-            signals = repos.signals.get_recent(20)
+            # The repository returns history in chronological order for chart
+            # consumers. The dashboard table is a history view, so show the
+            # most recent 15 signals first without changing that shared order.
+            signals = list(reversed(repos.signals.get_recent(15)))
 
             active_strategy = self._build_active_strategy(
                 repos.strategies.get_active()
