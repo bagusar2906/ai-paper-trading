@@ -83,7 +83,7 @@ paper-trading/
 ```
 
 - **Provider swap is transparent** — `DATA_PROVIDER` in `config.py` (or an explicit
-  argument to `create_provider("yahoo"|"mt5"|"oanda")`) decides where candles
+  argument to `create_provider("twelve_data"|"yahoo"|"mt5"|"oanda")`) decides where candles
   come from. Everything downstream (indicators, strategy, API) only ever talks
   to the `DataProvider` interface, never a specific provider.
 - **Indicators are pure functions** — no I/O, no provider knowledge, just
@@ -113,8 +113,8 @@ uvicorn app.main:app --reload
 python -m app.worker
 ```
 
-Fetches candles for `SYMBOL`/`TIMEFRAME` (from `config.py`) via Yahoo Finance
-by default, runs the strategy once, and prints the resulting signal.
+Fetches candles for `SYMBOL`/`TIMEFRAME` (from `config.py`) via Twelve Data by
+default, runs the strategy once, and prints the resulting signal.
 
 ## Running the tests
 
@@ -149,12 +149,17 @@ standalone scripts. Use `pytest`.
 
 All tunable parameters live in `app/config.py`:
 
-- `DATA_PROVIDER` — `"yahoo"`, `"mt5"`, or `"oanda"`
+- `MARKET_DATA_PROVIDER` — optional override: `"twelve_data"` (default),
+  `"yahoo"`, `"mt5"`, or `"oanda"`
 - `SYMBOL`, `TIMEFRAME`
 - `EMA_LEN`, `RSI_LEN`, `RSI_OB`/`RSI_OS`, `ADX_LEN`, `ADX_SMOOTH`, `ADX_LEVEL`
 - OANDA credentials are read from environment variables (`OANDA_API_KEY`,
   `OANDA_ACCOUNT_ID`, `OANDA_ENV`) rather than hardcoded — set these before
   using `DATA_PROVIDER = "oanda"`.
+- Twelve Data credentials are read from `TWELVE_DATA_API_KEY`. Create a free
+  key at [Twelve Data](https://twelvedata.com/pricing). The app uses its spot
+  `XAU/USD` symbol and evaluates once per completed M5 candle (about 288
+  scheduled data requests per day, below the free plan's 800/day limit).
 
 ## AI buy/sell signals
 
@@ -188,6 +193,10 @@ enter it when the launcher prompts). The default OmniRoute HTTP API port is
 `20128`.
 
 ## Notes on the providers
+
+- **Twelve Data** (`twelve_data_provider.py`) — the default provider. Uses
+  spot `XAU/USD`, requires `TWELVE_DATA_API_KEY`, requests UTC candles, and
+  excludes the in-progress candle from strategy decisions.
 
 - **Yahoo** (`yahoo_provider.py`) — works out of the box, no credentials.
   Maps `"XAUUSD"` → the Yahoo ticker `"XAUUSD=X"` and translates

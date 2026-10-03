@@ -4,6 +4,7 @@ from app.brokers.paper_broker import PaperBroker
 from app.engine.trading_engine import TradingEngine
 from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
+from app.config import TradingConfig
 
 
 def create_engine():
@@ -36,6 +37,7 @@ def create_engine():
         provider=provider,
         strategy=strategy,
         broker=broker,
-        symbol="XAUUSD",
-        timeframe="15m",
+        symbol=TradingConfig.SYMBOL,
+        timeframe=TradingConfig.TIMEFRAME,
+        bars=TradingConfig.HISTORY_BARS,
     )

@@ -9,6 +9,7 @@ import os
 OANDA_API_KEY = os.environ.get("OANDA_API_KEY", "")
 OANDA_ACCOUNT_ID = os.environ.get("OANDA_ACCOUNT_ID", "")
 OANDA_ENV = os.environ.get("OANDA_ENV", "practice")
+TWELVE_DATA_API_KEY = os.environ.get("TWELVE_DATA_API_KEY", "")
 
 
 # ==========================================================
@@ -26,13 +27,17 @@ class AppConfig:
 
 class ProviderConfig:
 
-    DEFAULT_PROVIDER = "yahoo"      # yahoo | mt5 | oanda
+    # Set MARKET_DATA_PROVIDER only when temporarily overriding the default.
+    # Twelve Data supplies spot XAU/USD rather than Yahoo's GC=F gold future.
+    DEFAULT_PROVIDER = os.environ.get("MARKET_DATA_PROVIDER", "twelve_data")
 
     YAHOO_SYMBOL = "GC=F"
 
     MT5_SYMBOL = "XAUUSD"
 
     OANDA_SYMBOL = "XAU_USD"
+
+    TWELVE_DATA_SYMBOL = "XAU/USD"
 
 
 # ==========================================================

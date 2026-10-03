@@ -4,6 +4,7 @@ from app.factories.provider_factory import create_provider
 from app.factories.repository_factory import RepositoryFactory
 from app.factories.strategy_factory import create_strategy
 from app.factories.strategy_loader import load_active_strategy
+from app.config import TradingConfig
 
 
 class ApplicationFactory:
@@ -25,8 +26,9 @@ class ApplicationFactory:
             provider=provider,
             strategy=strategy,
             broker=broker,
-            symbol="XAUUSD",
-            timeframe="15m",
+            symbol=TradingConfig.SYMBOL,
+            timeframe=TradingConfig.TIMEFRAME,
+            bars=TradingConfig.HISTORY_BARS,
         )
 
     @staticmethod

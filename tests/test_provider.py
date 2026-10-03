@@ -4,11 +4,14 @@ import pytest
 from app.factories.provider_factory import create_provider
 from app.providers.yahoo_provider import YahooProvider
 from app.providers.oanda_provider import OandaProvider
+from app.providers.twelve_data_provider import TwelveDataProvider
+import app.factories.provider_factory as provider_factory
 
 
-def test_factory_defaults_to_config_provider():
+def test_factory_defaults_to_twelve_data(monkeypatch):
+    monkeypatch.setattr(provider_factory, "TWELVE_DATA_API_KEY", "test-key")
     provider = create_provider()
-    assert isinstance(provider, YahooProvider)  # config.DATA_PROVIDER == "yahoo"
+    assert isinstance(provider, TwelveDataProvider)
     provider.disconnect()
 
 
@@ -27,6 +30,45 @@ def test_oanda_provider_requires_api_key():
     provider = OandaProvider(api_key="")
     with pytest.raises(RuntimeError):
         provider.connect()
+
+
+def test_twelve_data_provider_requires_api_key():
+    provider = TwelveDataProvider(api_key="")
+    with pytest.raises(RuntimeError, match="TWELVE_DATA_API_KEY"):
+        provider.connect()
+
+
+def test_twelve_data_history_uses_completed_candles(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "values": [
+                    {"datetime": "2026-10-03 10:00:00", "open": "1", "high": "2", "low": "0.5", "close": "1.5"},
+                    {"datetime": "2026-10-03 10:05:00", "open": "1.5", "high": "3", "low": "1", "close": "2"},
+                ]
+            }
+
+    class Session:
+        def get(self, url, params, timeout):
+            assert params["symbol"] == "XAU/USD"
+            assert params["interval"] == "5min"
+            assert params["outputsize"] == 2
+            return Response()
+
+    monkeypatch.setattr(
+        "app.providers.twelve_data_provider.pd.Timestamp.now",
+        classmethod(lambda cls, tz=None: pd.Timestamp("2026-10-03 10:05:30", tz=tz)),
+    )
+    provider = TwelveDataProvider(api_key="key", session=Session())
+    provider.connect()
+    df = provider.get_history("XAUUSD", "M5", 1)
+
+    assert list(df.columns) == ["Open", "High", "Low", "Close", "Volume"]
+    assert len(df) == 1
+    assert df.index[-1] == pd.Timestamp("2026-10-03 10:00:00", tz="UTC")
 
 
 def test_yahoo_get_history_returns_expected_columns(monkeypatch):
@@ -84,6 +126,6 @@ def test_yahoo_get_history_rejects_mt_style_timeframe(monkeypatch):
     provider.connect()
 
     with pytest.raises(ValueError):
-        provider.get_history("XAUUSD", "M15", 5)
+        provider.get_history("XAUUSD", "bad-timeframe", 5)
 
     provider.disconnect()

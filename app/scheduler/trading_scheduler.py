@@ -3,6 +3,8 @@ import threading
 import time
 
 from app.factories.engine_factory import create_engine
+from app.config import TradingConfig
+from app.scheduler.candle_schedule import seconds_until_next_candle
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,7 @@ class TradingScheduler:
                         "No active strategy configured."
                     )
 
-                    time.sleep(5)
+                    time.sleep(seconds_until_next_candle(TradingConfig.TIMEFRAME))
 
                     continue
 
@@ -69,4 +71,6 @@ class TradingScheduler:
                 if engine is not None:
                     engine.close()
 
-            time.sleep(5)
+            # The former five-second polling reevaluated the same candle up
+            # to 60 times on M5.  Run once just after the next candle closes.
+            time.sleep(seconds_until_next_candle(TradingConfig.TIMEFRAME))

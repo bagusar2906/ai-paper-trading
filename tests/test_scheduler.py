@@ -1,6 +1,12 @@
 from unittest.mock import patch
 
 from app.scheduler.trading_scheduler import TradingScheduler
+from app.scheduler.candle_schedule import seconds_until_next_candle
+
+
+def test_scheduler_waits_for_the_next_candle_boundary():
+    assert seconds_until_next_candle("M5", now=601, grace_seconds=3) == 302
+    assert seconds_until_next_candle("15m", now=1800, grace_seconds=3) == 903
 
 
 def test_scheduler_closes_engine_after_each_cycle():

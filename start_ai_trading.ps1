@@ -16,7 +16,8 @@ param(
    # [string]$Model = "gpt-5.5",
     [string]$Model = "my-combo",
     [int]$TimeoutSeconds = 20,
-    [string]$ApiBaseUrl = "http://localhost:20128/v1"
+    [string]$ApiBaseUrl = "http://localhost:20128/v1",
+    [string]$TwelveDataApiKey
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,6 +47,26 @@ if ([string]::IsNullOrWhiteSpace($env:AI_API_KEY) -and
 $env:OPENAI_TRADING_MODEL = $Model
 $env:OPENAI_TRADING_TIMEOUT_SECONDS = $TimeoutSeconds.ToString()
 $env:AI_API_BASE_URL = $ApiBaseUrl.TrimEnd("/")
+$env:MARKET_DATA_PROVIDER = "twelve_data"
+
+if (-not [string]::IsNullOrWhiteSpace($TwelveDataApiKey)) {
+    $env:TWELVE_DATA_API_KEY = $TwelveDataApiKey
+}
+
+if ([string]::IsNullOrWhiteSpace($env:TWELVE_DATA_API_KEY)) {
+    $secureMarketDataKey = Read-Host "Twelve Data API key" -AsSecureString
+    $marketDataKeyPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureMarketDataKey)
+    try {
+        $env:TWELVE_DATA_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($marketDataKeyPointer)
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($marketDataKeyPointer)
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($env:TWELVE_DATA_API_KEY)) {
+    throw "A Twelve Data API key is required for the configured spot XAU/USD provider."
+}
 
 $venvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
 if (Test-Path $venvPython) {
@@ -62,4 +83,5 @@ else {
 Set-Location $projectRoot
 Write-Host "Starting AI paper trading at http://localhost:8000/ui/"
 Write-Host "Gateway: $env:AI_API_BASE_URL | model: $env:OPENAI_TRADING_MODEL | timeout: $env:OPENAI_TRADING_TIMEOUT_SECONDS seconds"
+Write-Host "Market data: Twelve Data spot XAU/USD on completed M5 candles"
 & $python run_api.py
