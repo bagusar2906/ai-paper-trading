@@ -13,7 +13,8 @@ http://localhost:8000/ui/strategy.html.
 param(
     # OmniRoute defaults. Override Model if your OmniRoute dashboard uses a
     # different model alias or routing combo.
-    [string]$Model = "gpt-5.5",
+   # [string]$Model = "gpt-5.5",
+    [string]$Model = "my-combo",
     [int]$TimeoutSeconds = 20,
     [string]$ApiBaseUrl = "http://localhost:20128/v1"
 )
