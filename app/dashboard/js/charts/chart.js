@@ -3,6 +3,9 @@ let chart;
 let candleSeries;
 let ema20Series;
 let ema50Series;
+let hasInitializedVisibleRange = false;
+
+const INITIAL_VISIBLE_CANDLES = 100;
 
 let markerPrimitive = null;
 import { updateMarkers } from "./chart-markers.js";
@@ -11,6 +14,8 @@ import { updatePositionLines } from "./chart-position.js";
 export function initializeChart() {
 
     const container = document.getElementById("chart");
+
+    hasInitializedVisibleRange = false;
 
     chart = LightweightCharts.createChart(container, {
 
@@ -141,7 +146,20 @@ export function updateChart(data) {
         data.positions
     );
 
-    chart.timeScale().fitContent();
+    // Fit only the first response. Re-fitting every refresh compresses all
+    // available candles and discards the user's zoom or pan position.
+    if (!hasInitializedVisibleRange && data.candles.length > 0) {
+
+        const lastCandleIndex = data.candles.length - 1;
+
+        chart.timeScale().setVisibleLogicalRange({
+            from: Math.max(0, lastCandleIndex - INITIAL_VISIBLE_CANDLES + 1),
+            to: lastCandleIndex,
+        });
+
+        hasInitializedVisibleRange = true;
+
+    }
 
 }
 
