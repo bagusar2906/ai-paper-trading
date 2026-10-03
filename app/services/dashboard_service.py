@@ -1,6 +1,7 @@
 from app.models.dashboard.dashboard_response import DashboardResponse
 from app.models.dashboard.dashboard_statistics import DashboardStatistics
 from app.models.dashboard.signal_response import SignalResponse
+from app.models.dashboard.active_strategy_response import ActiveStrategyResponse
 from app.factories.repository_factory import RepositoryFactory
 
 
@@ -25,6 +26,10 @@ class DashboardService:
 
             signals = repos.signals.get_recent(20)
 
+            active_strategy = self._build_active_strategy(
+                repos.strategies.get_active()
+            )
+
             statistics = self._calculate_statistics(trades)
 
             current_signal = self._build_signal(
@@ -40,6 +45,7 @@ class DashboardService:
                 trades=trades,
                 signals=signals,
                 statistics=statistics,
+                active_strategy=active_strategy,
             )
 
         finally:
@@ -49,6 +55,18 @@ class DashboardService:
             # (never closed) or, if closed too early, break every call after the
             # first. Scoping it here instead keeps each /dashboard request isolated.
             repos.close()
+
+    @staticmethod
+    def _build_active_strategy(strategy) -> ActiveStrategyResponse | None:
+
+        if strategy is None:
+            return None
+
+        return ActiveStrategyResponse(
+            id=strategy.id,
+            name=strategy.name,
+            strategy_type=strategy.strategy_type,
+        )
     
     from app.models.dashboard.signal_response import SignalResponse
 

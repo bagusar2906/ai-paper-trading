@@ -55,6 +55,17 @@ def test_ai_strategy_holds_without_credentials(monkeypatch):
     assert "API key" in signal.reason
 
 
+def test_ai_strategy_schema_is_serializable_for_the_editor():
+    schema = AIAgentStrategy.schema()
+
+    assert [field.key for field in schema] == [
+        "lookback_bars",
+        "min_confidence",
+        "stop_loss_pips",
+        "risk_reward_ratio",
+    ]
+
+
 def test_ai_strategy_uses_configured_gateway_url(monkeypatch):
     class Response:
         def raise_for_status(self):

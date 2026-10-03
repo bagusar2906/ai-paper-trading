@@ -171,6 +171,10 @@ take profit locally and continues to apply the existing risk manager before an
 order is placed. Missing credentials, API failures, malformed responses, and
 low-confidence decisions safely become `HOLD`.
 
+On the **Strategies** page, press **Activate** for exactly one strategy. The
+background trading scheduler reads that active strategy on its next cycle, so
+no application restart is required.
+
 On Windows, you can start the API with `./start_ai_trading.ps1`. The launcher
 uses `OPENAI_API_KEY` if it is already set, otherwise prompts securely for it.
 

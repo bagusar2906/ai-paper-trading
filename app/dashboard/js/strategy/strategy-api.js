@@ -12,6 +12,10 @@ export async function getStrategy(id) {
     const response =
         await fetch(`/strategy/${id}`);
 
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+
     return response.json();
 
 }
@@ -73,10 +77,30 @@ export async function deleteStrategy(id) {
 
 }
 
+export async function activateStrategy(id) {
+
+    const response = await fetch(`/strategy/${id}/activate`, {
+
+        method: "POST"
+
+    });
+
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+
+    return response.json();
+
+}
+
 export async function getStrategyTypes() {
 
     const response =
         await fetch("/strategy/types");
+
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
 
     return response.json();
 
@@ -86,6 +110,10 @@ export async function getStrategySchema(type) {
 
     const response =
         await fetch(`/strategy/schema/${type}`);
+
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
 
     return response.json();
 

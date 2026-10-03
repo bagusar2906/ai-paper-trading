@@ -42,10 +42,22 @@ class AIAgentStrategy(Strategy):
     @classmethod
     def schema(cls) -> list[StrategyParameter]:
         return [
-            StrategyParameter("lookback_bars", "Candles supplied to AI", "number", 30, 10, 100, 1),
-            StrategyParameter("min_confidence", "Minimum AI confidence", "number", 0.65, 0, 1, 0.05),
-            StrategyParameter("stop_loss_pips", "Stop Loss (Pips)", "number", 300, 10, 5000, 10),
-            StrategyParameter("risk_reward_ratio", "Risk Reward Ratio", "number", 2.0, 0.5, 10, 0.1),
+            StrategyParameter(
+                key="lookback_bars", label="Candles supplied to AI",
+                type="number", default=30, minimum=10, maximum=100, step=1,
+            ),
+            StrategyParameter(
+                key="min_confidence", label="Minimum AI confidence",
+                type="number", default=0.65, minimum=0, maximum=1, step=0.05,
+            ),
+            StrategyParameter(
+                key="stop_loss_pips", label="Stop Loss (Pips)",
+                type="number", default=300, minimum=10, maximum=5000, step=10,
+            ),
+            StrategyParameter(
+                key="risk_reward_ratio", label="Risk Reward Ratio",
+                type="number", default=2.0, minimum=0.5, maximum=10, step=0.1,
+            ),
         ]
 
     def __init__(self, config: dict):

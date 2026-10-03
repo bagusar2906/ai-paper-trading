@@ -24,6 +24,7 @@ import { updateTrades } from "../components/trades-table.js";
 import { updateSignals } from "../components/signals-table.js";
 import { updateCurrentSignal } from "../components/current-signal.js";
 import { updateSignal } from "../components/signals-card.js";
+import { updateActiveStrategy } from "../components/active-strategy.js";
 
 const REFRESH_INTERVAL = 5000;
 
@@ -83,6 +84,8 @@ async function refresh() {
 }
 
 function renderDashboard(dashboard) {
+
+    updateActiveStrategy(dashboard.active_strategy);
 
     updateAccount(
         dashboard.account

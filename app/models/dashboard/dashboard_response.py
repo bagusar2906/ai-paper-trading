@@ -6,6 +6,7 @@ from app.models.signal import TradingSignal
 from app.models.trade import Trade
 
 from .dashboard_statistics import DashboardStatistics
+from .active_strategy_response import ActiveStrategyResponse
 
 
 @dataclass
@@ -22,3 +23,5 @@ class DashboardResponse:
     signals: list[TradingSignal]
 
     statistics: DashboardStatistics
+
+    active_strategy: ActiveStrategyResponse | None
