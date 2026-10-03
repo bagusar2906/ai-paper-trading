@@ -324,3 +324,47 @@ class DecisionJournalEntity(Base):
         DateTime,
         default=datetime.utcnow,
     )
+
+
+# ==========================================================
+# Candidate-model registry (offline training only)
+# ==========================================================
+
+class TrainingRunEntity(Base):
+    __tablename__ = "training_runs"
+
+    training_run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    status: Mapped[str] = mapped_column(String(20))
+    feature_set_id: Mapped[str] = mapped_column(String(100))
+    label_definition_id: Mapped[str] = mapped_column(String(150))
+    config_json: Mapped[str] = mapped_column(Text)
+    metadata_json: Mapped[str] = mapped_column(Text)
+    metrics_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ModelVersionEntity(Base):
+    __tablename__ = "model_versions"
+
+    model_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    training_run_id: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(20), default="candidate")
+    artifact_path: Mapped[str] = mapped_column(Text)
+    artifact_sha256: Mapped[str] = mapped_column(String(64))
+    feature_set_id: Mapped[str] = mapped_column(String(100))
+    label_definition_id: Mapped[str] = mapped_column(String(150))
+    metrics_json: Mapped[str] = mapped_column(Text)
+    metadata_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ModelPromotionEntity(Base):
+    __tablename__ = "model_promotions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(64))
+    previous_model_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    action: Mapped[str] = mapped_column(String(30))
+    reviewer: Mapped[str] = mapped_column(String(100))
+    rationale: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

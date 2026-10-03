@@ -5,6 +5,7 @@ from app.enums.trading_mode import TradingMode
 from app.managers.position_manager import PositionManager
 from app.models import account
 from app.risk.risk_manager import RiskManager
+from app.market_data import DecisionJournalEntry
 
 logger = logging.getLogger(__name__)
 
@@ -213,11 +214,15 @@ class TradingEngine:
         if signal is None:
             return
 
+        context = getattr(signal, "ai_lab_context", None)
+
         if self.respect_trading_mode:
 
             mode = self.broker.get_trading_mode()
 
             if mode != TradingMode.AUTO:
+
+                self._journal_ai_decision(signal, context, "not_auto")
 
                 logger.info(
                     "Trading mode is %s - signal recorded, "
@@ -239,11 +244,17 @@ class TradingEngine:
 
         if not decision.allowed:
 
+            self._journal_ai_decision(signal, context, "rejected")
+
             logger.info(
                 "Trade rejected: %s",
                 decision.reason,
             )
 
+            return
+
+        if not self._journal_ai_decision(signal, context, "approved"):
+            logger.error("AI-assisted paper trade rejected because its decision could not be journaled")
             return
 
         signal.quantity = decision.quantity
@@ -255,6 +266,31 @@ class TradingEngine:
         )
 
         self.broker.execute(signal)
+
+    def _journal_ai_decision(self, signal, context, risk_status):
+        if context is None:
+            return True
+        repos = getattr(self.broker, "repos", None)
+        if repos is None:
+            return True
+        try:
+            repos.decision_journal.add(DecisionJournalEntry(
+                decision_id=context["decision_id"],
+                symbol=signal.symbol,
+                timeframe=self.timeframe,
+                decision_time=signal.time,
+                action=getattr(signal.action, "value", str(signal.action)),
+                entry_reference_price=signal.price,
+                model_id=context["model_id"],
+                regime=context["regime"],
+                risk_status=risk_status,
+                gate_outcomes=context["gates"],
+                reasons=context["reasons"],
+            ))
+            return True
+        except Exception:
+            logger.exception("Failed to journal AI-assisted decision")
+            return False
 
     def _build_result(
         self,

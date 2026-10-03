@@ -11,6 +11,7 @@ from app.repositories.strategy_repository import StrategyRepository
 from app.repositories.market_candle_repository import MarketCandleRepository
 from app.repositories.data_quality_event_repository import DataQualityEventRepository
 from app.repositories.decision_journal_repository import DecisionJournalRepository
+from app.repositories.model_registry_repository import ModelRegistryRepository
 
 
 
@@ -41,6 +42,7 @@ class RepositoryFactory:
         self.market_candles = MarketCandleRepository(self.session)
         self.data_quality_events = DataQualityEventRepository(self.session)
         self.decision_journal = DecisionJournalRepository(self.session)
+        self.model_registry = ModelRegistryRepository(self.session)
 
     def close(self):
 

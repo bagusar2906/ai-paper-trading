@@ -2,6 +2,7 @@ from app.strategy.base import Strategy
 from app.strategy.ema_rsi_adx import EMARSIADXStrategy
 from app.strategy.break_retest import BreakRetestStrategy
 from app.strategy.ai_agent import AIAgentStrategy
+from app.strategy.ai_assisted_xgb import AIAssistedXGBStrategy
 
 
 def create_strategy(
@@ -22,6 +23,10 @@ def create_strategy(
     if strategy_type == "AI_AGENT":
 
         return AIAgentStrategy(config)
+
+    if strategy_type == "AI_ASSISTED_XGB":
+
+        return AIAssistedXGBStrategy(config)
 
     raise ValueError(
         f"Unsupported strategy: {strategy_type}"
@@ -46,6 +51,10 @@ def get_strategy_schema(
 
         return AIAgentStrategy.schema()
 
+    if strategy_type == "AI_ASSISTED_XGB":
+
+        return AIAssistedXGBStrategy.schema()
+
     raise ValueError(
         f"Unsupported strategy: {strategy_type}"
     )
@@ -68,6 +77,11 @@ def get_supported_strategies():
         {
             "value": "AI_AGENT",
             "label": "AI Agent (OpenAI)",
+        },
+
+        {
+            "value": "AI_ASSISTED_XGB",
+            "label": "AI Assisted XGBoost (Paper Only)",
         },
 
     ]

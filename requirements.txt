@@ -8,3 +8,5 @@ MetaTrader5
 pytest
 httpx2
 sqlalchemy
+xgboost
+scikit-learn

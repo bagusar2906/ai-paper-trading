@@ -1,4 +1,5 @@
 import { getDashboard, getChart } from "../api.js";
+import { refreshModelOperations } from "../components/model-operations.js";
 
 import {
     initializeChart,
@@ -52,11 +53,13 @@ async function initialize() {
     );
 
     await refresh();
+    await refreshModelOperations();
 
     setInterval(
         refresh,
         REFRESH_INTERVAL
     );
+    setInterval(refreshModelOperations, 30000);
 
 }
 
