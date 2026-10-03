@@ -41,13 +41,13 @@ class AIAssistedXGBStrategy(Strategy):
     @classmethod
     def schema(cls):
         return [
-            StrategyParameter("horizon_candles", "Label horizon candles", "number", 12, 1, 100, 1),
-            StrategyParameter("up_return_threshold", "Up-return threshold", "number", 0.003, 0.00001, 1, 0.00001),
-            StrategyParameter("long_probability_threshold", "Long probability", "number", 0.70, 0.5, 1, 0.01),
-            StrategyParameter("short_probability_threshold", "Short probability", "number", 0.30, 0, 0.5, 0.01),
-            StrategyParameter("adx_threshold", "ADX threshold", "number", 25, 1, 100, 1),
-            StrategyParameter("stop_atr_multiple", "Stop ATR multiple", "number", 1.5, 0.1, 10, 0.1),
-            StrategyParameter("reward_risk_ratio", "Reward/risk ratio", "number", 2, 0.1, 10, 0.1),
+            StrategyParameter(key="horizon_candles", label="Label horizon candles", type="number", default=12, minimum=1, maximum=100, step=1),
+            StrategyParameter(key="up_return_threshold", label="Up-return threshold", type="number", default=0.003, minimum=0.00001, maximum=1, step=0.00001),
+            StrategyParameter(key="long_probability_threshold", label="Long probability", type="number", default=0.70, minimum=0.5, maximum=1, step=0.01),
+            StrategyParameter(key="short_probability_threshold", label="Short probability", type="number", default=0.30, minimum=0, maximum=0.5, step=0.01),
+            StrategyParameter(key="adx_threshold", label="ADX threshold", type="number", default=25, minimum=1, maximum=100, step=1),
+            StrategyParameter(key="stop_atr_multiple", label="Stop ATR multiple", type="number", default=1.5, minimum=0.1, maximum=10, step=0.1),
+            StrategyParameter(key="reward_risk_ratio", label="Reward/risk ratio", type="number", default=2, minimum=0.1, maximum=10, step=0.1),
         ]
 
     @property

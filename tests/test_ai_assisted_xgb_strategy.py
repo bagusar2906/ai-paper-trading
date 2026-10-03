@@ -42,6 +42,14 @@ def test_rule_based_regime_is_explainable():
     assert decision.reasons
 
 
+def test_ai_assisted_schema_is_serializable_for_the_strategy_editor():
+    assert [field.key for field in AIAssistedXGBStrategy.schema()] == [
+        "horizon_candles", "up_return_threshold", "long_probability_threshold",
+        "short_probability_threshold", "adx_threshold", "stop_atr_multiple",
+        "reward_risk_ratio",
+    ]
+
+
 def test_ai_assisted_strategy_requires_a_champion(monkeypatch):
     monkeypatch.setattr("app.strategy.ai_assisted_xgb.build_core_v1_features", lambda df: _features())
     signal = AIAssistedXGBStrategy(predictor=_UnavailablePredictor()).generate_signal("XAUUSD", _candles())
