@@ -93,6 +93,7 @@ class BacktestService:
         # Replay candles
         #
         equity = []
+        stopped = False
 
         minimum = strategy.minimum_bars
 
@@ -112,6 +113,10 @@ class BacktestService:
         try:
 
             for index, i in enumerate(range(minimum, len(df))):
+
+                if job_id and job_manager.is_cancel_requested(job_id):
+                    stopped = True
+                    break
 
                 # AI signals can involve a network request, so report a visible
                 # update more often than a purely local indicator strategy.
@@ -300,6 +305,7 @@ class BacktestService:
             rsi=rsi,
             adx=adx,
             markers=markers,
+            stopped=stopped,
         )
 
 

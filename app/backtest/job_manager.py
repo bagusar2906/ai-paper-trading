@@ -17,6 +17,8 @@ class JobManager:
             "result": None,
             "finished": False,
             "failed": False,
+            "cancel_requested": False,
+            "cancelled": False,
         }
 
         return job_id
@@ -37,15 +39,17 @@ class JobManager:
         self,
         job_id,
         result,
+        cancelled=False,
     ):
 
         job = self.jobs[job_id]
 
         job["progress"] = 100
-        job["status"] = "Completed"
+        job["status"] = "Stopped — showing partial results" if cancelled else "Completed"
 
         job["finished"] = True
         job["result"] = result
+        job["cancelled"] = cancelled
 
     def fail(self, job_id, error):
 
@@ -54,6 +58,24 @@ class JobManager:
         job["status"] = f"Failed: {str(error)[:250]}"
         job["finished"] = True
         job["failed"] = True
+
+    def request_cancel(self, job_id):
+
+        job = self.jobs.get(job_id)
+
+        if job is None:
+            return None
+
+        if not job["finished"]:
+            job["cancel_requested"] = True
+            job["status"] = "Stopping after the current candle..."
+
+        return job
+
+    def is_cancel_requested(self, job_id):
+
+        job = self.jobs.get(job_id)
+        return bool(job and job["cancel_requested"])
 
     def get(self, job_id):
 
