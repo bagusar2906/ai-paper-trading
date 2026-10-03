@@ -92,15 +92,12 @@ def current_signal():
     if signal is None:
         return {"signal": None}
 
-    # Persist so this also shows up in signal history / chart markers,
-    # not just when the background trading worker runs. Skip if it's the
-    # same action as the last one saved, to avoid flooding history with
-    # repeated identical signals.
+    # Persist one decision per symbol and source candle. The endpoint may be
+    # requested repeatedly before a new candle closes, especially with an AI
+    # strategy whose response can vary between requests.
     repos = RepositoryFactory()
     try:
-        last = repos.signals.get_last(signal.symbol)
-        if last is None or last.action != signal.action:
-            repos.signals.add(signal)
+        repos.signals.upsert_for_candle(signal)
     finally:
         repos.close()
 
