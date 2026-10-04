@@ -49,6 +49,8 @@ async function initialize() {
     initializeTradingMode();
     initializeFundAdjustment();
     initializeModelOperations();
+    initializeTradesCollapse();
+    initializeSignalHistoryCollapse();
     await initializeMarketDataSettings();
 
     window.addEventListener(
@@ -66,6 +68,38 @@ async function initialize() {
         if (modelOperationsVisible) refreshModelOperations();
     }, 30000);
 
+}
+
+function initializeTradesCollapse() {
+
+    const collapse = document.getElementById("recentTradesCollapse");
+    const button = document.getElementById("btnToggleRecentTrades");
+
+    collapse.addEventListener("shown.bs.collapse", () => {
+        button.textContent = "Hide Trades";
+        button.setAttribute("aria-expanded", "true");
+    });
+
+    collapse.addEventListener("hidden.bs.collapse", () => {
+        button.textContent = "Show Trades";
+        button.setAttribute("aria-expanded", "false");
+    });
+}
+
+function initializeSignalHistoryCollapse() {
+
+    const collapse = document.getElementById("signalHistoryCollapse");
+    const button = document.getElementById("btnToggleSignalHistory");
+
+    collapse.addEventListener("shown.bs.collapse", () => {
+        button.textContent = "Hide Signals";
+        button.setAttribute("aria-expanded", "true");
+    });
+
+    collapse.addEventListener("hidden.bs.collapse", () => {
+        button.textContent = "Show Signals";
+        button.setAttribute("aria-expanded", "false");
+    });
 }
 
 async function refresh() {
