@@ -30,6 +30,7 @@ import { initializeFundAdjustment } from "../components/fund-adjustment.js";
 import { initializeMarketDataSettings } from "../components/market-data-settings.js";
 
 const REFRESH_INTERVAL = 5000;
+let modelOperationsVisible = false;
 
 document.addEventListener(
     "DOMContentLoaded",
@@ -56,13 +57,14 @@ async function initialize() {
     );
 
     await refresh();
-    await refreshModelOperations();
 
     setInterval(
         refresh,
         REFRESH_INTERVAL
     );
-    setInterval(refreshModelOperations, 30000);
+    setInterval(() => {
+        if (modelOperationsVisible) refreshModelOperations();
+    }, 30000);
 
 }
 
@@ -94,6 +96,7 @@ async function refresh() {
 function renderDashboard(dashboard) {
 
     updateActiveStrategy(dashboard.active_strategy);
+    updateModelOperationsVisibility(dashboard.active_strategy);
 
     updateAccount(
         dashboard.account
@@ -123,4 +126,20 @@ function renderDashboard(dashboard) {
         dashboard.signals
     );
 
+}
+
+function updateModelOperationsVisibility(activeStrategy) {
+
+    const card = document.getElementById("aiModelOperations");
+    const applicable = activeStrategy?.strategy_type?.toUpperCase() === "AI_ASSISTED_XGB";
+
+    card.classList.toggle("d-none", !applicable);
+
+    if (applicable && !modelOperationsVisible) {
+        modelOperationsVisible = true;
+        refreshModelOperations();
+    }
+    else if (!applicable) {
+        modelOperationsVisible = false;
+    }
 }
