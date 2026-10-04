@@ -50,6 +50,9 @@ export async function getChart() {
 }
 
 export async function getModels() { return request("/models"); }
+export async function trainCandidate(payload) {
+    return request("/models/train", { method: "POST", body: JSON.stringify(payload) });
+}
 export async function promoteModel(id, reviewer, rationale) {
     return request(`/models/${encodeURIComponent(id)}/promote`, { method: "POST", body: JSON.stringify({ reviewer, rationale }) });
 }

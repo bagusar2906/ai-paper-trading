@@ -1,5 +1,5 @@
 import { getDashboard, getChart } from "../api.js";
-import { refreshModelOperations } from "../components/model-operations.js";
+import { initializeModelOperations, refreshModelOperations } from "../components/model-operations.js";
 
 import {
     initializeChart,
@@ -46,6 +46,7 @@ async function initialize() {
     initializeEditPosition();
     initializeTradingMode();
     initializeFundAdjustment();
+    initializeModelOperations();
 
     window.addEventListener(
         "dashboard-refresh",

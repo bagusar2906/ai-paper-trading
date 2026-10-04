@@ -1,8 +1,18 @@
 from fastapi import APIRouter, HTTPException
 
 from app.factories.repository_factory import RepositoryFactory
+from app.services.model_training_service import ModelTrainingService
 
 router = APIRouter(prefix="/models", tags=["Models"])
+
+
+@router.post("/train")
+def train_candidate(request: dict):
+    """Train and register a paper-only candidate from completed candles."""
+    try:
+        return ModelTrainingService().train_candidate(request)
+    except (RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.get("")
