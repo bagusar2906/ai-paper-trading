@@ -1,4 +1,5 @@
 from venv import logger
+from pathlib import Path
 
 import yfinance as yf
 import pandas as pd
@@ -44,6 +45,8 @@ _SYMBOL_MAP = {
     "XAUUSD": "GC=F",
 }
 
+YAHOO_CACHE_DIRECTORY = Path("data/yfinance")
+
 
 class YahooProvider(DataProvider):
 
@@ -51,6 +54,11 @@ class YahooProvider(DataProvider):
         self._connected = False
 
     def connect(self):
+        # yfinance persists ticker timezones in a local SQLite cache. Keep it
+        # inside the application's writable runtime-data directory rather than
+        # relying on a user-profile cache that may be unavailable to the app.
+        YAHOO_CACHE_DIRECTORY.mkdir(parents=True, exist_ok=True)
+        yf.set_tz_cache_location(str(YAHOO_CACHE_DIRECTORY.resolve()))
         self._connected = True
         return True
 
@@ -82,7 +90,12 @@ class YahooProvider(DataProvider):
             timeframe,
         )
 
-        df = yf.Ticker(yf_symbol).history(period=period, interval=interval)
+        try:
+            df = yf.Ticker(yf_symbol).history(period=period, interval=interval)
+        except Exception as error:
+            raise RuntimeError(
+                f"Yahoo Finance request failed for {yf_symbol} ({timeframe}): {error}"
+            ) from error
 
         if df is None or df.empty:
             raise RuntimeError(

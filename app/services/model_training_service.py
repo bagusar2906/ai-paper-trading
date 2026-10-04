@@ -63,13 +63,18 @@ class ModelTrainingService:
         repos = self.repository_factory()
         try:
             registered = repos.model_registry.record_candidate(result)
+            # SQLAlchemy expires attributes after commit. Capture these while
+            # the session remains open so the response does not access a
+            # detached model instance after repos.close().
+            model_id = registered.model_id
+            status = registered.status
         finally:
             repos.close()
 
         return {
-            "model_id": registered.model_id,
+            "model_id": model_id,
             "training_run_id": result.training_run_id,
-            "status": registered.status,
+            "status": status,
             "symbol": symbol,
             "timeframe": timeframe,
             "history_bars": bars,

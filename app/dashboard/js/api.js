@@ -12,8 +12,17 @@ async function request(url, options = {}) {
 
     if (!response.ok) {
 
+        let detail = response.statusText;
+        try {
+            const payload = await response.json();
+            detail = payload.detail || detail;
+        }
+        catch (_) {
+            // Some proxy/server failures do not return JSON.
+        }
+
         throw new Error(
-            `HTTP ${response.status}: ${response.statusText}`
+            `HTTP ${response.status}: ${detail}`
         );
 
     }

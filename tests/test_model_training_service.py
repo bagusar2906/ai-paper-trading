@@ -49,10 +49,24 @@ def test_manual_training_registers_a_candidate_and_disconnects_provider(tmp_path
                 metrics={"precision": 0.5},
             )
 
+    class RegisteredCandidate:
+        def __init__(self, repositories):
+            self.repositories = repositories
+
+        @property
+        def model_id(self):
+            assert not self.repositories.closed
+            return "candidate-xgb-test"
+
+        @property
+        def status(self):
+            assert not self.repositories.closed
+            return "candidate"
+
     class Registry:
         def record_candidate(self, result):
             recorded.append(result.model_id)
-            return SimpleNamespace(model_id=result.model_id, status="candidate")
+            return RegisteredCandidate(repos)
 
     class Repositories:
         model_registry = Registry()
@@ -113,6 +127,19 @@ def test_train_endpoint_returns_a_candidate_summary(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == expected
+
+
+def test_train_endpoint_exposes_provider_failures(monkeypatch):
+    class Service:
+        def train_candidate(self, request):
+            raise RuntimeError("Yahoo Finance request failed for GC=F (M5): cache unavailable")
+
+    monkeypatch.setattr("app.api.models.ModelTrainingService", lambda: Service())
+
+    response = TestClient(app).post("/models/train", json={"bars": 300})
+
+    assert response.status_code == 400
+    assert "Yahoo Finance request failed" in response.json()["detail"]
 
 
 def test_model_list_exposes_saved_validation_metrics(monkeypatch):

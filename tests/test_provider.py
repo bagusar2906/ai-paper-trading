@@ -132,6 +132,42 @@ def test_yahoo_get_history_returns_expected_columns(monkeypatch):
     provider.disconnect()
 
 
+def test_yahoo_provider_uses_application_cache_directory(monkeypatch, tmp_path):
+    configured_paths = []
+    monkeypatch.setattr(
+        "app.providers.yahoo_provider.YAHOO_CACHE_DIRECTORY",
+        tmp_path / "yfinance",
+    )
+    monkeypatch.setattr(
+        "app.providers.yahoo_provider.yf.set_tz_cache_location",
+        configured_paths.append,
+    )
+
+    provider = YahooProvider()
+    provider.connect()
+
+    assert configured_paths == [str((tmp_path / "yfinance").resolve())]
+    assert provider.is_connected()
+
+
+def test_yahoo_history_exposes_provider_errors(monkeypatch):
+    class FailingTicker:
+        def history(self, period, interval):
+            raise OSError("cache is unavailable")
+
+    monkeypatch.setattr(
+        "app.providers.yahoo_provider.yf.Ticker",
+        lambda symbol: FailingTicker(),
+    )
+    provider = YahooProvider()
+    provider.connect()
+
+    with pytest.raises(RuntimeError, match="Yahoo Finance request failed"):
+        provider.get_history("XAUUSD", "M5", 10)
+
+    provider.disconnect()
+
+
 def test_yahoo_get_history_rejects_mt_style_timeframe(monkeypatch):
     """Regression test: the backtest dashboard used to submit MetaTrader-style
     labels ('M15', 'H1', ...) instead of the app's own '15m' / '1h' format.

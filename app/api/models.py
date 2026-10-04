@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException
 
@@ -6,6 +7,7 @@ from app.factories.repository_factory import RepositoryFactory
 from app.services.model_training_service import ModelTrainingService
 
 router = APIRouter(prefix="/models", tags=["Models"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/train")
@@ -15,6 +17,12 @@ def train_candidate(request: dict):
         return ModelTrainingService().train_candidate(request)
     except (RuntimeError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Candidate training failed unexpectedly")
+        raise HTTPException(
+            status_code=500,
+            detail="Candidate training failed unexpectedly. Check the server log.",
+        ) from error
 
 
 @router.get("")
