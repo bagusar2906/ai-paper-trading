@@ -66,6 +66,7 @@ export async function getModelExperimentPlan(parameters) {
 }
 export async function getModelHealth() { return request("/models/health"); }
 export async function getModelReviewGuidance(id) { return request(`/models/${encodeURIComponent(id)}/review-guidance`, { method: "POST" }); }
+export async function getModelReviewHistory(id) { return request(`/models/${encodeURIComponent(id)}/review-history`); }
 export async function trainCandidate(payload) {
     return request("/models/train", { method: "POST", body: JSON.stringify(payload) });
 }

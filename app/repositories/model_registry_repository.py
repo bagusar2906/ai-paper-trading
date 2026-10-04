@@ -1,12 +1,45 @@
 """Persistence for offline candidate models; promotion is intentionally absent."""
 
 import json
+from datetime import datetime, timezone
 
 from app.database.models import ModelPromotionEntity, ModelVersionEntity, TrainingRunEntity
 from app.repositories.base_repository import BaseRepository
 
 
 class ModelRegistryRepository(BaseRepository):
+    def add_review_event(self, model_id: str, event_type: str, evidence: dict):
+        """Append immutable-style review evidence without changing model status."""
+        model = self.get(model_id)
+        if model is None:
+            raise ValueError("model not found")
+        try:
+            metadata = json.loads(model.metadata_json or "{}")
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+        history = metadata.get("review_history")
+        if not isinstance(history, list):
+            history = []
+        history.append({
+            "type": event_type,
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "evidence": evidence,
+        })
+        metadata["review_history"] = history[-50:]
+        model.metadata_json = json.dumps(metadata, sort_keys=True)
+        self.session.commit()
+        return metadata["review_history"]
+
+    def review_history(self, model_id: str):
+        model = self.get(model_id)
+        if model is None:
+            raise ValueError("model not found")
+        try:
+            metadata = json.loads(model.metadata_json or "{}")
+        except (TypeError, json.JSONDecodeError):
+            return []
+        history = metadata.get("review_history", [])
+        return history if isinstance(history, list) else []
     def record_candidate(self, result):
         if result.status != "candidate":
             raise ValueError("only candidate models may be registered in this phase")
@@ -74,9 +107,19 @@ class ModelRegistryRepository(BaseRepository):
         candidate = self.get(model_id)
         if candidate is None or candidate.status != "candidate":
             raise ValueError("only a registered candidate can be promoted")
-        previous = self.get_champion(candidate.feature_set_id, candidate.label_definition_id)
-        if previous is not None:
-            previous.status = "retired"
+        previous_models = (
+            self.session.query(ModelVersionEntity)
+            .filter_by(
+                status="champion",
+                feature_set_id=candidate.feature_set_id,
+                label_definition_id=candidate.label_definition_id,
+            )
+            .order_by(ModelVersionEntity.created_at.desc())
+            .all()
+        )
+        previous = previous_models[0] if previous_models else None
+        for prior in previous_models:
+            prior.status = "retired"
         candidate.status = "champion"
         audit = ModelPromotionEntity(
             model_id=model_id,

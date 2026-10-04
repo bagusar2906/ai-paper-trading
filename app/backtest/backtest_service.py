@@ -89,7 +89,19 @@ class BacktestService:
                 candidate_report.statistics, champion_report.statistics
             ),
         }
+        self._record_candidate_review(candidate.model_id, candidate_report.comparison)
         return candidate_report
+
+    @staticmethod
+    def _record_candidate_review(model_id, comparison):
+        """Persist only paper-only evidence; this never promotes the candidate."""
+        repos = RepositoryFactory()
+        try:
+            repos.model_registry.add_review_event(model_id, "held_out_backtest", comparison)
+        except Exception:
+            logger.exception("Could not persist candidate backtest review evidence")
+        finally:
+            repos.close()
 
     def _comparison_models(self, candidate_model_id, symbol, timeframe, config):
         label_id = FutureReturnLabel(

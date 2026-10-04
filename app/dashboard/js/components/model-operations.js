@@ -1,4 +1,4 @@
-import { deleteModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModelReviewHistory, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -176,7 +176,35 @@ function row(model) {
         deleteButton.onclick = () => openDeleteDialog(model);
         actions.append(deleteButton);
     }
+    const historyButton = document.createElement("button");
+    historyButton.className = "btn btn-sm btn-outline-secondary ms-1";
+    historyButton.textContent = "History";
+    historyButton.onclick = () => openReviewHistory(model);
+    actions.append(historyButton);
     return tr;
+}
+
+async function openReviewHistory(model) {
+    const body = document.getElementById("modelReviewHistoryBody");
+    if (!body) return;
+    body.textContent = "Loading review history…";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modelReviewHistoryModal")).show();
+    try {
+        const history = await getModelReviewHistory(model.model_id);
+        body.replaceChildren();
+        if (!history.length) {
+            body.textContent = "No saved review events yet.";
+            return;
+        }
+        for (const event of history.slice().reverse()) {
+            const item = document.createElement("div");
+            item.className = "border rounded p-2 mb-2 small";
+            item.textContent = `${event.recorded_at} · ${event.type} · ${JSON.stringify(event.evidence)}`;
+            body.append(item);
+        }
+    } catch (error) {
+        body.textContent = `Could not load review history: ${error.message}`;
+    }
 }
 
 function formatMetrics(metrics = {}) {

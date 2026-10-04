@@ -142,7 +142,21 @@ def review_guidance(model_id: str):
         model = repos.model_registry.get(model_id)
         if model is None:
             raise HTTPException(status_code=404, detail="model not found")
-        return ModelReviewGuidanceService().review(model)
+        result = ModelReviewGuidanceService().review(model)
+        repos.model_registry.add_review_event(model_id, "ai_guidance", result)
+        return result
+    finally:
+        repos.close()
+
+
+@router.get("/{model_id}/review-history")
+def review_history(model_id: str):
+    repos = RepositoryFactory()
+    try:
+        try:
+            return repos.model_registry.review_history(model_id)
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
     finally:
         repos.close()
 
