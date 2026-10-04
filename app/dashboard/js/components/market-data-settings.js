@@ -4,7 +4,8 @@ export async function initializeMarketDataSettings() {
     const select = document.getElementById("marketDataProvider");
     const saveButton = document.getElementById("saveMarketDataProvider");
     const status = document.getElementById("marketDataProviderStatus");
-    if (!select || !saveButton || !status) return;
+    const dialog = document.getElementById("marketDataSettingsModal");
+    if (!select || !saveButton || !status || !dialog) return;
 
     try {
         const settings = await getSettings();
@@ -20,6 +21,7 @@ export async function initializeMarketDataSettings() {
             const settings = await updateSettings({ market_data_provider: select.value });
             select.value = settings.market_data_provider;
             status.textContent = `Saved. New requests will use ${select.options[select.selectedIndex].text}.`;
+            bootstrap.Modal.getOrCreateInstance(dialog).hide();
         } catch (error) {
             status.textContent = `Unable to save data source: ${error.message}`;
         } finally {
