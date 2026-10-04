@@ -63,7 +63,11 @@ class ModelTrainingService:
         config = CandidateTrainingConfig(
             walk_forward=self._walk_forward_config(len(dataset.frame), horizon)
         )
-        result = self.trainer_factory(self.artifact_directory).train(
+        trainer = self.trainer_factory(
+            self.artifact_directory,
+            market_context={"symbol": symbol.upper(), "timeframe": timeframe},
+        )
+        result = trainer.train(
             dataset, definition.name, config
         )
 

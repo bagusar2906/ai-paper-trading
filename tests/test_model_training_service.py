@@ -37,8 +37,9 @@ def test_manual_training_registers_a_candidate_and_disconnects_provider(tmp_path
     recorded = []
 
     class Trainer:
-        def __init__(self, artifact_directory):
+        def __init__(self, artifact_directory, market_context=None):
             assert artifact_directory == tmp_path
+            assert market_context == {"symbol": "XAUUSD", "timeframe": "M5"}
 
         def train(self, dataset, label_column, config):
             assert label_column == "future_return_up"
@@ -172,6 +173,7 @@ def test_model_list_exposes_saved_validation_metrics(monkeypatch):
         label_definition_id="future-return-up",
         created_at="2026-10-04T00:00:00Z",
         metrics_json=json.dumps({"precision": 0.7, "brier_score": 0.2}),
+        metadata_json=json.dumps({"market_context": {"symbol": "XAUUSD", "timeframe": "M5"}}),
     )])
     repos = SimpleNamespace(model_registry=registry, close=lambda: None)
     monkeypatch.setattr("app.api.models.RepositoryFactory", lambda: repos)
@@ -183,3 +185,4 @@ def test_model_list_exposes_saved_validation_metrics(monkeypatch):
         "precision": 0.7,
         "brier_score": 0.2,
     }
+    assert response.json()[0]["market_context"] == {"symbol": "XAUUSD", "timeframe": "M5"}

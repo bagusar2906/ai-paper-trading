@@ -90,6 +90,9 @@ async function executeBacktest() {
                 document.getElementById("btBalance").value
             ),
 
+        candidate_model_id:
+            document.getElementById("btCandidateModel").value || null,
+
     };
 
     showLoading("Starting backtest...");

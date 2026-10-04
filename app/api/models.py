@@ -38,6 +38,9 @@ def list_models():
             "label_definition_id": item.label_definition_id,
             "created_at": item.created_at,
             "metrics": _decode_metrics(item.metrics_json),
+            # Context is non-secret provenance used only to prevent a
+            # candidate comparison from silently using a different market.
+            "market_context": _market_context(getattr(item, "metadata_json", None)),
         } for item in models]
     finally:
         repos.close()
@@ -50,6 +53,20 @@ def _decode_metrics(metrics_json: str) -> dict:
     except (TypeError, json.JSONDecodeError):
         return {}
     return metrics if isinstance(metrics, dict) else {}
+
+
+def _market_context(metadata_json: str | None) -> dict | None:
+    try:
+        metadata = json.loads(metadata_json or "{}")
+    except (TypeError, json.JSONDecodeError):
+        return None
+    context = metadata.get("market_context") if isinstance(metadata, dict) else None
+    if not isinstance(context, dict):
+        return None
+    symbol, timeframe = context.get("symbol"), context.get("timeframe")
+    if not isinstance(symbol, str) or not isinstance(timeframe, str):
+        return None
+    return {"symbol": symbol, "timeframe": timeframe}
 
 
 @router.get("/champion")

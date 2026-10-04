@@ -4,6 +4,11 @@ import { getStrategies }
 import { initializeBacktest }
     from "./backtest.js";
 
+import { getModels }
+    from "../api.js";
+
+const strategiesById = new Map();
+
 async function loadStrategies() {
 
     const strategies =
@@ -18,6 +23,8 @@ async function loadStrategies() {
 
     for (const strategy of strategies) {
 
+        strategiesById.set(String(strategy.id), strategy);
+
         select.insertAdjacentHTML(
 
             "beforeend",
@@ -31,11 +38,78 @@ async function loadStrategies() {
 
     }
 
+    select.addEventListener("change", updateCandidateComparisonAvailability);
+    updateCandidateComparisonAvailability();
+
+}
+
+async function loadCandidateModels() {
+
+    const select = document.getElementById("btCandidateModel");
+    const contextHint = document.getElementById("btCandidateModelContext");
+    const candidates = new Map();
+
+    try {
+        const models = await getModels();
+
+        for (const model of models.filter(model => model.status === "candidate")) {
+            candidates.set(model.model_id, model);
+            const option = document.createElement("option");
+            option.value = model.model_id;
+            option.textContent = model.market_context
+                ? `${model.model_id} — ${model.market_context.symbol} / ${model.market_context.timeframe}`
+                : `${model.model_id} — retrain required`;
+            select.append(option);
+        }
+
+        select.addEventListener("change", () => {
+            const model = candidates.get(select.value);
+            const market = model?.market_context;
+            if (!model) {
+                contextHint.textContent = "";
+                return;
+            }
+            if (!market) {
+                contextHint.textContent = "This older candidate has no market context. Retrain it before comparison.";
+                return;
+            }
+            document.getElementById("btSymbol").value = market.symbol;
+            const timeframe = document.getElementById("btTimeframe");
+            if (![...timeframe.options].some(option => option.value === market.timeframe)) {
+                timeframe.add(new Option(market.timeframe, market.timeframe));
+            }
+            timeframe.value = market.timeframe;
+            contextHint.textContent = `Backtest symbol and timeframe set to ${market.symbol} / ${market.timeframe} to match this candidate.`;
+        });
+        updateCandidateComparisonAvailability();
+    }
+    catch (error) {
+        console.warn("Candidate comparison models unavailable:", error);
+    }
+}
+
+function updateCandidateComparisonAvailability() {
+
+    const strategy = strategiesById.get(document.getElementById("btStrategy").value);
+    const candidateSelect = document.getElementById("btCandidateModel");
+    const contextHint = document.getElementById("btCandidateModelContext");
+    const supported = strategy?.strategy_type === "AI_ASSISTED_XGB";
+
+    candidateSelect.disabled = !supported;
+
+    if (!supported) {
+        candidateSelect.value = "";
+        contextHint.textContent = "Candidate comparison is available only for an AI Assisted XGBoost strategy.";
+    }
+    else if (!candidateSelect.value) {
+        contextHint.textContent = "Select a candidate to compare it with the compatible champion.";
+    }
 }
 
 initializeBacktest();
 
 loadStrategies();
+loadCandidateModels();
 
 document
     .getElementById("btnToggleTrades")

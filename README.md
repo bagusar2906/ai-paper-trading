@@ -226,3 +226,21 @@ provider, strategy, risk, broker, and API behavior remains unchanged.
   at startup. Existing tables are not altered. Before deploying this beyond a
   local paper database, introduce the project's first versioned migration
   mechanism rather than relying on `create_all`.
+
+### Candidate versus champion backtest
+
+Train new XGBoost models as **candidates** from the dashboard. The training
+record now keeps the symbol, timeframe, and final walk-forward held-out start
+time. On **Backtesting**, select an AI Assisted XGBoost strategy, choose a
+candidate in **Candidate comparison**, then run the backtest. The system:
+
+- refuses candidates without recorded market context or a held-out window;
+- refuses a different symbol, timeframe, feature set, or label definition;
+- replays the candidate and current compatible champion over exactly the same
+  held-out candles; and
+- leaves the candidate unpromoted and unavailable to normal paper inference.
+
+Older candidates do not contain this provenance and must be retrained before
+comparison. A completed comparison displays net profit, profit factor, maximum
+drawdown, win rate, and trade count for review. Promotion remains a manual,
+audited decision from **AI Model Operations**.

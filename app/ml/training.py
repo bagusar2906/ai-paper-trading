@@ -52,8 +52,9 @@ class CandidateTrainingResult:
 class CandidateTrainer:
     """Produces offline candidates only; promotion and inference are out of scope."""
 
-    def __init__(self, artifact_directory: Path | str):
+    def __init__(self, artifact_directory: Path | str, market_context: dict | None = None):
         self.artifact_directory = Path(artifact_directory)
+        self.market_context = market_context
 
     def train(self, dataset: TrainingDataset, label_column: str, config: CandidateTrainingConfig) -> CandidateTrainingResult:
         if label_column not in dataset.frame:
@@ -127,6 +128,12 @@ class CandidateTrainer:
                 "xgboost": xgboost.__version__,
                 "scikit_learn": sklearn.__version__,
             },
+        }
+        if self.market_context:
+            metadata["market_context"] = dict(self.market_context)
+        metadata["evaluation_window"] = {
+            "start_time": str(frame.index[final_fold.validation_start]),
+            "end_time": str(frame.index[final_fold.validation_end - 1]),
         }
         self.artifact_directory.mkdir(parents=True, exist_ok=True)
         artifact_path = self.artifact_directory / f"{model_id}.pkl"

@@ -221,6 +221,30 @@
 
                         </div>
 
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                Candidate comparison (optional)
+
+                            </label>
+
+                            <select id="btCandidateModel" class="form-select">
+
+                                <option value="">Run selected strategy only</option>
+
+                            </select>
+
+                            <div class="form-text">
+
+                                Runs an unpromoted candidate and the current champion on the same held-out candles. It never promotes or enables the candidate.
+
+                            </div>
+
+                            <div id="btCandidateModelContext" class="form-text text-primary"></div>
+
+                        </div>
+
                         <hr>
 
                         <h5>
@@ -270,6 +294,22 @@
                     <div id="backtestSummary" class="card-body">
 
                     </div>
+
+                </div>
+
+                <div id="candidateComparisonCard" class="card shadow-sm mt-4 d-none">
+
+                    <div class="card-header">
+
+                        <strong>
+
+                            Candidate vs Champion (Held-out, Paper Only)
+
+                        </strong>
+
+                    </div>
+
+                    <div id="candidateComparison" class="card-body"></div>
 
                 </div>
 

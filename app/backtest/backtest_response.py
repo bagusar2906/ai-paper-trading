@@ -27,3 +27,5 @@ class BacktestResponse:
     markers: list[BacktestMarker]
 
     stopped: bool = False
+
+    comparison: dict | None = None
