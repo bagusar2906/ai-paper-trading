@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import numpy as np
@@ -112,3 +113,24 @@ def test_train_endpoint_returns_a_candidate_summary(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == expected
+
+
+def test_model_list_exposes_saved_validation_metrics(monkeypatch):
+    registry = SimpleNamespace(get_all=lambda: [SimpleNamespace(
+        model_id="candidate-xgb-test",
+        status="candidate",
+        feature_set_id="core-v1",
+        label_definition_id="future-return-up",
+        created_at="2026-10-04T00:00:00Z",
+        metrics_json=json.dumps({"precision": 0.7, "brier_score": 0.2}),
+    )])
+    repos = SimpleNamespace(model_registry=registry, close=lambda: None)
+    monkeypatch.setattr("app.api.models.RepositoryFactory", lambda: repos)
+
+    response = TestClient(app).get("/models")
+
+    assert response.status_code == 200
+    assert response.json()[0]["metrics"] == {
+        "precision": 0.7,
+        "brier_score": 0.2,
+    }

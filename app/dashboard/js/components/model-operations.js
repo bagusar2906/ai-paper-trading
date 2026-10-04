@@ -20,7 +20,7 @@ export async function refreshModelOperations() {
 
 function row(model) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${model.feature_set_id}</td><td></td>`;
+    tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${model.feature_set_id}</td><td>${model.label_definition_id}</td><td>${formatMetrics(model.metrics)}</td><td></td>`;
     const actions = tr.lastElementChild;
     if (model.status === "candidate" || model.status === "retired") {
         const button = document.createElement("button");
@@ -30,6 +30,18 @@ function row(model) {
         actions.append(button);
     }
     return tr;
+}
+
+function formatMetrics(metrics = {}) {
+    const values = [
+        ["Precision", metrics.precision],
+        ["Recall", metrics.recall],
+        ["ROC AUC", metrics.roc_auc],
+        ["Brier", metrics.brier_score],
+    ].filter(([, value]) => Number.isFinite(value));
+    return values.length
+        ? values.map(([name, value]) => `${name}: ${value.toFixed(3)}`).join(" · ")
+        : "—";
 }
 
 async function operate(model, button) {

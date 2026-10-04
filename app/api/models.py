@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, HTTPException
 
 from app.factories.repository_factory import RepositoryFactory
@@ -20,10 +22,25 @@ def list_models():
     repos = RepositoryFactory()
     try:
         models = repos.model_registry.get_all()
-        return [{"model_id": item.model_id, "status": item.status, "feature_set_id": item.feature_set_id,
-                 "label_definition_id": item.label_definition_id, "created_at": item.created_at} for item in models]
+        return [{
+            "model_id": item.model_id,
+            "status": item.status,
+            "feature_set_id": item.feature_set_id,
+            "label_definition_id": item.label_definition_id,
+            "created_at": item.created_at,
+            "metrics": _decode_metrics(item.metrics_json),
+        } for item in models]
     finally:
         repos.close()
+
+
+def _decode_metrics(metrics_json: str) -> dict:
+    """Keep legacy/corrupt registry metadata from breaking the dashboard."""
+    try:
+        metrics = json.loads(metrics_json)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return metrics if isinstance(metrics, dict) else {}
 
 
 @router.get("/champion")
