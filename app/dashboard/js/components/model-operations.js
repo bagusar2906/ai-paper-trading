@@ -1,4 +1,4 @@
-import { deleteModel, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getModelImprovementReport, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -19,12 +19,50 @@ export async function refreshModelOperations() {
     const status = document.getElementById("modelOperationsStatus");
     if (!body) return;
     try {
-        const models = await getModels();
+        const [models, report] = await Promise.all([getModels(), getModelImprovementReport()]);
         body.replaceChildren(...models.map(model => row(model)));
+        renderImprovementReport(report);
         status.textContent = models.some(model => model.status === "champion") ? "Paper-only champion available" : "No champion — AI strategy will hold";
     } catch (error) {
         status.textContent = `Model status unavailable: ${error.message}`;
     }
+}
+
+function renderImprovementReport(report) {
+    const container = document.getElementById("modelImprovementReport");
+    if (!container) return;
+    container.replaceChildren();
+    const assessments = report.assessments || [];
+    if (!assessments.length) {
+        container.textContent = "Train a candidate to receive a read-only improvement recommendation.";
+        return;
+    }
+    for (const assessment of assessments) {
+        const item = document.createElement("div");
+        item.className = "border rounded p-2 mb-2 small";
+        const heading = document.createElement("strong");
+        heading.textContent = `${assessment.candidate_model_id}: ${assessment.recommendation === "paper_test" ? "Paper-test recommended" : "Investigate before paper testing"}`;
+        const comparison = document.createElement("div");
+        comparison.className = "text-muted";
+        const auc = assessment.deltas?.roc_auc;
+        const brier = assessment.deltas?.brier_score;
+        comparison.textContent = assessment.champion_model_id
+            ? `Champion: ${assessment.champion_model_id} · Δ ROC AUC: ${formatDelta(auc)} · Δ Brier: ${formatDelta(brier)}`
+            : "No compatible champion for comparison.";
+        const reasons = document.createElement("ul");
+        reasons.className = "mb-0 mt-1 ps-3";
+        for (const reason of assessment.reasons || []) {
+            const reasonItem = document.createElement("li");
+            reasonItem.textContent = reason;
+            reasons.append(reasonItem);
+        }
+        item.append(heading, comparison, reasons);
+        container.append(item);
+    }
+}
+
+function formatDelta(value) {
+    return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(3)}` : "—";
 }
 
 function row(model) {

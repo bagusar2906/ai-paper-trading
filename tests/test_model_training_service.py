@@ -232,3 +232,29 @@ def test_model_list_exposes_saved_validation_metrics(monkeypatch):
         "brier_score": 0.2,
     }
     assert response.json()[0]["market_context"] == {"symbol": "XAUUSD", "timeframe": "M5"}
+
+
+def test_improvement_report_endpoint_is_read_only(monkeypatch):
+    champion = SimpleNamespace(
+        model_id="champion-xgb-test", status="champion", feature_set_id="core-v1",
+        label_definition_id="future-return-up", metrics_json=json.dumps({"roc_auc": 0.60, "brier_score": 0.22}),
+        metadata_json=json.dumps({"market_context": {"symbol": "XAUUSD", "timeframe": "M5"}}),
+    )
+    candidate = SimpleNamespace(
+        model_id="candidate-xgb-test", status="candidate", feature_set_id="core-v1",
+        label_definition_id="future-return-up", metrics_json=json.dumps({"roc_auc": 0.65, "brier_score": 0.20}),
+        metadata_json=json.dumps({
+            "market_context": {"symbol": "XAUUSD", "timeframe": "M5"},
+            "folds": [{"metrics": {"roc_auc": 0.64}}, {"metrics": {"roc_auc": 0.66}}],
+        }),
+    )
+    registry = SimpleNamespace(get_all=lambda: [candidate, champion])
+    repos = SimpleNamespace(model_registry=registry, close=lambda: None)
+    monkeypatch.setattr("app.api.models.RepositoryFactory", lambda: repos)
+
+    response = TestClient(app).get("/models/improvement-report")
+
+    assert response.status_code == 200
+    report = response.json()
+    assert report["automatic_promotion"] is False
+    assert report["assessments"][0]["recommendation"] == "paper_test"

@@ -342,6 +342,11 @@
             <div class="card-body">
                 <p class="small text-muted">Paper-only. Promotion and rollback require a reviewer and rationale; models never self-promote.</p>
                 <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3" data-bs-toggle="modal" data-bs-target="#trainCandidateModal">Train Candidate</button>
+                <div class="mb-3">
+                    <h6 class="mb-1">Improvement recommendations</h6>
+                    <p class="small text-muted mb-2">Read-only comparisons use compatible market context and walk-forward validation. They never promote or trade a model.</p>
+                    <div id="modelImprovementReport" class="text-muted small">Loading recommendations…</div>
+                </div>
                 <table id="modelOperations" class="table table-sm mb-0">
                     <thead><tr><th>Model</th><th>Status</th><th>Feature set</th><th>Label</th><th>Validation metrics</th><th>Action</th></tr></thead>
                     <tbody></tbody>

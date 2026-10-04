@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.factories.repository_factory import RepositoryFactory
+from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 
 router = APIRouter(prefix="/models", tags=["Models"])
@@ -75,6 +76,16 @@ def champion(feature_set_id: str, label_definition_id: str):
     try:
         model = repos.model_registry.get_champion(feature_set_id, label_definition_id)
         return None if model is None else {"model_id": model.model_id, "status": model.status}
+    finally:
+        repos.close()
+
+
+@router.get("/improvement-report")
+def improvement_report():
+    """Return read-only candidate recommendations; never promote a model."""
+    repos = RepositoryFactory()
+    try:
+        return ModelImprovementService().build_report(repos.model_registry.get_all())
     finally:
         repos.close()
 
