@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from app.factories.repository_factory import RepositoryFactory
 from app.services.model_experiment_service import ModelExperimentService
 from app.services.model_health_service import ModelHealthService
+from app.services.model_review_guidance_service import ModelReviewGuidanceService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 
@@ -132,6 +133,18 @@ def model_health():
         return ModelHealthService().check()
     except (RuntimeError, ValueError) as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@router.post("/{model_id}/review-guidance")
+def review_guidance(model_id: str):
+    repos = RepositoryFactory()
+    try:
+        model = repos.model_registry.get(model_id)
+        if model is None:
+            raise HTTPException(status_code=404, detail="model not found")
+        return ModelReviewGuidanceService().review(model)
+    finally:
+        repos.close()
 
 
 @router.post("/{model_id}/promote")

@@ -7,7 +7,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Paper Trading Dashboard</title>
+    <title>Trading</title>
 
     <link rel="icon" href="/ui/favicon.ico" type="image/x-icon">
 
@@ -32,7 +32,7 @@
 
             <a class="navbar-brand" href="index.html">
 
-                Paper Trading
+                Trading
 
             </a>
 
@@ -40,7 +40,7 @@
 
                 <a class="nav-link active" href="index.html">
 
-                    Dashboard
+                    Trading
 
                 </a>
 
@@ -49,6 +49,8 @@
                     Backtest
 
                 </a>
+
+                <a class="nav-link" href="ai-model-lab.html">AI Model Lab</a>
 
                 <a class="nav-link" href="strategy.html">
                     Strategies
@@ -72,7 +74,7 @@
 
             <h2 class="mb-0">
 
-                Dashboard
+                Paper Trading
             </h2>
 
             <div class="d-flex align-items-center gap-2">
@@ -409,6 +411,8 @@
                         <input id="modelReviewReviewer" class="form-control mb-3" maxlength="100" autocomplete="name">
                         <label for="modelReviewRationale" class="form-label">Rationale</label>
                         <textarea id="modelReviewRationale" class="form-control" rows="3"></textarea>
+                        <button id="requestModelReviewGuidance" type="button" class="btn btn-sm btn-outline-secondary mt-2">Get AI review guidance</button>
+                        <div id="modelReviewGuidance" class="small text-muted mt-2" role="status" aria-live="polite"></div>
                         <div id="modelReviewStatus" class="small text-danger mt-2"></div>
                     </div>
                     <div class="modal-footer">

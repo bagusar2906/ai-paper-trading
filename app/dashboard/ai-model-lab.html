@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Model Lab</title>
+    <link rel="icon" href="/ui/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="css/dashboard.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark"><div class="container-fluid">
+        <a class="navbar-brand" href="index.html">Paper Trading</a>
+        <div class="navbar-nav">
+            <a class="nav-link" href="index.html">Trading</a>
+            <a class="nav-link active" href="ai-model-lab.html">AI Model Lab</a>
+            <a class="nav-link" href="backtest.html">Backtest</a>
+            <a class="nav-link" href="strategy.html">Strategies</a>
+        </div>
+    </div></nav>
+    <main class="container-fluid py-3">
+        <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="mb-0">AI Model Lab</h2><p class="text-muted mb-0">Paper-only model training, review, and validation. Model promotion always requires human confirmation.</p></div><a class="btn btn-outline-secondary" href="backtest.html">Open Backtest</a></div>
+        <div id="aiModelOperations" class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center"><strong>Model Operations</strong><small id="modelOperationsStatus" class="text-muted">Loading model status…</small></div>
+            <div class="card-body">
+                <p class="small text-muted">Train candidates, compare them with the champion, and review AI guidance before manual promotion.</p>
+                <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3" data-bs-toggle="modal" data-bs-target="#trainCandidateModal">Train Candidate</button>
+                <button id="planExperiments" type="button" class="btn btn-sm btn-outline-secondary mb-3">Plan Experiments</button>
+                <div class="mb-3"><h6 class="mb-1">Champion health</h6><div id="modelHealth" class="small text-muted">Checking feature drift…</div></div>
+                <div class="mb-3"><h6 class="mb-1">Experiment plan</h6><div id="modelExperimentPlan" class="small text-muted">Create a plan to see bounded XGBoost variations.</div><div id="modelExperimentStatus" class="small text-muted mt-1"></div></div>
+                <div class="mb-3"><h6 class="mb-1">Improvement recommendations</h6><p class="small text-muted mb-2">Candidates are ranked by review readiness, validation improvement, and stability.</p><div id="modelImprovementReport" class="text-muted small">Loading recommendations…</div></div>
+                <div class="table-responsive"><table id="modelOperations" class="table table-sm mb-0"><thead><tr><th>Model</th><th>Status</th><th>Feature set</th><th>Label</th><th>Validation metrics</th><th>Top inputs</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+            </div>
+        </div>
+    </main>
+    <div class="modal fade" id="trainCandidateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Train XGBoost Candidate</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
+        <p class="small text-muted">Training creates a candidate only; it never promotes or trades automatically.</p>
+        <label class="form-label" for="candidateBars">Completed candles</label><input id="candidateBars" class="form-control mb-2" type="number" min="250" max="5000" value="1000">
+        <label class="form-label" for="candidateHorizon">Prediction horizon</label><input id="candidateHorizon" class="form-control mb-2" type="number" min="1" max="100" value="12">
+        <label class="form-label" for="candidateThreshold">Up-return threshold</label><input id="candidateThreshold" class="form-control mb-2" type="number" min="0.00001" max="1" step="0.00001" value="0.003">
+        <div class="row"><div class="col"><label class="form-label" for="candidateNEstimators">Trees</label><input id="candidateNEstimators" class="form-control" type="number" min="25" max="500" value="100"></div><div class="col"><label class="form-label" for="candidateMaxDepth">Max depth</label><input id="candidateMaxDepth" class="form-control" type="number" min="1" max="8" value="3"></div></div>
+        <div class="row mt-2"><div class="col"><label class="form-label" for="candidateLearningRate">Learning rate</label><input id="candidateLearningRate" class="form-control" type="number" min="0.01" max="0.30" step="0.01" value="0.05"></div><div class="col"><label class="form-label" for="candidateProbabilityThreshold">Probability threshold</label><input id="candidateProbabilityThreshold" class="form-control" type="number" min="0.40" max="0.70" step="0.01" value="0.50"></div></div>
+        <div id="candidateTrainingStatus" class="small mt-3"></div>
+    </div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button id="submitCandidateTraining" class="btn btn-primary">Train Candidate</button></div></div></div></div>
+    <div class="modal fade" id="modelReviewModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 id="modelReviewTitle" class="modal-title">Review Model</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p id="modelReviewDescription" class="small text-muted"></p><label class="form-label" for="modelReviewReviewer">Reviewer</label><input id="modelReviewReviewer" class="form-control mb-2"><label class="form-label" for="modelReviewRationale">Rationale</label><textarea id="modelReviewRationale" class="form-control" rows="3"></textarea><button id="requestModelReviewGuidance" type="button" class="btn btn-sm btn-outline-secondary mt-2">Get AI review guidance</button><div id="modelReviewGuidance" class="small text-muted mt-2"></div><div id="modelReviewStatus" class="small text-danger mt-2"></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button id="submitModelReview" class="btn btn-primary">Confirm</button></div></div></div></div>
+    <div class="modal fade" id="modelDeleteModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Delete Model</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><p id="modelDeleteDescription" class="small text-danger"></p><label class="form-label" for="modelDeleteReviewer">Reviewer</label><input id="modelDeleteReviewer" class="form-control mb-2"><label class="form-label" for="modelDeleteRationale">Rationale</label><textarea id="modelDeleteRationale" class="form-control" rows="3"></textarea><div id="modelDeleteStatus" class="small text-danger mt-2"></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button id="submitModelDelete" class="btn btn-danger">Delete</button></div></div></div></div>
+    <script type="module" src="js/ai-model-lab.js"></script>
+</body>
+</html>

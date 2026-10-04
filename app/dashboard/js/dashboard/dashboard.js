@@ -1,5 +1,4 @@
 import { getDashboard, getChart } from "../api.js";
-import { initializeModelOperations, refreshModelOperations } from "../components/model-operations.js";
 
 import {
     initializeChart,
@@ -30,7 +29,6 @@ import { initializeFundAdjustment } from "../components/fund-adjustment.js";
 import { initializeMarketDataSettings } from "../components/market-data-settings.js";
 
 const REFRESH_INTERVAL = 5000;
-let modelOperationsVisible = false;
 
 document.addEventListener(
     "DOMContentLoaded",
@@ -48,7 +46,6 @@ async function initialize() {
     initializeEditPosition();
     initializeTradingMode();
     initializeFundAdjustment();
-    initializeModelOperations();
     initializeTradesCollapse();
     initializeSignalHistoryCollapse();
     await initializeMarketDataSettings();
@@ -64,9 +61,6 @@ async function initialize() {
         refresh,
         REFRESH_INTERVAL
     );
-    setInterval(() => {
-        if (modelOperationsVisible) refreshModelOperations();
-    }, 30000);
 
 }
 
@@ -130,7 +124,6 @@ async function refresh() {
 function renderDashboard(dashboard) {
 
     updateActiveStrategy(dashboard.active_strategy);
-    updateModelOperationsVisibility(dashboard.active_strategy);
 
     updateAccount(
         dashboard.account
@@ -160,21 +153,5 @@ function renderDashboard(dashboard) {
     updateSignals(
         dashboard.signals
     );
-
 }
 
-function updateModelOperationsVisibility(activeStrategy) {
-
-    const card = document.getElementById("aiModelOperations");
-    const applicable = activeStrategy?.strategy_type?.toUpperCase() === "AI_ASSISTED_XGB";
-
-    card.classList.toggle("d-none", !applicable);
-
-    if (applicable && !modelOperationsVisible) {
-        modelOperationsVisible = true;
-        refreshModelOperations();
-    }
-    else if (!applicable) {
-        modelOperationsVisible = false;
-    }
-}

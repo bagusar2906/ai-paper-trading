@@ -1,4 +1,4 @@
-import { deleteModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -9,6 +9,9 @@ export function initializeModelOperations() {
 
     const reviewButton = document.getElementById("submitModelReview");
     if (reviewButton) reviewButton.addEventListener("click", () => submitReview(reviewButton));
+
+    const guidanceButton = document.getElementById("requestModelReviewGuidance");
+    if (guidanceButton) guidanceButton.addEventListener("click", () => requestReviewGuidance(guidanceButton));
 
     const deleteButton = document.getElementById("submitModelDelete");
     if (deleteButton) deleteButton.addEventListener("click", () => submitDeletion(deleteButton));
@@ -97,7 +100,20 @@ function renderModelHealth(health) {
     if (!target) return;
     const label = health.status === "healthy" ? "Healthy" : health.status === "watch" ? "Watch" : health.status === "stale" ? "Retraining review" : "Unavailable";
     const drift = (health.top_drift || []).map(item => `${item.feature}: ${item.score.toFixed(1)} IQR`).join(" · ");
-    target.textContent = `${label}: ${health.reasons?.[0] || "No health detail available."}${drift ? ` Top drift: ${drift}` : ""}`;
+    target.replaceChildren();
+    const summary = document.createElement("span");
+    summary.textContent = `${label}: ${health.reasons?.[0] || "No health detail available."}${drift ? ` Top drift: ${drift}` : ""}`;
+    target.append(summary);
+    if (["plan_retraining", "retrain_required"].includes(health.recommendation)) {
+        const button = document.createElement("button");
+        button.className = "btn btn-sm btn-outline-primary ms-2";
+        button.textContent = "Retrain as candidate";
+        button.title = "Opens training with a new candidate; the champion remains unchanged.";
+        button.onclick = () => {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("trainCandidateModal")).show();
+        };
+        target.append(button);
+    }
 }
 
 function renderImprovementReport(report) {
@@ -188,8 +204,24 @@ function openReviewDialog(model) {
     document.getElementById("modelReviewDescription").textContent = `${action} ${model.model_id}. This action is paper-only and will be recorded in the audit history.`;
     document.getElementById("modelReviewReviewer").value = "";
     document.getElementById("modelReviewRationale").value = "";
+    document.getElementById("modelReviewGuidance").textContent = "";
     document.getElementById("modelReviewStatus").textContent = "";
     bootstrap.Modal.getOrCreateInstance(document.getElementById("modelReviewModal")).show();
+}
+
+async function requestReviewGuidance(button) {
+    if (!pendingReview) return;
+    const target = document.getElementById("modelReviewGuidance");
+    button.disabled = true;
+    target.textContent = "Preparing read-only AI guidance…";
+    try {
+        const result = await getModelReviewGuidance(pendingReview.model_id);
+        target.textContent = `AI recommendation: ${result.recommendation}. Guidance (${result.source}): ${result.guidance}`;
+    } catch (error) {
+        target.textContent = `AI guidance unavailable: ${error.message}`;
+    } finally {
+        button.disabled = false;
+    }
 }
 
 async function submitReview(button) {
