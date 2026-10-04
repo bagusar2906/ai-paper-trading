@@ -115,7 +115,8 @@ function renderDashboard(dashboard) {
     );
 
     updatePositions(
-        dashboard.positions
+        dashboard.positions,
+        dashboard.trading_mode
     );
 
     updateTrades(

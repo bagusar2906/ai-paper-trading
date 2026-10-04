@@ -2,7 +2,7 @@ import {
     closePosition
 } from "../api.js";
 
-export function updatePositions(positions) {
+export function updatePositions(positions, tradingMode = "-") {
 
     const tbody =
         document.querySelector("#positionsTable tbody");
@@ -35,6 +35,14 @@ export function updatePositions(positions) {
             </td>
 
             <td>${position.entry_price.toFixed(2)}</td>
+
+            <td>${formatEntryTime(position.opened_at)}</td>
+
+            <td>
+                <span class="badge ${tradingMode === "AUTO" ? "bg-primary" : "bg-secondary"}">
+                    ${tradingMode}
+                </span>
+            </td>
 
             <td>${position.current_price?.toFixed(2) ?? "-"}</td>
 
@@ -76,6 +84,17 @@ export function updatePositions(positions) {
     document.getElementById("positionCount").textContent =
         positions.length;
 
+}
+
+function formatEntryTime(value) {
+
+    if (!value) return "-";
+
+    const entryTime = new Date(value);
+
+    return Number.isNaN(entryTime.getTime())
+        ? "-"
+        : entryTime.toLocaleString();
 }
 
 function attachEvents() {

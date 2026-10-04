@@ -25,3 +25,6 @@ class DashboardResponse:
     statistics: DashboardStatistics
 
     active_strategy: ActiveStrategyResponse | None
+
+    # Current application setting, not a historical attribute of a position.
+    trading_mode: str

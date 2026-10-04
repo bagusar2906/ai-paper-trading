@@ -49,6 +49,7 @@ class DashboardService:
                 signals=signals,
                 statistics=statistics,
                 active_strategy=active_strategy,
+                trading_mode=repos.settings.get_trading_mode(),
             )
 
         finally:
