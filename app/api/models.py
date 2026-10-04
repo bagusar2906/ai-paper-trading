@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.factories.repository_factory import RepositoryFactory
 from app.services.model_experiment_service import ModelExperimentService
+from app.services.model_health_service import ModelHealthService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 
@@ -122,6 +123,15 @@ def experiment_plan(
 ):
     """Suggest bounded training variations. This route does not start a job."""
     return ModelExperimentService().plan(locals())
+
+
+@router.get("/health")
+def model_health():
+    """Report champion feature drift without changing any model state."""
+    try:
+        return ModelHealthService().check()
+    except (RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @router.post("/{model_id}/promote")

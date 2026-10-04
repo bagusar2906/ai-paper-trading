@@ -1,4 +1,4 @@
-import { deleteModel, getModelExperimentPlan, getModelImprovementReport, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -82,13 +82,22 @@ export async function refreshModelOperations() {
     const status = document.getElementById("modelOperationsStatus");
     if (!body) return;
     try {
-        const [models, report] = await Promise.all([getModels(), getModelImprovementReport()]);
+        const [models, report, health] = await Promise.all([getModels(), getModelImprovementReport(), getModelHealth()]);
         body.replaceChildren(...models.map(model => row(model)));
         renderImprovementReport(report);
+        renderModelHealth(health);
         status.textContent = models.some(model => model.status === "champion") ? "Paper-only champion available" : "No champion — AI strategy will hold";
     } catch (error) {
         status.textContent = `Model status unavailable: ${error.message}`;
     }
+}
+
+function renderModelHealth(health) {
+    const target = document.getElementById("modelHealth");
+    if (!target) return;
+    const label = health.status === "healthy" ? "Healthy" : health.status === "watch" ? "Watch" : health.status === "stale" ? "Retraining review" : "Unavailable";
+    const drift = (health.top_drift || []).map(item => `${item.feature}: ${item.score.toFixed(1)} IQR`).join(" · ");
+    target.textContent = `${label}: ${health.reasons?.[0] || "No health detail available."}${drift ? ` Top drift: ${drift}` : ""}`;
 }
 
 function renderImprovementReport(report) {

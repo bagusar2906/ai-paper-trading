@@ -131,6 +131,7 @@ class CandidateTrainer:
             },
             "training_identity": self.training_identity(dataset, config, self.market_context),
             "feature_importance": self._feature_importance(model, features),
+            "feature_baseline": self._feature_baseline(frame, features),
         }
         if self.market_context:
             metadata["market_context"] = dict(self.market_context)
@@ -159,6 +160,16 @@ class CandidateTrainer:
                 zip(features, values), key=lambda item: item[1], reverse=True
             )
         ]
+
+    @staticmethod
+    def _feature_baseline(frame: pd.DataFrame, features: list[str]) -> dict:
+        return {
+            feature: {
+                "median": round(float(frame[feature].median()), 10),
+                "iqr": round(max(float(frame[feature].quantile(0.75) - frame[feature].quantile(0.25)), 1e-10), 10),
+            }
+            for feature in features
+        }
 
     @staticmethod
     def training_identity(

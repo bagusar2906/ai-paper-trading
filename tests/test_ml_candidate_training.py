@@ -66,6 +66,7 @@ def test_candidate_training_persists_an_auditable_candidate_artifact(tmp_path, r
     assert result.metrics["reliability_bins"]
     assert result.metadata["feature_importance"]
     assert result.metadata["feature_importance"][0]["importance"] >= result.metadata["feature_importance"][-1]["importance"]
+    assert result.metadata["feature_baseline"]["rsi_14"]["iqr"] > 0
 
     registered = repos.model_registry.record_candidate(result)
     assert registered.status == "candidate"
