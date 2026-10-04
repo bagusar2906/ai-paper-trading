@@ -44,3 +44,20 @@ def test_report_does_not_compare_different_market_contexts():
 
     assert assessment["champion_model_id"] is None
     assert assessment["recommendation"] == "paper_test"
+
+
+def test_report_ranks_reviewable_candidate_with_better_validation_first():
+    champion = _model("champion-1", "champion", {"roc_auc": 0.60, "brier_score": 0.22})
+    stronger = _model(
+        "candidate-strong", "candidate", {"roc_auc": 0.68, "brier_score": 0.20},
+        folds=({"metrics": {"roc_auc": 0.67}}, {"metrics": {"roc_auc": 0.69}}),
+    )
+    weaker = _model(
+        "candidate-weak", "candidate", {"roc_auc": 0.61, "brier_score": 0.24},
+        folds=({"metrics": {"roc_auc": 0.61}}, {"metrics": {"roc_auc": 0.62}}),
+    )
+
+    assessments = ModelImprovementService().build_report([weaker, champion, stronger])["assessments"]
+
+    assert [item["candidate_model_id"] for item in assessments] == ["candidate-strong", "candidate-weak"]
+    assert [item["rank"] for item in assessments] == [1, 2]

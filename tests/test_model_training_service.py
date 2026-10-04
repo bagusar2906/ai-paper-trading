@@ -219,7 +219,10 @@ def test_model_list_exposes_saved_validation_metrics(monkeypatch):
         label_definition_id="future-return-up",
         created_at="2026-10-04T00:00:00Z",
         metrics_json=json.dumps({"precision": 0.7, "brier_score": 0.2}),
-        metadata_json=json.dumps({"market_context": {"symbol": "XAUUSD", "timeframe": "M5"}}),
+        metadata_json=json.dumps({
+            "market_context": {"symbol": "XAUUSD", "timeframe": "M5"},
+            "feature_importance": [{"feature": "rsi_14", "importance": 0.42}],
+        }),
     )])
     repos = SimpleNamespace(model_registry=registry, close=lambda: None)
     monkeypatch.setattr("app.api.models.RepositoryFactory", lambda: repos)
@@ -232,6 +235,7 @@ def test_model_list_exposes_saved_validation_metrics(monkeypatch):
         "brier_score": 0.2,
     }
     assert response.json()[0]["market_context"] == {"symbol": "XAUUSD", "timeframe": "M5"}
+    assert response.json()[0]["feature_importance"] == [{"feature": "rsi_14", "importance": 0.42}]
 
 
 def test_improvement_report_endpoint_is_read_only(monkeypatch):

@@ -130,6 +130,7 @@ class CandidateTrainer:
                 "scikit_learn": sklearn.__version__,
             },
             "training_identity": self.training_identity(dataset, config, self.market_context),
+            "feature_importance": self._feature_importance(model, features),
         }
         if self.market_context:
             metadata["market_context"] = dict(self.market_context)
@@ -145,6 +146,19 @@ class CandidateTrainer:
         metadata_path = self.artifact_directory / f"{model_id}.json"
         metadata_path.write_text(json.dumps({**metadata, "metrics": metrics, "artifact_sha256": checksum}, indent=2), encoding="utf-8")
         return CandidateTrainingResult(training_run_id, model_id, "candidate", artifact_path, checksum, metrics, metadata)
+
+    @staticmethod
+    def _feature_importance(model, features: list[str]) -> list[dict]:
+        """Persist a compact, human-reviewable view of the final model's inputs."""
+        values = getattr(model, "feature_importances_", [])
+        if len(values) != len(features):
+            return []
+        return [
+            {"feature": feature, "importance": round(float(value), 6)}
+            for feature, value in sorted(
+                zip(features, values), key=lambda item: item[1], reverse=True
+            )
+        ]
 
     @staticmethod
     def training_identity(

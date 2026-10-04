@@ -104,7 +104,7 @@ function renderImprovementReport(report) {
         const item = document.createElement("div");
         item.className = "border rounded p-2 mb-2 small";
         const heading = document.createElement("strong");
-        heading.textContent = `${assessment.candidate_model_id}: ${assessment.recommendation === "paper_test" ? "Paper-test recommended" : "Investigate before paper testing"}`;
+        heading.textContent = `#${assessment.rank} ${assessment.candidate_model_id}: ${assessment.recommendation === "paper_test" ? "Paper-test recommended" : "Investigate before paper testing"}`;
         const comparison = document.createElement("div");
         comparison.className = "text-muted";
         const auc = assessment.deltas?.roc_auc;
@@ -119,7 +119,13 @@ function renderImprovementReport(report) {
             reasonItem.textContent = reason;
             reasons.append(reasonItem);
         }
-        item.append(heading, comparison, reasons);
+        const compareButton = document.createElement("button");
+        compareButton.className = "btn btn-sm btn-outline-secondary mt-2";
+        compareButton.textContent = "Compare in backtest";
+        compareButton.onclick = () => {
+            window.location.href = `backtest.html?candidate_model_id=${encodeURIComponent(assessment.candidate_model_id)}`;
+        };
+        item.append(heading, comparison, reasons, compareButton);
         container.append(item);
     }
 }
@@ -130,7 +136,7 @@ function formatDelta(value) {
 
 function row(model) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${model.feature_set_id}</td><td>${model.label_definition_id}</td><td>${formatMetrics(model.metrics)}</td><td></td>`;
+    tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${model.feature_set_id}</td><td>${model.label_definition_id}</td><td>${formatMetrics(model.metrics)}</td><td>${formatFeatureImportance(model.feature_importance)}</td><td></td>`;
     const actions = tr.lastElementChild;
     if (model.status === "candidate" || model.status === "retired") {
         const button = document.createElement("button");
@@ -157,6 +163,12 @@ function formatMetrics(metrics = {}) {
     ].filter(([, value]) => Number.isFinite(value));
     return values.length
         ? values.map(([name, value]) => `${name}: ${value.toFixed(3)}`).join(" · ")
+        : "—";
+}
+
+function formatFeatureImportance(features = []) {
+    return features.length
+        ? features.map(item => `${item.feature}: ${item.importance.toFixed(3)}`).join(" · ")
         : "—";
 }
 

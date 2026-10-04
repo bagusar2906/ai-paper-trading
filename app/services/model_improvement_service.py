@@ -14,11 +14,28 @@ class ModelImprovementService:
         records = [self._record(model) for model in models]
         candidates = [record for record in records if record["status"] == "candidate"]
         assessments = [self._assess(candidate, records) for candidate in candidates]
+        assessments.sort(key=self._rank_key)
+        for rank, assessment in enumerate(assessments, start=1):
+            assessment["rank"] = rank
         return {
             "paper_only": True,
             "automatic_promotion": False,
             "assessments": assessments,
         }
+
+    @staticmethod
+    def _rank_key(assessment: dict) -> tuple:
+        """Prioritise reviewable, stronger, and more stable candidates first."""
+        deltas = assessment["deltas"]
+        stability = assessment["stability"]
+        return (
+            assessment["recommendation"] != "paper_test",
+            assessment["champion_model_id"] is None,
+            -(deltas.get("roc_auc") or 0),
+            -(deltas.get("brier_score") or 0),
+            stability["roc_auc_stddev"] if stability["roc_auc_stddev"] is not None else float("inf"),
+            assessment["candidate_model_id"],
+        )
 
     def _assess(self, candidate: dict, records: list[dict]) -> dict:
         champion = next(

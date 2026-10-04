@@ -8,6 +8,7 @@ import { getModels }
     from "../api.js";
 
 const strategiesById = new Map();
+const requestedCandidateId = new URLSearchParams(window.location.search).get("candidate_model_id");
 
 async function loadStrategies() {
 
@@ -81,11 +82,22 @@ async function loadCandidateModels() {
             timeframe.value = market.timeframe;
             contextHint.textContent = `Backtest symbol and timeframe set to ${market.symbol} / ${market.timeframe} to match this candidate.`;
         });
+        selectRequestedCandidate(select, candidates, contextHint);
         updateCandidateComparisonAvailability();
     }
     catch (error) {
         console.warn("Candidate comparison models unavailable:", error);
     }
+}
+
+function selectRequestedCandidate(select, candidates, contextHint) {
+    if (!requestedCandidateId || !candidates.has(requestedCandidateId)) return;
+    select.value = requestedCandidateId;
+    const aiStrategy = [...strategiesById.entries()]
+        .find(([, strategy]) => strategy.strategy_type === "AI_ASSISTED_XGB");
+    if (aiStrategy) document.getElementById("btStrategy").value = aiStrategy[0];
+    select.dispatchEvent(new Event("change"));
+    contextHint.textContent = `${contextHint.textContent} Review the settings, then explicitly run the backtest.`;
 }
 
 function updateCandidateComparisonAvailability() {
@@ -108,8 +120,12 @@ function updateCandidateComparisonAvailability() {
 
 initializeBacktest();
 
-loadStrategies();
-loadCandidateModels();
+async function loadPage() {
+    await loadStrategies();
+    await loadCandidateModels();
+}
+
+loadPage();
 
 document
     .getElementById("btnToggleTrades")

@@ -43,6 +43,7 @@ def list_models():
             # Context is non-secret provenance used only to prevent a
             # candidate comparison from silently using a different market.
             "market_context": _market_context(getattr(item, "metadata_json", None)),
+            "feature_importance": _feature_importance(getattr(item, "metadata_json", None)),
         } for item in models]
     finally:
         repos.close()
@@ -69,6 +70,24 @@ def _market_context(metadata_json: str | None) -> dict | None:
     if not isinstance(symbol, str) or not isinstance(timeframe, str):
         return None
     return {"symbol": symbol, "timeframe": timeframe}
+
+
+def _feature_importance(metadata_json: str | None) -> list[dict]:
+    """Expose only valid, bounded attribution values for dashboard review."""
+    try:
+        metadata = json.loads(metadata_json or "{}")
+    except (TypeError, json.JSONDecodeError):
+        return []
+    importance = metadata.get("feature_importance") if isinstance(metadata, dict) else None
+    if not isinstance(importance, list):
+        return []
+    return [
+        {"feature": item["feature"], "importance": item["importance"]}
+        for item in importance[:5]
+        if isinstance(item, dict)
+        and isinstance(item.get("feature"), str)
+        and isinstance(item.get("importance"), (int, float))
+    ]
 
 
 @router.get("/champion")
