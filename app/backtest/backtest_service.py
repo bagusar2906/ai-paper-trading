@@ -102,7 +102,12 @@ class BacktestService:
             if candidate is None or candidate.status != "candidate":
                 raise ValueError("select a registered candidate model; champions and retired models cannot be compared here")
             if candidate.feature_set_id != FEATURE_SET_ID or candidate.label_definition_id != label_id:
-                raise ValueError("candidate feature set or label does not match the selected AI Assisted XGBoost strategy")
+                raise ValueError(
+                    "candidate feature set or label does not match the selected AI Assisted XGBoost strategy: "
+                    f"expected feature_set_id={FEATURE_SET_ID!r}, label_definition_id={label_id!r}; "
+                    f"candidate has feature_set_id={candidate.feature_set_id!r}, "
+                    f"label_definition_id={candidate.label_definition_id!r}"
+                )
             metadata = self._decode_metadata(candidate.metadata_json)
             context = metadata.get("market_context")
             window = metadata.get("evaluation_window")
