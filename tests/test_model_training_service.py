@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -65,21 +66,34 @@ def test_manual_training_registers_a_candidate_and_disconnects_provider(tmp_path
             return "candidate"
 
     class Registry:
+        def __init__(self, repositories):
+            self.repositories = repositories
+
+        def find_by_training_fingerprint(self, fingerprint):
+            return None
+
         def record_candidate(self, result):
             recorded.append(result.model_id)
-            return RegisteredCandidate(repos)
+            return RegisteredCandidate(self.repositories)
 
     class Repositories:
-        model_registry = Registry()
-        closed = False
+        def __init__(self):
+            self.closed = False
+            self.model_registry = Registry(self)
 
         def close(self):
             self.closed = True
 
-    repos = Repositories()
+    repositories = []
+
+    def repository_factory():
+        repos = Repositories()
+        repositories.append(repos)
+        return repos
+
     service = ModelTrainingService(
         provider_factory=lambda: provider,
-        repository_factory=lambda: repos,
+        repository_factory=repository_factory,
         trainer_factory=Trainer,
         artifact_directory=tmp_path,
     )
@@ -95,7 +109,39 @@ def test_manual_training_registers_a_candidate_and_disconnects_provider(tmp_path
     assert response["training_rows"] > 0
     assert recorded == ["candidate-xgb-test"]
     assert provider.disconnected is True
-    assert repos.closed is True
+    assert all(repos.closed for repos in repositories)
+
+
+def test_manual_training_skips_an_identical_existing_candidate(tmp_path):
+    class Provider:
+        def get_history(self, symbol, timeframe, bars):
+            return _candles()
+
+        def disconnect(self):
+            pass
+
+    existing = SimpleNamespace(model_id="candidate-xgb-existing")
+    registry = SimpleNamespace(
+        find_by_training_fingerprint=lambda fingerprint: existing,
+        record_candidate=lambda result: pytest.fail("duplicate training must not register a model"),
+    )
+    repos = SimpleNamespace(model_registry=registry, close=lambda: None)
+
+    class Trainer:
+        def __init__(self, *args, **kwargs):
+            pytest.fail("duplicate training must not construct a trainer")
+
+    service = ModelTrainingService(
+        provider_factory=Provider,
+        repository_factory=lambda: repos,
+        trainer_factory=Trainer,
+        artifact_directory=tmp_path,
+    )
+
+    response = service.train_candidate({"bars": 300})
+
+    assert response["status"] == "duplicate"
+    assert response["model_id"] == "candidate-xgb-existing"
 
 
 def test_manual_training_rejects_insufficient_history():

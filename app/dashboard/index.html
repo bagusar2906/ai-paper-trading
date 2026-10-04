@@ -365,7 +365,7 @@
                         <label for="candidateThreshold" class="form-label">Up-return threshold</label>
                         <input id="candidateThreshold" class="form-control" type="number" min="0.00001" max="1" step="0.00001" value="0.003">
                         <div class="form-text">For example, 0.003 means a 0.3% upward move over the selected horizon.</div>
-                        <div id="candidateTrainingStatus" class="small mt-3"></div>
+                        <div id="candidateTrainingStatus" class="small mt-3" role="status" aria-live="polite"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

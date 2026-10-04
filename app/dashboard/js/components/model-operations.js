@@ -101,21 +101,30 @@ async function train(button) {
     const dialog = document.getElementById("trainCandidateModal");
     if (!bars || !horizon || !threshold || !status || !dialog) return;
     button.disabled = true;
-    status.textContent = "Training paper-only candidate from completed candles…";
+    setTrainingStatus(status, "info", "Training paper-only candidate from completed candles…");
     try {
         const result = await trainCandidate({
             bars: Number(bars.value),
             horizon_candles: Number(horizon.value),
             up_return_threshold: Number(threshold.value),
         });
+        if (result.status === "duplicate") {
+            setTrainingStatus(status, "warning", `⚠ Training skipped: ${result.message}`);
+            return;
+        }
         await refreshModelOperations();
         document.getElementById("modelOperationsStatus").textContent = `Candidate ${result.model_id} trained on ${result.training_rows} rows; review before promotion.`;
         bootstrap.Modal.getOrCreateInstance(dialog).hide();
     } catch (error) {
-        status.textContent = `Candidate training failed: ${error.message}`;
+        setTrainingStatus(status, "danger", `Candidate training failed: ${error.message}`);
     } finally {
         button.disabled = false;
     }
+}
+
+function setTrainingStatus(element, variant, message) {
+    element.className = `alert alert-${variant} small mt-3 mb-0 py-2`;
+    element.textContent = message;
 }
 
 function openDeleteDialog(model) {

@@ -45,6 +45,18 @@ class ModelRegistryRepository(BaseRepository):
     def get_all(self):
         return self.session.query(ModelVersionEntity).order_by(ModelVersionEntity.created_at.desc()).all()
 
+    def find_by_training_fingerprint(self, fingerprint: str):
+        """Find any prior model created from exactly the same training inputs."""
+        for model in self.get_all():
+            try:
+                metadata = json.loads(model.metadata_json)
+            except (TypeError, json.JSONDecodeError):
+                continue
+            identity = metadata.get("training_identity", {}) if isinstance(metadata, dict) else {}
+            if identity.get("fingerprint") == fingerprint:
+                return model
+        return None
+
     def get_champion(self, feature_set_id: str, label_definition_id: str):
         """Read-only lookup. Promotion is intentionally not implemented here."""
         return (

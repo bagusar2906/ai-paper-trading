@@ -63,9 +63,26 @@ class ModelTrainingService:
         config = CandidateTrainingConfig(
             walk_forward=self._walk_forward_config(len(dataset.frame), horizon)
         )
+        market_context = {"symbol": symbol.upper(), "timeframe": timeframe}
+        identity = CandidateTrainer.training_identity(dataset, config, market_context)
+
+        repos = self.repository_factory()
+        try:
+            existing = repos.model_registry.find_by_training_fingerprint(
+                identity["fingerprint"]
+            )
+            if existing is not None:
+                return {
+                    "model_id": existing.model_id,
+                    "status": "duplicate",
+                    "message": "An existing model was trained with the same market data and settings. No new candidate was created.",
+                }
+        finally:
+            repos.close()
+
         trainer = self.trainer_factory(
             self.artifact_directory,
-            market_context={"symbol": symbol.upper(), "timeframe": timeframe},
+            market_context=market_context,
         )
         result = trainer.train(
             dataset, definition.name, config

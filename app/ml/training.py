@@ -11,6 +11,7 @@ import sys
 from uuid import uuid4
 
 import numpy as np
+import pandas as pd
 from sklearn.linear_model import LogisticRegression
 import sklearn
 import xgboost
@@ -128,6 +129,7 @@ class CandidateTrainer:
                 "xgboost": xgboost.__version__,
                 "scikit_learn": sklearn.__version__,
             },
+            "training_identity": self.training_identity(dataset, config, self.market_context),
         }
         if self.market_context:
             metadata["market_context"] = dict(self.market_context)
@@ -143,6 +145,32 @@ class CandidateTrainer:
         metadata_path = self.artifact_directory / f"{model_id}.json"
         metadata_path.write_text(json.dumps({**metadata, "metrics": metrics, "artifact_sha256": checksum}, indent=2), encoding="utf-8")
         return CandidateTrainingResult(training_run_id, model_id, "candidate", artifact_path, checksum, metrics, metadata)
+
+    @staticmethod
+    def training_identity(
+        dataset: TrainingDataset,
+        config: CandidateTrainingConfig,
+        market_context: dict | None,
+    ) -> dict:
+        """Stable identity for rejecting repeat training on unchanged inputs."""
+        dataset_hash = sha256(
+            pd.util.hash_pandas_object(dataset.frame, index=True).values.tobytes()
+        ).hexdigest()
+        settings = {
+            "feature_set_id": dataset.snapshot.feature_set_id,
+            "label_definition_id": dataset.snapshot.label_definition_id,
+            "training_config": asdict(config),
+            "market_context": market_context or {},
+        }
+        settings_hash = sha256(
+            json.dumps(settings, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        fingerprint = sha256(f"{dataset_hash}:{settings_hash}".encode("utf-8")).hexdigest()
+        return {
+            "fingerprint": fingerprint,
+            "dataset_sha256": dataset_hash,
+            "settings_sha256": settings_hash,
+        }
 
     @staticmethod
     def _model(config: CandidateTrainingConfig) -> XGBClassifier:
