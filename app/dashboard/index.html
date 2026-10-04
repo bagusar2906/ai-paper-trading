@@ -342,6 +342,13 @@
             <div class="card-body">
                 <p class="small text-muted">Paper-only. Promotion and rollback require a reviewer and rationale; models never self-promote.</p>
                 <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3" data-bs-toggle="modal" data-bs-target="#trainCandidateModal">Train Candidate</button>
+                <button id="planExperiments" type="button" class="btn btn-sm btn-outline-secondary mb-3">Plan Experiments</button>
+                <div class="mb-3">
+                    <h6 class="mb-1">Experiment plan</h6>
+                    <p class="small text-muted mb-2">Suggestions only. Selecting settings opens the training form; training and promotion remain explicit actions.</p>
+                    <div id="modelExperimentPlan" class="small text-muted">Create a plan to see bounded XGBoost variations.</div>
+                    <div id="modelExperimentStatus" class="small text-muted mt-1" role="status" aria-live="polite"></div>
+                </div>
                 <div class="mb-3">
                     <h6 class="mb-1">Improvement recommendations</h6>
                     <p class="small text-muted mb-2">Read-only comparisons use compatible market context and walk-forward validation. They never promote or trade a model.</p>
@@ -370,6 +377,14 @@
                         <label for="candidateThreshold" class="form-label">Up-return threshold</label>
                         <input id="candidateThreshold" class="form-control" type="number" min="0.00001" max="1" step="0.00001" value="0.003">
                         <div class="form-text">For example, 0.003 means a 0.3% upward move over the selected horizon.</div>
+                        <div class="row mt-3">
+                            <div class="col-md-6"><label for="candidateNEstimators" class="form-label">Trees</label><input id="candidateNEstimators" class="form-control" type="number" min="25" max="500" step="1" value="100"></div>
+                            <div class="col-md-6"><label for="candidateMaxDepth" class="form-label">Maximum depth</label><input id="candidateMaxDepth" class="form-control" type="number" min="1" max="8" step="1" value="3"></div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6"><label for="candidateLearningRate" class="form-label">Learning rate</label><input id="candidateLearningRate" class="form-control" type="number" min="0.01" max="0.30" step="0.01" value="0.05"></div>
+                            <div class="col-md-6"><label for="candidateProbabilityThreshold" class="form-label">Probability threshold</label><input id="candidateProbabilityThreshold" class="form-control" type="number" min="0.40" max="0.70" step="0.01" value="0.50"></div>
+                        </div>
                         <div id="candidateTrainingStatus" class="small mt-3" role="status" aria-live="polite"></div>
                     </div>
                     <div class="modal-footer">

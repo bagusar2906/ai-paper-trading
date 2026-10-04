@@ -258,3 +258,13 @@ def test_improvement_report_endpoint_is_read_only(monkeypatch):
     report = response.json()
     assert report["automatic_promotion"] is False
     assert report["assessments"][0]["recommendation"] == "paper_test"
+
+
+def test_experiment_plan_endpoint_only_returns_suggestions():
+    response = TestClient(app).get("/models/experiment-plan?n_estimators=500&max_depth=8")
+
+    assert response.status_code == 200
+    plan = response.json()
+    assert plan["automatic_training"] is False
+    assert plan["automatic_promotion"] is False
+    assert all(item["parameters"]["n_estimators"] <= 500 for item in plan["experiments"])

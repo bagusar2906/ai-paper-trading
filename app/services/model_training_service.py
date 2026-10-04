@@ -43,6 +43,10 @@ class ModelTrainingService:
         )
         horizon = self._integer(request, "horizon_candles", 12, 1, 100)
         threshold = self._number(request, "up_return_threshold", 0.003, 0.00001, 1)
+        n_estimators = self._integer(request, "n_estimators", 100, 25, 500)
+        max_depth = self._integer(request, "max_depth", 3, 1, 8)
+        learning_rate = self._number(request, "learning_rate", 0.05, 0.01, 0.30)
+        probability_threshold = self._number(request, "probability_threshold", 0.50, 0.40, 0.70)
 
         logger.info(
             "Starting candidate training symbol=%s timeframe=%s bars=%s horizon=%s threshold=%s",
@@ -61,7 +65,11 @@ class ModelTrainingService:
         )
         dataset = build_training_dataset(candles, definition)
         config = CandidateTrainingConfig(
-            walk_forward=self._walk_forward_config(len(dataset.frame), horizon)
+            walk_forward=self._walk_forward_config(len(dataset.frame), horizon),
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            learning_rate=learning_rate,
+            probability_threshold=probability_threshold,
         )
         market_context = {"symbol": symbol.upper(), "timeframe": timeframe}
         identity = CandidateTrainer.training_identity(dataset, config, market_context)

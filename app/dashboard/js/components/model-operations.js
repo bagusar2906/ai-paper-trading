@@ -1,4 +1,4 @@
-import { deleteModel, getModelImprovementReport, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getModelExperimentPlan, getModelImprovementReport, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -12,6 +12,69 @@ export function initializeModelOperations() {
 
     const deleteButton = document.getElementById("submitModelDelete");
     if (deleteButton) deleteButton.addEventListener("click", () => submitDeletion(deleteButton));
+
+    const planButton = document.getElementById("planExperiments");
+    if (planButton) planButton.addEventListener("click", () => planExperiments(planButton));
+}
+
+async function planExperiments(button) {
+    const status = document.getElementById("modelExperimentStatus");
+    const parameters = trainingParameters();
+    button.disabled = true;
+    try {
+        const plan = await getModelExperimentPlan(parameters);
+        renderExperimentPlan(plan);
+        status.textContent = "Suggestions are read-only. Choose one to copy its settings into the training form.";
+    } catch (error) {
+        status.textContent = `Could not create experiment plan: ${error.message}`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function renderExperimentPlan(plan) {
+    const container = document.getElementById("modelExperimentPlan");
+    if (!container) return;
+    container.replaceChildren();
+    for (const experiment of plan.experiments || []) {
+        const item = document.createElement("div");
+        item.className = "border rounded p-2 mb-2 small";
+        const title = document.createElement("strong");
+        title.textContent = experiment.id;
+        const rationale = document.createElement("div");
+        rationale.className = "text-muted mb-1";
+        rationale.textContent = experiment.rationale;
+        const button = document.createElement("button");
+        button.className = "btn btn-sm btn-outline-primary";
+        button.textContent = "Use settings";
+        button.onclick = () => applyExperiment(experiment.parameters);
+        item.append(title, rationale, button);
+        container.append(item);
+    }
+}
+
+function applyExperiment(parameters) {
+    for (const [key, value] of Object.entries(parameters)) {
+        const input = document.getElementById(trainingFieldId(key));
+        if (input) input.value = value;
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("trainCandidateModal")).show();
+}
+
+function trainingParameters() {
+    const names = ["bars", "horizon_candles", "up_return_threshold", "n_estimators", "max_depth", "learning_rate", "probability_threshold"];
+    return Object.fromEntries(names.map(name => {
+        const input = document.getElementById(trainingFieldId(name));
+        return [name, Number(input?.value)];
+    }));
+}
+
+function trainingFieldId(name) {
+    const specialIds = {
+        horizon_candles: "candidateHorizon",
+        up_return_threshold: "candidateThreshold",
+    };
+    return specialIds[name] || `candidate${name.split("_").map(word => word[0].toUpperCase() + word.slice(1)).join("")}`;
 }
 
 export async function refreshModelOperations() {
@@ -135,6 +198,7 @@ async function train(button) {
     const bars = document.getElementById("candidateBars");
     const horizon = document.getElementById("candidateHorizon");
     const threshold = document.getElementById("candidateThreshold");
+    const parameters = trainingParameters();
     const status = document.getElementById("candidateTrainingStatus");
     const dialog = document.getElementById("trainCandidateModal");
     if (!bars || !horizon || !threshold || !status || !dialog) return;
@@ -145,6 +209,10 @@ async function train(button) {
             bars: Number(bars.value),
             horizon_candles: Number(horizon.value),
             up_return_threshold: Number(threshold.value),
+            n_estimators: parameters.n_estimators,
+            max_depth: parameters.max_depth,
+            learning_rate: parameters.learning_rate,
+            probability_threshold: parameters.probability_threshold,
         });
         if (result.status === "duplicate") {
             setTrainingStatus(status, "warning", `⚠ Training skipped: ${result.message}`);

@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.factories.repository_factory import RepositoryFactory
+from app.services.model_experiment_service import ModelExperimentService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 
@@ -88,6 +89,20 @@ def improvement_report():
         return ModelImprovementService().build_report(repos.model_registry.get_all())
     finally:
         repos.close()
+
+
+@router.get("/experiment-plan")
+def experiment_plan(
+    bars: int = 1_000,
+    horizon_candles: int = 12,
+    up_return_threshold: float = 0.003,
+    n_estimators: int = 100,
+    max_depth: int = 3,
+    learning_rate: float = 0.05,
+    probability_threshold: float = 0.50,
+):
+    """Suggest bounded training variations. This route does not start a job."""
+    return ModelExperimentService().plan(locals())
 
 
 @router.post("/{model_id}/promote")

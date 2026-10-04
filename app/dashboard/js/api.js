@@ -60,6 +60,10 @@ export async function getChart() {
 
 export async function getModels() { return request("/models"); }
 export async function getModelImprovementReport() { return request("/models/improvement-report"); }
+export async function getModelExperimentPlan(parameters) {
+    const query = new URLSearchParams(parameters);
+    return request(`/models/experiment-plan?${query}`);
+}
 export async function trainCandidate(payload) {
     return request("/models/train", { method: "POST", body: JSON.stringify(payload) });
 }
