@@ -43,6 +43,13 @@ function renderCandidateComparison(comparison) {
     const champion = comparison.champion;
     const difference = candidate.net_profit - champion.net_profit;
     const differenceClass = difference >= 0 ? "text-success" : "text-danger";
+    const gate = comparison.acceptance_gate;
+    const gateMessage = gate
+        ? (gate.eligible_for_human_review
+            ? "Candidate meets the minimum evidence gate for human review. It is not promoted automatically."
+            : "Candidate does not yet meet the minimum evidence gate; investigate or collect more evidence.")
+        : "Acceptance gate unavailable for this comparison.";
+    const gateClass = gate?.eligible_for_human_review ? "text-success" : "text-warning";
 
     target.innerHTML = `
         <p class="mb-3">Held-out window starts ${new Date(comparison.evaluation_start).toLocaleString()}. Both models used the same candles and paper-only execution path.</p>
@@ -57,7 +64,8 @@ function renderCandidateComparison(comparison) {
                 <tr><th>Trades</th><td>${candidate.total_trades}</td><td>${champion.total_trades}</td></tr>
             </tbody>
         </table></div>
-        <p class="mb-0 ${differenceClass}">Net-profit difference: ${difference >= 0 ? "+" : ""}${difference.toFixed(2)}. Review trade count, drawdown, and the training metrics before manual promotion.</p>
+        <p class="mb-2 ${differenceClass}">Net-profit difference: ${difference >= 0 ? "+" : ""}${difference.toFixed(2)}. Review trade count, drawdown, and the training metrics before manual promotion.</p>
+        <p class="mb-0 ${gateClass}">${gateMessage}</p>
     `;
 
 }

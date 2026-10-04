@@ -5,6 +5,7 @@ import pandas as pd
 
 from app.api.services.statistic_service import StatisticsService
 from app.backtest.backtest_marker import BacktestMarker
+from app.backtest.candidate_acceptance_gate import CandidateAcceptanceGate
 from app.backtest.job_manager import job_manager
 from app.brokers.paper_broker import PaperBroker
 from app.database.base import Base
@@ -84,6 +85,9 @@ class BacktestService:
             "champion": champion_report.statistics,
             "same_history": True,
             "paper_only": True,
+            "acceptance_gate": CandidateAcceptanceGate().evaluate(
+                candidate_report.statistics, champion_report.statistics
+            ),
         }
         return candidate_report
 
