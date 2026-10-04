@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from types import SimpleNamespace
 
 from app.factories.provider_factory import create_provider
 from app.providers.yahoo_provider import YahooProvider
@@ -10,8 +11,34 @@ import app.factories.provider_factory as provider_factory
 
 def test_factory_defaults_to_twelve_data(monkeypatch):
     monkeypatch.setattr(provider_factory, "TWELVE_DATA_API_KEY", "test-key")
+    monkeypatch.setattr(
+        provider_factory,
+        "RepositoryFactory",
+        lambda: SimpleNamespace(
+            settings=SimpleNamespace(
+                get_market_data_provider=lambda: "twelve_data"
+            ),
+            close=lambda: None,
+        ),
+    )
     provider = create_provider()
     assert isinstance(provider, TwelveDataProvider)
+    provider.disconnect()
+
+
+def test_factory_uses_persisted_market_data_provider(monkeypatch):
+    monkeypatch.setattr(
+        provider_factory,
+        "RepositoryFactory",
+        lambda: SimpleNamespace(
+            settings=SimpleNamespace(get_market_data_provider=lambda: "yahoo"),
+            close=lambda: None,
+        ),
+    )
+
+    provider = create_provider()
+
+    assert isinstance(provider, YahooProvider)
     provider.disconnect()
 
 

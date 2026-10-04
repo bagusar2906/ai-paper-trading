@@ -4,10 +4,14 @@ from app.providers.oanda_provider import OandaProvider
 from app.providers.twelve_data_provider import TwelveDataProvider
 from app.config import ProviderConfig
 from app.config import OANDA_API_KEY, TWELVE_DATA_API_KEY
+from app.factories.repository_factory import RepositoryFactory
+
+
+SUPPORTED_PROVIDER_NAMES = {"mt5", "oanda", "yahoo", "twelve_data"}
 
 
 def create_provider(name: str = None):
-    name = (name or ProviderConfig.DEFAULT_PROVIDER).lower()
+    name = (name or _configured_provider_name()).lower()
 
     if name == "mt5":
         provider = MT5Provider()
@@ -27,3 +31,12 @@ def create_provider(name: str = None):
     provider.connect()
 
     return provider
+
+
+def _configured_provider_name():
+    """Use the persisted dashboard choice, with the environment as fallback."""
+    repos = RepositoryFactory()
+    try:
+        return repos.settings.get_market_data_provider()
+    finally:
+        repos.close()

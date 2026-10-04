@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 from app.engine.trading_engine import TradingEngine
 from app.main import app
 from app.strategy.ema_rsi_adx import EMARSIADXStrategy
+from app.models.settings.settings_request import SettingsRequest
+from app.services.settings_service import SettingsService
 
 client = TestClient(app)
 
@@ -77,6 +79,36 @@ def test_update_settings_rejects_invalid_mode():
     response = client.put("/settings", json={"trading_mode": "BOGUS"})
 
     assert response.status_code == 400
+
+
+def test_settings_service_updates_the_market_data_provider(monkeypatch):
+    values = {"trading_mode": "MANUAL", "market_data_provider": "twelve_data"}
+
+    class Settings:
+        def get_trading_mode(self):
+            return values["trading_mode"]
+
+        def get_market_data_provider(self):
+            return values["market_data_provider"]
+
+        def set(self, key, value):
+            values[key] = value
+
+    repos = type("Repositories", (), {
+        "settings": Settings(),
+        "close": lambda self: None,
+    })()
+    monkeypatch.setattr(
+        "app.services.settings_service.RepositoryFactory",
+        lambda: repos,
+    )
+
+    result = SettingsService().update_settings(
+        SettingsRequest(market_data_provider="YAHOO")
+    )
+
+    assert result.trading_mode == "MANUAL"
+    assert result.market_data_provider == "yahoo"
 
 
 # =============================================================================

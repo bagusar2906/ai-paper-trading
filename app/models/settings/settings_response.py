@@ -5,3 +5,4 @@ from dataclasses import dataclass
 class SettingsResponse:
 
     trading_mode: str
+    market_data_provider: str

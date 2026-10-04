@@ -54,6 +54,10 @@
                     Strategies
                 </a>
 
+                <button class="nav-link btn btn-link border-0 p-0" type="button" data-bs-toggle="modal" data-bs-target="#marketDataSettingsModal">
+                    Market Data
+                </button>
+
             </div>
 
 
@@ -136,6 +140,32 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button id="btnSaveFunds" type="button" class="btn btn-primary">Save Funds</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="marketDataSettingsModal" tabindex="-1" aria-labelledby="marketDataSettingsTitle" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="marketDataSettingsTitle" class="modal-title">Market Data Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="marketDataProvider" class="form-label">Data source</label>
+                    <select id="marketDataProvider" class="form-select">
+                        <option value="twelve_data">Twelve Data</option>
+                        <option value="yahoo">Yahoo Finance</option>
+                        <option value="mt5">MetaTrader 5</option>
+                        <option value="oanda">OANDA</option>
+                    </select>
+                    <div class="form-text">The selected source is used for new chart, signal, backtest, and candidate-training requests. API keys and MT5 login remain configured on the server.</div>
+                    <div id="marketDataProviderStatus" class="small text-muted mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="saveMarketDataProvider" type="button" class="btn btn-primary">Save data source</button>
                 </div>
             </div>
         </div>

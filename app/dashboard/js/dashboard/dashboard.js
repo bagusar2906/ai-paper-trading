@@ -27,6 +27,7 @@ import { updateCurrentSignal } from "../components/current-signal.js";
 import { updateSignal } from "../components/signals-card.js";
 import { updateActiveStrategy } from "../components/active-strategy.js";
 import { initializeFundAdjustment } from "../components/fund-adjustment.js";
+import { initializeMarketDataSettings } from "../components/market-data-settings.js";
 
 const REFRESH_INTERVAL = 5000;
 
@@ -47,6 +48,7 @@ async function initialize() {
     initializeTradingMode();
     initializeFundAdjustment();
     initializeModelOperations();
+    await initializeMarketDataSettings();
 
     window.addEventListener(
         "dashboard-refresh",

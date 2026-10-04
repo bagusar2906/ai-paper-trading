@@ -1,4 +1,5 @@
 from app.database.models import SettingEntity
+from app.config import ProviderConfig
 
 
 class SettingsRepository:
@@ -50,4 +51,11 @@ class SettingsRepository:
         return self.get(
             "trading_mode",
             "MANUAL",
+        )
+
+    def get_market_data_provider(self):
+
+        return self.get(
+            "market_data_provider",
+            ProviderConfig.DEFAULT_PROVIDER,
         )
