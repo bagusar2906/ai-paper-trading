@@ -193,7 +193,7 @@ class EMARSIADXStrategy(Strategy):
         df: pd.DataFrame,
     ) -> pd.DataFrame:
 
-        logger.info(
+        logger.debug(
             "Preparing indicators..."
         )
 

@@ -1,4 +1,4 @@
-from venv import logger
+import logging
 from pathlib import Path
 
 import yfinance as yf
@@ -46,6 +46,7 @@ _SYMBOL_MAP = {
 }
 
 YAHOO_CACHE_DIRECTORY = Path("data/yfinance")
+logger = logging.getLogger(__name__)
 
 
 class YahooProvider(DataProvider):
@@ -83,7 +84,7 @@ class YahooProvider(DataProvider):
         interval = _INTERVAL_MAP[timeframe]
         period = _PERIOD_MAP.get(interval, "60d")
 
-        logger.info(
+        logger.debug(
             "Downloading %d candles for %s (%s)...",
             bars,
             symbol,

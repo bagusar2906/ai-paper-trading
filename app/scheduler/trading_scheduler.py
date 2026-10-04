@@ -46,7 +46,7 @@ class TradingScheduler:
 
                 if engine is None:
 
-                    logger.info(
+                    logger.debug(
                         "No active strategy configured."
                     )
 

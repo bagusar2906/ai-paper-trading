@@ -52,7 +52,7 @@ class PaperBroker(Broker):
             SignalAction.SELL,
         ):
 
-            logger.info(
+            logger.debug(
                 "Ignoring %s signal for %s",
                 signal.action,
                 signal.symbol,
@@ -66,7 +66,7 @@ class PaperBroker(Broker):
 
         if existing is not None:
 
-            logger.info(
+            logger.debug(
                 "Position already exists for %s",
                 signal.symbol,
             )

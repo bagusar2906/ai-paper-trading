@@ -1,3 +1,5 @@
+import logging
+
 from app.enums.trading_mode import TradingMode
 from app.models.settings.settings_request import SettingsRequest
 from app.models.settings.settings_response import SettingsResponse
@@ -5,6 +7,7 @@ from app.factories.repository_factory import RepositoryFactory
 
 VALID_TRADING_MODES = {mode.value for mode in TradingMode}
 VALID_MARKET_DATA_PROVIDERS = {"twelve_data", "yahoo", "mt5", "oanda"}
+logger = logging.getLogger(__name__)
 
 
 class SettingsService:
@@ -52,6 +55,7 @@ class SettingsService:
 
             if provider is not None:
                 repos.settings.set("market_data_provider", provider)
+                logger.info("Market data provider updated provider=%s", provider)
 
             return SettingsResponse(
                 trading_mode=repos.settings.get_trading_mode(),

@@ -1,5 +1,6 @@
 """Manual, candidate-only training orchestration for the paper-trading UI."""
 
+import logging
 from pathlib import Path
 
 from app.config import TradingConfig
@@ -10,6 +11,7 @@ from app.labels.future_return import FutureReturnLabel
 from app.ml.training import CandidateTrainer, CandidateTrainingConfig
 from app.ml.validation import WalkForwardConfig
 
+logger = logging.getLogger(__name__)
 
 class ModelTrainingService:
     """Train and register an XGBoost candidate; never promote or execute it."""
@@ -42,6 +44,11 @@ class ModelTrainingService:
         horizon = self._integer(request, "horizon_candles", 12, 1, 100)
         threshold = self._number(request, "up_return_threshold", 0.003, 0.00001, 1)
 
+        logger.info(
+            "Starting candidate training symbol=%s timeframe=%s bars=%s horizon=%s threshold=%s",
+            symbol, timeframe, bars, horizon, threshold,
+        )
+
         provider = self.provider_factory()
         try:
             candles = provider.get_history(symbol, timeframe, bars)
@@ -70,6 +77,11 @@ class ModelTrainingService:
             status = registered.status
         finally:
             repos.close()
+
+        logger.info(
+            "Candidate training completed model_id=%s training_run_id=%s rows=%s",
+            model_id, result.training_run_id, dataset.snapshot.row_count,
+        )
 
         return {
             "model_id": model_id,

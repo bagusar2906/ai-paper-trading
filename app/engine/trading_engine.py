@@ -196,7 +196,7 @@ class TradingEngine:
             df,
         )
 
-        logger.info(
+        logger.debug(
             "Signal generated: %s",
             signal.action,
         )
@@ -224,7 +224,7 @@ class TradingEngine:
 
                 self._journal_ai_decision(signal, context, "not_auto")
 
-                logger.info(
+                logger.debug(
                     "Trading mode is %s - signal recorded, "
                     "not auto-executing",
                     mode,

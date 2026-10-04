@@ -200,7 +200,7 @@ class BreakRetestStrategy(Strategy):
             # candle: O(n^2 * lookback) total instead of O(n * lookback).
             return df
 
-        logger.info(
+        logger.debug(
             "Computing break & retest levels..."
         )
 

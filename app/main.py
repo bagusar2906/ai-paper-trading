@@ -20,14 +20,20 @@ from app.factories.repository_factory import RepositoryFactory
 from app.scheduler.trading_scheduler import TradingScheduler
 from app.services.signal_service import SignalService
 from app.strategy.strategy_router import router as strategy_router
+from app.logging_config import configure_logging
+import logging
 
 
 
 scheduler = TradingScheduler()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    configure_logging()
+    logger.info("Starting paper-trading API")
 
     #
     # Create database tables
@@ -51,6 +57,7 @@ async def lifespan(app: FastAPI):
     finally:
 
         scheduler.stop()
+        logger.info("Stopped paper-trading API")
 
 
 app = FastAPI(
