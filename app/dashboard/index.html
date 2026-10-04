@@ -341,11 +341,83 @@
             </div>
             <div class="card-body">
                 <p class="small text-muted">Paper-only. Promotion and rollback require a reviewer and rationale; models never self-promote.</p>
-                <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3">Train Candidate</button>
+                <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3" data-bs-toggle="modal" data-bs-target="#trainCandidateModal">Train Candidate</button>
                 <table id="modelOperations" class="table table-sm mb-0">
                     <thead><tr><th>Model</th><th>Status</th><th>Feature set</th><th>Label</th><th>Validation metrics</th><th>Action</th></tr></thead>
                     <tbody></tbody>
                 </table>
+            </div>
+        </div>
+
+        <div class="modal fade" id="trainCandidateModal" tabindex="-1" aria-labelledby="trainCandidateTitle" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 id="trainCandidateTitle" class="modal-title">Train XGBoost Candidate</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted">Uses completed candles from the selected Market Data source. Training creates a candidate only; it never promotes or trades automatically.</p>
+                        <label for="candidateBars" class="form-label">Completed candles</label>
+                        <input id="candidateBars" class="form-control mb-3" type="number" min="250" max="5000" step="1" value="1000">
+                        <label for="candidateHorizon" class="form-label">Prediction horizon (candles)</label>
+                        <input id="candidateHorizon" class="form-control mb-3" type="number" min="1" max="100" step="1" value="12">
+                        <label for="candidateThreshold" class="form-label">Up-return threshold</label>
+                        <input id="candidateThreshold" class="form-control" type="number" min="0.00001" max="1" step="0.00001" value="0.003">
+                        <div class="form-text">For example, 0.003 means a 0.3% upward move over the selected horizon.</div>
+                        <div id="candidateTrainingStatus" class="small mt-3"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button id="submitCandidateTraining" type="button" class="btn btn-primary">Train Candidate</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modelReviewModal" tabindex="-1" aria-labelledby="modelReviewTitle" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 id="modelReviewTitle" class="modal-title">Review Model</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="modelReviewDescription" class="small text-muted mb-3"></p>
+                        <label for="modelReviewReviewer" class="form-label">Reviewer</label>
+                        <input id="modelReviewReviewer" class="form-control mb-3" maxlength="100" autocomplete="name">
+                        <label for="modelReviewRationale" class="form-label">Rationale</label>
+                        <textarea id="modelReviewRationale" class="form-control" rows="3"></textarea>
+                        <div id="modelReviewStatus" class="small text-danger mt-2"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button id="submitModelReview" type="button" class="btn btn-primary">Confirm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modelDeleteModal" tabindex="-1" aria-labelledby="modelDeleteTitle" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 id="modelDeleteTitle" class="modal-title">Delete Model</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="modelDeleteDescription" class="small text-danger mb-3"></p>
+                        <label for="modelDeleteReviewer" class="form-label">Reviewer</label>
+                        <input id="modelDeleteReviewer" class="form-control mb-3" maxlength="100" autocomplete="name">
+                        <label for="modelDeleteRationale" class="form-label">Deletion rationale</label>
+                        <textarea id="modelDeleteRationale" class="form-control" rows="3"></textarea>
+                        <div id="modelDeleteStatus" class="small text-danger mt-2"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button id="submitModelDelete" type="button" class="btn btn-danger">Delete Model</button>
+                    </div>
+                </div>
             </div>
         </div>
 

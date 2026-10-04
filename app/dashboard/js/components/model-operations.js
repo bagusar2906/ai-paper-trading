@@ -1,8 +1,17 @@
-import { getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+
+let pendingReview = null;
+let pendingDeletion = null;
 
 export function initializeModelOperations() {
-    const button = document.getElementById("trainCandidate");
-    if (button) button.addEventListener("click", () => train(button));
+    const submitButton = document.getElementById("submitCandidateTraining");
+    if (submitButton) submitButton.addEventListener("click", () => train(submitButton));
+
+    const reviewButton = document.getElementById("submitModelReview");
+    if (reviewButton) reviewButton.addEventListener("click", () => submitReview(reviewButton));
+
+    const deleteButton = document.getElementById("submitModelDelete");
+    if (deleteButton) deleteButton.addEventListener("click", () => submitDeletion(deleteButton));
 }
 
 export async function refreshModelOperations() {
@@ -26,8 +35,14 @@ function row(model) {
         const button = document.createElement("button");
         button.className = "btn btn-sm btn-outline-primary";
         button.textContent = model.status === "candidate" ? "Promote" : "Rollback";
-        button.onclick = () => operate(model, button);
+        button.onclick = () => openReviewDialog(model);
         actions.append(button);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "btn btn-sm btn-outline-danger ms-1";
+        deleteButton.textContent = "Delete";
+        deleteButton.onclick = () => openDeleteDialog(model);
+        actions.append(deleteButton);
     }
     return tr;
 }
@@ -44,42 +59,91 @@ function formatMetrics(metrics = {}) {
         : "—";
 }
 
-async function operate(model, button) {
-    const reviewer = window.prompt("Reviewer name (required):");
-    const rationale = window.prompt("Rationale (required):");
-    if (!reviewer || !rationale) return;
+function openReviewDialog(model) {
+    pendingReview = model;
+    const action = model.status === "candidate" ? "Promote" : "Roll back";
+    document.getElementById("modelReviewTitle").textContent = `${action} Model`;
+    document.getElementById("modelReviewDescription").textContent = `${action} ${model.model_id}. This action is paper-only and will be recorded in the audit history.`;
+    document.getElementById("modelReviewReviewer").value = "";
+    document.getElementById("modelReviewRationale").value = "";
+    document.getElementById("modelReviewStatus").textContent = "";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modelReviewModal")).show();
+}
+
+async function submitReview(button) {
+    if (!pendingReview) return;
+    const reviewer = document.getElementById("modelReviewReviewer").value.trim();
+    const rationale = document.getElementById("modelReviewRationale").value.trim();
+    const status = document.getElementById("modelReviewStatus");
+    if (!reviewer || !rationale) {
+        status.textContent = "Reviewer and rationale are required.";
+        return;
+    }
     button.disabled = true;
     try {
-        if (model.status === "candidate") await promoteModel(model.model_id, reviewer, rationale);
-        else await rollbackModel(model.model_id, reviewer, rationale);
+        if (pendingReview.status === "candidate") await promoteModel(pendingReview.model_id, reviewer, rationale);
+        else await rollbackModel(pendingReview.model_id, reviewer, rationale);
         await refreshModelOperations();
+        bootstrap.Modal.getInstance(document.getElementById("modelReviewModal"))?.hide();
+        pendingReview = null;
     } catch (error) {
-        window.alert(`Model operation failed: ${error.message}`);
+        status.textContent = `Model operation failed: ${error.message}`;
+    } finally {
         button.disabled = false;
     }
 }
 
 async function train(button) {
-    const bars = window.prompt("Completed candles to train on (250–5000):", "1000");
-    if (bars === null) return;
-    const horizon = window.prompt("Prediction horizon in candles:", "12");
-    if (horizon === null) return;
-    const threshold = window.prompt("Up-return threshold (for example, 0.003 = 0.3%):", "0.003");
-    if (threshold === null) return;
-
-    const status = document.getElementById("modelOperationsStatus");
+    const bars = document.getElementById("candidateBars");
+    const horizon = document.getElementById("candidateHorizon");
+    const threshold = document.getElementById("candidateThreshold");
+    const status = document.getElementById("candidateTrainingStatus");
+    const dialog = document.getElementById("trainCandidateModal");
+    if (!bars || !horizon || !threshold || !status || !dialog) return;
     button.disabled = true;
     status.textContent = "Training paper-only candidate from completed candles…";
     try {
         const result = await trainCandidate({
-            bars: Number(bars),
-            horizon_candles: Number(horizon),
-            up_return_threshold: Number(threshold),
+            bars: Number(bars.value),
+            horizon_candles: Number(horizon.value),
+            up_return_threshold: Number(threshold.value),
         });
         await refreshModelOperations();
-        status.textContent = `Candidate ${result.model_id} trained on ${result.training_rows} rows; review before promotion.`;
+        document.getElementById("modelOperationsStatus").textContent = `Candidate ${result.model_id} trained on ${result.training_rows} rows; review before promotion.`;
+        bootstrap.Modal.getOrCreateInstance(dialog).hide();
     } catch (error) {
         status.textContent = `Candidate training failed: ${error.message}`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function openDeleteDialog(model) {
+    pendingDeletion = model;
+    document.getElementById("modelDeleteDescription").textContent = `Delete ${model.model_id}? This permanently removes the candidate/retired registry entry and its managed local artifacts.`;
+    document.getElementById("modelDeleteReviewer").value = "";
+    document.getElementById("modelDeleteRationale").value = "";
+    document.getElementById("modelDeleteStatus").textContent = "";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modelDeleteModal")).show();
+}
+
+async function submitDeletion(button) {
+    if (!pendingDeletion) return;
+    const reviewer = document.getElementById("modelDeleteReviewer").value.trim();
+    const rationale = document.getElementById("modelDeleteRationale").value.trim();
+    const status = document.getElementById("modelDeleteStatus");
+    if (!reviewer || !rationale) {
+        status.textContent = "Reviewer and deletion rationale are required.";
+        return;
+    }
+    button.disabled = true;
+    try {
+        await deleteModel(pendingDeletion.model_id, reviewer, rationale);
+        await refreshModelOperations();
+        bootstrap.Modal.getInstance(document.getElementById("modelDeleteModal"))?.hide();
+        pendingDeletion = null;
+    } catch (error) {
+        status.textContent = `Model deletion failed: ${error.message}`;
     } finally {
         button.disabled = false;
     }

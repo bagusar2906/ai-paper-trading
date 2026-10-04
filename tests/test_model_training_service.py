@@ -142,6 +142,28 @@ def test_train_endpoint_exposes_provider_failures(monkeypatch):
     assert "Yahoo Finance request failed" in response.json()["detail"]
 
 
+def test_delete_model_endpoint_requires_audited_non_champion_deletion(monkeypatch):
+    deleted = []
+    registry = SimpleNamespace(
+        delete_model=lambda model_id, reviewer, rationale: (
+            deleted.append((model_id, reviewer, rationale))
+            or "outside-managed-artifacts/model.pkl"
+        )
+    )
+    repos = SimpleNamespace(model_registry=registry, close=lambda: None)
+    monkeypatch.setattr("app.api.models.RepositoryFactory", lambda: repos)
+
+    response = TestClient(app).request(
+        "DELETE",
+        "/models/candidate-xgb-test",
+        json={"reviewer": "reviewer", "rationale": "obsolete candidate"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"model_id": "candidate-xgb-test", "deleted": True}
+    assert deleted == [("candidate-xgb-test", "reviewer", "obsolete candidate")]
+
+
 def test_model_list_exposes_saved_validation_metrics(monkeypatch):
     registry = SimpleNamespace(get_all=lambda: [SimpleNamespace(
         model_id="candidate-xgb-test",

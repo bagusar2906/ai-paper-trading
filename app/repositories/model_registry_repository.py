@@ -95,5 +95,26 @@ class ModelRegistryRepository(BaseRepository):
         self.session.commit()
         return target
 
+    def delete_model(self, model_id: str, reviewer: str, rationale: str):
+        model = self.get(model_id)
+        if model is None:
+            raise ValueError("model was not found")
+        if model.status == "champion":
+            raise ValueError("the champion model cannot be deleted; promote or roll back another model first")
+        if model.status not in {"candidate", "retired"}:
+            raise ValueError("only candidate or retired models can be deleted")
+
+        artifact_path = model.artifact_path
+        self.session.add(ModelPromotionEntity(
+            model_id=model_id,
+            previous_model_id=None,
+            action="delete",
+            reviewer=reviewer,
+            rationale=rationale,
+        ))
+        self.session.delete(model)
+        self.session.commit()
+        return artifact_path
+
     def promotion_history(self):
         return self.session.query(ModelPromotionEntity).order_by(ModelPromotionEntity.created_at.desc()).all()

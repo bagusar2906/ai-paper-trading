@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
@@ -87,3 +88,35 @@ def rollback(model_id: str, request: dict):
         raise HTTPException(status_code=400, detail=str(error))
     finally:
         repos.close()
+
+
+@router.delete("/{model_id}")
+def delete_model(model_id: str, request: dict):
+    if not request.get("reviewer") or not request.get("rationale"):
+        raise HTTPException(status_code=400, detail="reviewer and rationale are required")
+    repos = RepositoryFactory()
+    try:
+        artifact_path = repos.model_registry.delete_model(
+            model_id, request["reviewer"], request["rationale"]
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    finally:
+        repos.close()
+
+    _remove_model_artifacts(artifact_path)
+    return {"model_id": model_id, "deleted": True}
+
+
+def _remove_model_artifacts(artifact_path: str):
+    """Delete only local artifacts managed by this application."""
+    root = Path("data/model_artifacts").resolve()
+    artifact = Path(artifact_path).resolve()
+    if root not in artifact.parents:
+        logger.warning("Refusing to delete model artifact outside %s: %s", root, artifact)
+        return
+    for path in (artifact, artifact.with_suffix(".json")):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not remove model artifact: %s", path, exc_info=True)

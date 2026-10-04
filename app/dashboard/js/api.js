@@ -68,6 +68,9 @@ export async function promoteModel(id, reviewer, rationale) {
 export async function rollbackModel(id, reviewer, rationale) {
     return request(`/models/${encodeURIComponent(id)}/rollback`, { method: "POST", body: JSON.stringify({ reviewer, rationale }) });
 }
+export async function deleteModel(id, reviewer, rationale) {
+    return request(`/models/${encodeURIComponent(id)}`, { method: "DELETE", body: JSON.stringify({ reviewer, rationale }) });
+}
 
 // -----------------------------------------------------
 // Quotes
