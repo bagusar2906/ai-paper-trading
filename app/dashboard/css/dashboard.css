@@ -219,6 +219,105 @@ h2 {
     animation: spin 1s linear infinite;
 }
 
+.model-lab-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 360px;
+    min-height: 170px;
+    overflow-y: auto;
+    padding: 1.1rem;
+    background: linear-gradient(180deg, #fbfdff, #f3f8fc);
+}
+
+.model-lab-message {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    max-width: min(88%, 780px);
+}
+
+.model-lab-user {
+    align-self: flex-end;
+    max-width: min(78%, 680px);
+}
+
+.model-lab-bubble {
+    padding: .75rem .9rem;
+    border: 1px solid #d8e5f0;
+    border-radius: .85rem;
+    background: #fff;
+    box-shadow: 0 2px 7px rgba(26, 55, 86, .05);
+    line-height: 1.5;
+}
+
+.model-lab-user .model-lab-bubble {
+    color: #fff;
+    border-color: #1d62ab;
+    background: linear-gradient(135deg, #2d7dd2, #1d62ab);
+    border-bottom-right-radius: .25rem;
+}
+
+.model-lab-assistant .model-lab-bubble {
+    border-bottom-left-radius: .25rem;
+}
+
+.model-lab-content p { margin: 0 0 .55rem; white-space: pre-wrap; }
+.model-lab-content p:last-child { margin-bottom: 0; }
+
+.model-lab-avatar {
+    display: inline-flex;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, #163f67, #2d7dd2);
+    border-radius: .55rem;
+    font-size: .65rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.model-lab-source {
+    margin-top: .65rem;
+    padding-top: .55rem;
+    color: var(--app-muted);
+    border-top: 1px solid #e6eef5;
+    font-size: .72rem;
+}
+
+.model-lab-composer {
+    padding: 1rem 1.1rem;
+    border-top: 1px solid var(--app-border);
+    background: #fff;
+}
+
+.model-lab-composer textarea {
+    min-height: 42px;
+    max-height: 120px;
+    resize: vertical;
+}
+
+.model-lab-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-bottom: .7rem;
+}
+
+.model-lab-suggestion {
+    color: #315c82;
+    border-color: #d5e2ed;
+    background: #f8fbfe;
+}
+
+[data-pending="true"] .model-lab-bubble {
+    color: var(--app-muted);
+    font-style: italic;
+}
+
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
@@ -228,4 +327,5 @@ h2 {
     .navbar { padding-inline: .75rem; }
     .card-body { padding: .9rem; }
     .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .model-lab-message, .model-lab-user { max-width: 94%; }
 }
