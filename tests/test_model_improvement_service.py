@@ -43,6 +43,7 @@ def test_report_does_not_compare_different_market_contexts():
     assessment = ModelImprovementService().build_report([champion, candidate])["assessments"][0]
 
     assert assessment["champion_model_id"] is None
+    assert assessment["comparison_available"] is False
     assert assessment["recommendation"] == "paper_test"
 
 

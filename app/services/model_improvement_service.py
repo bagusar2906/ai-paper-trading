@@ -76,6 +76,7 @@ class ModelImprovementService:
         return {
             "candidate_model_id": candidate["model_id"],
             "champion_model_id": champion["model_id"] if champion else None,
+            "comparison_available": champion is not None,
             "recommendation": recommendation,
             "deltas": deltas,
             "stability": stability,

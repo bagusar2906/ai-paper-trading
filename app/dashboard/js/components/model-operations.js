@@ -144,13 +144,20 @@ function renderImprovementReport(report) {
             reasonItem.textContent = reason;
             reasons.append(reasonItem);
         }
-        const compareButton = document.createElement("button");
-        compareButton.className = "btn btn-sm btn-outline-secondary mt-2";
-        compareButton.textContent = "Compare in backtest";
-        compareButton.onclick = () => {
-            window.location.href = `backtest.html?candidate_model_id=${encodeURIComponent(assessment.candidate_model_id)}`;
-        };
-        item.append(heading, comparison, reasons, compareButton);
+        if (assessment.comparison_available || assessment.champion_model_id) {
+            const compareButton = document.createElement("button");
+            compareButton.className = "btn btn-sm btn-outline-secondary mt-2";
+            compareButton.textContent = "Compare in backtest";
+            compareButton.onclick = () => {
+                window.location.href = `backtest.html?candidate_model_id=${encodeURIComponent(assessment.candidate_model_id)}`;
+            };
+            item.append(heading, comparison, reasons, compareButton);
+        } else {
+            const unavailable = document.createElement("div");
+            unavailable.className = "text-muted mt-2";
+            unavailable.textContent = "Backtest comparison is unavailable until a compatible champion exists.";
+            item.append(heading, comparison, reasons, unavailable);
+        }
         container.append(item);
     }
 }
