@@ -15,6 +15,54 @@ class ModelLabAssistantService:
         "required": ["answer"],
     }
 
+    CAPABILITY_GUIDE = (
+        {
+            "button": "Train Candidate",
+            "purpose": "Trains an XGBoost model from completed candles using the form settings.",
+            "result": "Creates a candidate only; it cannot replace a champion or trade.",
+        },
+        {
+            "button": "Plan Experiments",
+            "purpose": "Suggests bounded XGBoost parameter variations from the current training settings.",
+            "result": "Only creates suggestions. Use settings copies one suggestion into the training form.",
+        },
+        {
+            "button": "Record monitoring check",
+            "purpose": "Checks champion feature drift and saves its recommendation to review history.",
+            "result": "Never starts retraining; it only records evidence.",
+        },
+        {
+            "button": "Retrain as candidate",
+            "purpose": "Opens the candidate-training form when health monitoring recommends retraining.",
+            "result": "The current champion remains unchanged until human review.",
+        },
+        {
+            "button": "Compare in backtest",
+            "purpose": "Opens a held-out paper backtest for the candidate and matching symbol/timeframe champion.",
+            "result": "Produces comparison evidence only; it does not promote either model.",
+        },
+        {
+            "button": "Promote / Rollback",
+            "purpose": "Opens a review dialog to promote a candidate or restore a retired model.",
+            "result": "Requires reviewer name, rationale, and explicit confirmation; changes are audited.",
+        },
+        {
+            "button": "Get AI review guidance",
+            "purpose": "Requests a cautious recommendation based on validation metrics and walk-forward evidence.",
+            "result": "Provides guidance only; it cannot approve or promote a model.",
+        },
+        {
+            "button": "History",
+            "purpose": "Shows saved review, backtest, guidance, and monitoring evidence for one model.",
+            "result": "Read-only.",
+        },
+        {
+            "button": "Delete",
+            "purpose": "Removes a candidate or retired model and its managed local artifacts.",
+            "result": "Requires reviewer name, rationale, and confirmation. Champions cannot be deleted.",
+        },
+    )
+
     def __init__(self, requester=requests.post):
         self.requester = requester
         self.api_key = os.environ.get("AI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
@@ -54,7 +102,11 @@ class ModelLabAssistantService:
                         "registry evidence. You cannot start jobs, change models, promote, retrain, or trade. "
                         "State that a human must approve any model action."
                     ),
-                    "input": json.dumps({"question": question, "models": evidence}),
+                    "input": json.dumps({
+                        "question": question,
+                        "models": evidence,
+                        "model_lab_capabilities": self.CAPABILITY_GUIDE,
+                    }),
                     "text": {"format": {"type": "json_schema", "name": "model_lab_answer", "strict": True, "schema": self.RESPONSE_SCHEMA}},
                 },
                 timeout=20,
@@ -76,6 +128,8 @@ class ModelLabAssistantService:
         raise ValueError("Responses API returned no response text")
 
     def _local_answer(self, question_lower: str, evidence: list[dict]) -> str:
+        if any(term in question_lower for term in ("button", "feature", "function", "what can", "help", "capabilit")):
+            return self._capability_answer()
         if "retrain" in question_lower or "drift" in question_lower:
             return self._retraining_answer(evidence)
         if "compare" in question_lower or "candidate" in question_lower:
@@ -83,6 +137,14 @@ class ModelLabAssistantService:
         if "champion" in question_lower:
             return self._champion_answer(evidence)
         return self._overview_answer(evidence)
+
+    @classmethod
+    def _capability_answer(cls) -> str:
+        entries = "\n".join(
+            f"• {item['button']}: {item['purpose']} {item['result']}"
+            for item in cls.CAPABILITY_GUIDE
+        )
+        return f"Here is what each AI Model Lab button does:\n\n{entries}"
 
     @staticmethod
     def _model_evidence(model) -> dict:

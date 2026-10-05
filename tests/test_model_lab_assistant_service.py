@@ -31,6 +31,14 @@ def test_assistant_explains_retraining_without_actioning_it():
     assert response["available_actions"] == ["train_candidate", "run_held_out_backtest", "manual_promotion_review"]
 
 
+def test_assistant_explains_all_model_lab_buttons_from_its_capability_guide():
+    response = ModelLabAssistantService().respond("What does every button do?", [])
+
+    assert "Train Candidate" in response["answer"]
+    assert "Get AI review guidance" in response["answer"]
+    assert "Champions cannot be deleted" in response["answer"]
+
+
 def test_assistant_uses_configured_openai_compatible_gateway(monkeypatch):
     class Response:
         def raise_for_status(self):
@@ -56,3 +64,4 @@ def test_assistant_uses_configured_openai_compatible_gateway(monkeypatch):
     assert captured["url"] == "http://127.0.0.1:20128/v1/responses"
     assert captured["json"]["model"] == "my-combo"
     assert captured["json"]["store"] is False
+    assert captured["json"]["input"].find("model_lab_capabilities") >= 0
