@@ -1,10 +1,25 @@
 """Read-only assistant for explaining model-lab evidence and next steps."""
 
 import json
+import os
+
+import requests
 
 
 class ModelLabAssistantService:
     """Answers from registry evidence only; it never starts jobs or changes models."""
+
+    RESPONSE_SCHEMA = {
+        "type": "object", "additionalProperties": False,
+        "properties": {"answer": {"type": "string"}},
+        "required": ["answer"],
+    }
+
+    def __init__(self, requester=requests.post):
+        self.requester = requester
+        self.api_key = os.environ.get("AI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+        self.api_base_url = os.environ.get("AI_API_BASE_URL", "").rstrip("/")
+        self.model = os.environ.get("OPENAI_TRADING_MODEL", "")
 
     def respond(self, message: str, models: list) -> dict:
         question = str(message or "").strip()
@@ -15,20 +30,59 @@ class ModelLabAssistantService:
 
         evidence = [self._model_evidence(model) for model in models]
         question_lower = question.lower()
-        if "retrain" in question_lower or "drift" in question_lower:
-            answer = self._retraining_answer(evidence)
-        elif "compare" in question_lower or "candidate" in question_lower:
-            answer = self._comparison_answer(evidence)
-        elif "champion" in question_lower:
-            answer = self._champion_answer(evidence)
-        else:
-            answer = self._overview_answer(evidence)
+        local_answer = self._local_answer(question_lower, evidence)
+        remote_answer = self._ai_answer(question, evidence)
         return {
-            "answer": answer,
-            "source": "local_registry_evidence",
+            "answer": remote_answer or local_answer,
+            "source": "omniroute" if remote_answer else "local_registry_evidence",
             "automatic_actions": False,
             "available_actions": ["train_candidate", "run_held_out_backtest", "manual_promotion_review"],
         }
+
+    def _ai_answer(self, question: str, evidence: list[dict]) -> str | None:
+        if not (self.api_key and self.api_base_url and self.model):
+            return None
+        try:
+            response = self.requester(
+                f"{self.api_base_url}/responses",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={
+                    "model": self.model,
+                    "store": False,
+                    "instructions": (
+                        "You are a cautious paper-trading Model Lab assistant. Answer only from the supplied "
+                        "registry evidence. You cannot start jobs, change models, promote, retrain, or trade. "
+                        "State that a human must approve any model action."
+                    ),
+                    "input": json.dumps({"question": question, "models": evidence}),
+                    "text": {"format": {"type": "json_schema", "name": "model_lab_answer", "strict": True, "schema": self.RESPONSE_SCHEMA}},
+                },
+                timeout=20,
+            )
+            response.raise_for_status()
+            answer = json.loads(self._response_text(response.json())).get("answer")
+            return answer if isinstance(answer, str) and answer.strip() else None
+        except (requests.RequestException, ValueError, KeyError, json.JSONDecodeError):
+            return None
+
+    @staticmethod
+    def _response_text(payload: dict) -> str:
+        if payload.get("output_text"):
+            return str(payload["output_text"])
+        for item in payload.get("output", []):
+            for content in item.get("content", []):
+                if content.get("type") == "output_text":
+                    return str(content.get("text", ""))
+        raise ValueError("Responses API returned no response text")
+
+    def _local_answer(self, question_lower: str, evidence: list[dict]) -> str:
+        if "retrain" in question_lower or "drift" in question_lower:
+            return self._retraining_answer(evidence)
+        if "compare" in question_lower or "candidate" in question_lower:
+            return self._comparison_answer(evidence)
+        if "champion" in question_lower:
+            return self._champion_answer(evidence)
+        return self._overview_answer(evidence)
 
     @staticmethod
     def _model_evidence(model) -> dict:

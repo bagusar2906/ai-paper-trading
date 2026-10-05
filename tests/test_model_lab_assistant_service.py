@@ -29,3 +29,30 @@ def test_assistant_explains_retraining_without_actioning_it():
 
     assert "candidate-only" in response["answer"]
     assert response["available_actions"] == ["train_candidate", "run_held_out_backtest", "manual_promotion_review"]
+
+
+def test_assistant_uses_configured_openai_compatible_gateway(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"output_text": '{"answer":"Compare it with a held-out backtest, then ask a human reviewer."}'}
+
+    captured = {}
+
+    def request(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return Response()
+
+    monkeypatch.setenv("AI_API_KEY", "test-key")
+    monkeypatch.setenv("AI_API_BASE_URL", "http://127.0.0.1:20128/v1")
+    monkeypatch.setenv("OPENAI_TRADING_MODEL", "my-combo")
+
+    response = ModelLabAssistantService(requester=request).respond("Compare candidate", [_model("btc", "candidate")])
+
+    assert response["source"] == "omniroute"
+    assert captured["url"] == "http://127.0.0.1:20128/v1/responses"
+    assert captured["json"]["model"] == "my-combo"
+    assert captured["json"]["store"] is False
