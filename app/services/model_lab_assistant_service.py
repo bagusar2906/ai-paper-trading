@@ -58,8 +58,8 @@ class ModelLabAssistantService:
         },
         {
             "button": "Delete",
-            "purpose": "Removes a candidate or retired model and its managed local artifacts.",
-            "result": "Requires reviewer name, rationale, and confirmation. Champions cannot be deleted.",
+            "purpose": "Removes a candidate, champion, or retired model and its managed local artifacts.",
+            "result": "Requires reviewer name, rationale, and confirmation. Deleting a champion stops its future signal use.",
         },
     )
 
@@ -85,7 +85,25 @@ class ModelLabAssistantService:
             "source": "omniroute" if remote_answer else "local_registry_evidence",
             "automatic_actions": False,
             "available_actions": ["train_candidate", "run_held_out_backtest", "manual_promotion_review"],
+            "prepared_actions": self._prepared_actions(question_lower),
         }
+
+    @staticmethod
+    def _prepared_actions(question_lower: str) -> list[dict]:
+        actions = []
+        if "train" in question_lower or "retrain" in question_lower:
+            actions.append({
+                "type": "open_candidate_training",
+                "label": "Prepare candidate training",
+                "detail": "Opens the form only; you still confirm training.",
+            })
+        if "backtest" in question_lower or "compare" in question_lower:
+            actions.append({
+                "type": "open_backtest",
+                "label": "Prepare backtest",
+                "detail": "Opens the backtest form only; you still confirm the run.",
+            })
+        return actions
 
     def _ai_answer(self, question: str, evidence: list[dict]) -> str | None:
         if not (self.api_key and self.api_base_url and self.model):

@@ -29,6 +29,11 @@ def test_assistant_explains_retraining_without_actioning_it():
 
     assert "candidate-only" in response["answer"]
     assert response["available_actions"] == ["train_candidate", "run_held_out_backtest", "manual_promotion_review"]
+    assert response["prepared_actions"] == [{
+        "type": "open_candidate_training",
+        "label": "Prepare candidate training",
+        "detail": "Opens the form only; you still confirm training.",
+    }]
 
 
 def test_assistant_explains_all_model_lab_buttons_from_its_capability_guide():
@@ -36,7 +41,18 @@ def test_assistant_explains_all_model_lab_buttons_from_its_capability_guide():
 
     assert "Train Candidate" in response["answer"]
     assert "Get AI review guidance" in response["answer"]
-    assert "Champions cannot be deleted" in response["answer"]
+    assert "Deleting a champion stops its future signal use" in response["answer"]
+
+
+def test_assistant_can_prepare_a_backtest_without_starting_it():
+    response = ModelLabAssistantService().respond("Prepare a backtest", [])
+
+    assert response["automatic_actions"] is False
+    assert response["prepared_actions"] == [{
+        "type": "open_backtest",
+        "label": "Prepare backtest",
+        "detail": "Opens the backtest form only; you still confirm the run.",
+    }]
 
 
 def test_assistant_uses_configured_openai_compatible_gateway(monkeypatch):

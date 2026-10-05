@@ -288,6 +288,15 @@ h2 {
     font-size: .72rem;
 }
 
+.model-lab-action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-top: .75rem;
+    padding-top: .65rem;
+    border-top: 1px solid #e6eef5;
+}
+
 .model-lab-composer {
     padding: 1rem 1.1rem;
     border-top: 1px solid var(--app-border);

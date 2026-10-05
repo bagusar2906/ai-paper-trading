@@ -1,7 +1,7 @@
 import { initializeModelOperations, refreshModelOperations } from "./components/model-operations.js";
 import { askModelLab, runModelMonitoringCheck } from "./api.js";
 
-function appendModelLabMessage(role, text, { pending = false, source = "" } = {}) {
+function appendModelLabMessage(role, text, { pending = false, source = "", actions = [] } = {}) {
     const messages = document.getElementById("modelLabMessages");
     const message = document.createElement("div");
     message.className = `model-lab-message model-lab-${role}`;
@@ -31,10 +31,34 @@ function appendModelLabMessage(role, text, { pending = false, source = "" } = {}
         detail.textContent = source === "omniroute" ? "Answered by AI via OmniRoute" : "Answered from local registry evidence";
         bubble.append(detail);
     }
+    if (actions.length) {
+        const actionBar = document.createElement("div");
+        actionBar.className = "model-lab-action-bar";
+        actions.forEach((action) => {
+            const button = document.createElement("button");
+            button.className = "btn btn-sm btn-outline-primary";
+            button.type = "button";
+            button.textContent = action.label;
+            button.title = action.detail;
+            button.addEventListener("click", () => prepareModelLabAction(action));
+            actionBar.append(button);
+        });
+        bubble.append(actionBar);
+    }
     message.append(bubble);
     messages.append(message);
     messages.scrollTop = messages.scrollHeight;
     return message;
+}
+
+function prepareModelLabAction(action) {
+    if (action.type === "open_candidate_training") {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("trainCandidateModal")).show();
+        return;
+    }
+    if (action.type === "open_backtest") {
+        window.location.href = "backtest.html";
+    }
 }
 
 async function submitModelLabQuestion() {
@@ -50,7 +74,10 @@ async function submitModelLabQuestion() {
     try {
         const result = await askModelLab(text);
         pending.remove();
-        appendModelLabMessage("assistant", result.answer, { source: result.source });
+        appendModelLabMessage("assistant", result.answer, {
+            source: result.source,
+            actions: result.prepared_actions || [],
+        });
     } catch (error) {
         pending.remove();
         appendModelLabMessage("assistant", `I couldn’t answer that right now: ${error.message}`);
