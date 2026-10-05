@@ -196,10 +196,8 @@ class ModelRegistryRepository(BaseRepository):
         model = self.get(model_id)
         if model is None:
             raise ValueError("model was not found")
-        if model.status == "champion":
-            raise ValueError("the champion model cannot be deleted; promote or roll back another model first")
-        if model.status not in {"candidate", "retired"}:
-            raise ValueError("only candidate or retired models can be deleted")
+        if model.status not in {"candidate", "retired", "champion"}:
+            raise ValueError("only registered candidate, champion, or retired models can be deleted")
 
         artifact_path = model.artifact_path
         self.session.add(ModelPromotionEntity(

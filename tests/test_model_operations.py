@@ -63,7 +63,7 @@ def test_model_registry_deletes_non_champion_and_records_audit(repos):
     assert audit.reviewer == "reviewer"
 
 
-def test_model_registry_refuses_to_delete_champion(repos):
+def test_model_registry_deletes_champion_and_records_audit(repos):
     repos.session.add(ModelVersionEntity(
         model_id="champion-delete-test",
         training_run_id="train-champion-test",
@@ -77,5 +77,8 @@ def test_model_registry_refuses_to_delete_champion(repos):
     ))
     repos.session.commit()
 
-    with pytest.raises(ValueError, match="champion"):
-        repos.model_registry.delete_model("champion-delete-test", "reviewer", "test")
+    repos.model_registry.delete_model("champion-delete-test", "reviewer", "retired from use")
+
+    assert repos.model_registry.get("champion-delete-test") is None
+    audit = repos.session.query(ModelPromotionEntity).one()
+    assert audit.action == "delete"

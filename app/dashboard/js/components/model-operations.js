@@ -177,12 +177,12 @@ function row(model) {
         button.onclick = () => openReviewDialog(model);
         actions.append(button);
 
-        const deleteButton = document.createElement("button");
-        deleteButton.className = "btn btn-sm btn-outline-danger ms-1";
-        deleteButton.textContent = "Delete";
-        deleteButton.onclick = () => openDeleteDialog(model);
-        actions.append(deleteButton);
     }
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "btn btn-sm btn-outline-danger ms-1";
+    deleteButton.textContent = "Delete";
+    deleteButton.onclick = () => openDeleteDialog(model);
+    actions.append(deleteButton);
     const historyButton = document.createElement("button");
     historyButton.className = "btn btn-sm btn-outline-secondary ms-1";
     historyButton.textContent = "History";
@@ -323,7 +323,10 @@ function setTrainingStatus(element, variant, message) {
 
 function openDeleteDialog(model) {
     pendingDeletion = model;
-    document.getElementById("modelDeleteDescription").textContent = `Delete ${model.model_id}? This permanently removes the candidate/retired registry entry and its managed local artifacts.`;
+    const impact = model.status === "champion"
+        ? "This champion will immediately stop being available for future AI-assisted signals."
+        : "This model is not used for current AI-assisted signals.";
+    document.getElementById("modelDeleteDescription").textContent = `Delete ${model.model_id}? ${impact} This permanently removes the registry entry and its managed local artifacts.`;
     document.getElementById("modelDeleteReviewer").value = "";
     document.getElementById("modelDeleteRationale").value = "";
     document.getElementById("modelDeleteStatus").textContent = "";
