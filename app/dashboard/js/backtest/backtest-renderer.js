@@ -51,6 +51,7 @@ function renderCandidateComparison(comparison) {
             : "Investigate or retrain before another comparison. The candidate does not yet meet the evidence gate.")
         : "Acceptance gate unavailable for this comparison.";
     const gateClass = readyForReview ? "alert-success" : "alert-warning";
+    const diagnostic = comparison.decision_diagnostic;
     const checkLabels = {
         minimum_trades: "Minimum trade evidence",
         same_or_more_trades: "Same or more trades than champion",
@@ -81,6 +82,7 @@ function renderCandidateComparison(comparison) {
         <div class="alert ${gateClass} mb-2"><strong>${gate?.recommendation?.replaceAll("_", " ") || "NO RECOMMENDATION"}</strong><br>${gateMessage}</div>
         ${checks ? `<div class="mb-2"><strong>Acceptance checks</strong><ul class="mb-0 mt-1">${checks}</ul></div>` : ""}
         ${gate?.reasons?.length ? `<div class="small text-muted">${gate.reasons.join(" ")}</div>` : ""}
+        ${diagnostic ? `<hr><div><strong>Model-decision diagnostic</strong><div class="row small mt-1"><div class="col-md-4">Candles evaluated: <strong>${diagnostic.candles_evaluated}</strong></div><div class="col-md-4">Average probability difference: <strong>${Number(diagnostic.average_probability_difference).toFixed(4)}</strong></div><div class="col-md-4">Maximum probability difference: <strong>${Number(diagnostic.maximum_probability_difference).toFixed(4)}</strong></div></div><div class="row small mt-1"><div class="col-md-6">Different final decisions: <strong>${diagnostic.decision_disagreements}</strong></div><div class="col-md-6">Probability differences blocked by rules: <strong>${diagnostic.rule_blocked_disagreements}</strong></div></div><p class="small text-muted mb-0 mt-2">${diagnostic.summary}</p></div>` : ""}
     `;
 
 }

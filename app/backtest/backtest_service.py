@@ -58,9 +58,11 @@ class BacktestService:
             config, predictor=RegisteredModelPredictor(candidate.model_id, {"candidate"})
         )
         candidate_report = self._run_strategy(
-            request, evaluation_history, candidate_strategy, job_id, 20, 55
+            request, evaluation_history, candidate_strategy, job_id, 20, 55,
+            collect_decisions=True,
         )
         if candidate_report.stopped:
+            candidate_report.decision_trace = None
             candidate_report.comparison = {
                 "status": "stopped",
                 "candidate_model_id": candidate.model_id,
@@ -74,8 +76,14 @@ class BacktestService:
             config, predictor=RegisteredModelPredictor(champion.model_id, {"champion"})
         )
         champion_report = self._run_strategy(
-            request, evaluation_history, champion_strategy, job_id, 56, 95
+            request, evaluation_history, champion_strategy, job_id, 56, 95,
+            collect_decisions=True,
         )
+        diagnostic = self._decision_disagreement(
+            candidate_report.decision_trace or [], champion_report.decision_trace or []
+        )
+        candidate_report.decision_trace = None
+        champion_report.decision_trace = None
         candidate_report.comparison = {
             "status": "completed",
             "candidate_model_id": candidate.model_id,
@@ -85,6 +93,7 @@ class BacktestService:
             "champion": champion_report.statistics,
             "same_history": True,
             "paper_only": True,
+            "decision_diagnostic": diagnostic,
             "acceptance_gate": CandidateAcceptanceGate().evaluate(
                 candidate_report.statistics, champion_report.statistics
             ),
@@ -156,7 +165,7 @@ class BacktestService:
             raise ValueError("the requested history does not include the candidate's held-out evaluation window")
         return selected
 
-    def _run_strategy(self, request, history, strategy, job_id, progress_start=20, progress_end=90):
+    def _run_strategy(self, request, history, strategy, job_id, progress_start=20, progress_end=90, collect_decisions=False):
         df = strategy.prepare(history)
         engine, backtest_session = create_session_factory("sqlite:///:memory:")
         Base.metadata.create_all(engine)
@@ -167,7 +176,7 @@ class BacktestService:
             timeframe=request.timeframe, bars=request.bars, respect_trading_mode=False,
         )
 
-        equity, stopped = [], False
+        equity, stopped, decision_trace = [], False, []
         total = len(df) - strategy.minimum_bars
         if total <= 0:
             raise ValueError(f"Not enough held-out history for this strategy; need more than {strategy.minimum_bars} bars.")
@@ -184,7 +193,9 @@ class BacktestService:
                     progress = progress_start + int((number / total) * (progress_end - progress_start))
                     self._update_progress(job_id, min(progress, progress_end), f"Processing candle {number}/{total}")
                 candle_history = df.iloc[: end + 1].copy()
-                trading_engine.run_once(candle_history)
+                result = trading_engine.run_once(candle_history)
+                if collect_decisions and result.signal is not None:
+                    decision_trace.append(self._decision_snapshot(result.signal))
                 account = broker.get_account()
                 equity.append(EquityPoint(time=candle_history.iloc[-1].name, equity=account.equity))
         finally:
@@ -193,7 +204,66 @@ class BacktestService:
 
         trades = broker.get_trades()
         statistics = StatisticsService().build(trades, max_drawdown=self._maximum_drawdown(equity))
-        return self._response(df, statistics, equity, trades, stopped)
+        response = self._response(df, statistics, equity, trades, stopped)
+        response.decision_trace = decision_trace if collect_decisions else None
+        return response
+
+    @staticmethod
+    def _decision_snapshot(signal) -> dict:
+        context = getattr(signal, "ai_lab_context", {}) or {}
+        action = getattr(signal.action, "value", str(signal.action))
+        return {
+            "action": action,
+            "probability": float(signal.confidence),
+            "gates": context.get("gates", {}),
+        }
+
+    @classmethod
+    def _decision_disagreement(cls, candidate_trace, champion_trace) -> dict:
+        paired = list(zip(candidate_trace, champion_trace))
+        if not paired:
+            return {
+                "candles_evaluated": 0,
+                "average_probability_difference": 0.0,
+                "maximum_probability_difference": 0.0,
+                "decision_disagreements": 0,
+                "rule_blocked_disagreements": 0,
+                "summary": "No comparable model decisions were recorded.",
+            }
+
+        differences = [abs(candidate["probability"] - champion["probability"]) for candidate, champion in paired]
+        decision_disagreements = sum(
+            candidate["action"] != champion["action"] for candidate, champion in paired
+        )
+        rule_blocked = sum(
+            cls._probability_preference(candidate) != cls._probability_preference(champion)
+            and candidate["action"] == champion["action"]
+            for candidate, champion in paired
+        )
+        summary = (
+            "Both models reached the same final decision on every evaluated candle."
+            if decision_disagreements == 0
+            else f"The models reached different final decisions on {decision_disagreements} evaluated candle(s)."
+        )
+        if rule_blocked:
+            summary += f" Technical or regime gates kept {rule_blocked} probability disagreement(s) from changing the final decision."
+        return {
+            "candles_evaluated": len(paired),
+            "average_probability_difference": round(sum(differences) / len(differences), 4),
+            "maximum_probability_difference": round(max(differences), 4),
+            "decision_disagreements": decision_disagreements,
+            "rule_blocked_disagreements": rule_blocked,
+            "summary": summary,
+        }
+
+    @staticmethod
+    def _probability_preference(decision) -> str:
+        gates = decision.get("gates", {})
+        if gates.get("long_probability"):
+            return "BUY"
+        if gates.get("short_probability"):
+            return "SELL"
+        return "HOLD"
 
     @staticmethod
     def _maximum_drawdown(equity):

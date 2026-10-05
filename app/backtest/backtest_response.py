@@ -29,3 +29,8 @@ class BacktestResponse:
     stopped: bool = False
 
     comparison: dict | None = None
+
+    # Used only while building a candidate comparison diagnostic. It is cleared
+    # before the response leaves BacktestService, so per-candle decisions are
+    # never returned to the dashboard.
+    decision_trace: list[dict] | None = None
