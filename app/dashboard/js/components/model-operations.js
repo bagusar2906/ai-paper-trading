@@ -1,4 +1,4 @@
-import { deleteModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModelReviewHistory, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { deleteModel, getActiveSignalModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModelReviewHistory, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -85,14 +85,25 @@ export async function refreshModelOperations() {
     const status = document.getElementById("modelOperationsStatus");
     if (!body) return;
     try {
-        const [models, report, health] = await Promise.all([getModels(), getModelImprovementReport(), getModelHealth()]);
-        body.replaceChildren(...models.map(model => row(model)));
+        const [models, report, health, signalModel] = await Promise.all([getModels(), getModelImprovementReport(), getModelHealth(), getActiveSignalModel()]);
+        body.replaceChildren(...models.map(model => row(model, signalModel)));
         renderImprovementReport(report);
         renderModelHealth(health);
-        status.textContent = models.some(model => model.status === "champion") ? "Paper-only champion available" : "No champion — AI strategy will hold";
+        renderSignalModel(signalModel);
+        status.textContent = signalModel.signal_ready ? "Paper-only signal model available" : "No compatible signal model — AI strategy will hold";
     } catch (error) {
         status.textContent = `Model status unavailable: ${error.message}`;
     }
+}
+
+function renderSignalModel(signalModel) {
+    const target = document.getElementById("activeSignalModel");
+    if (!target) return;
+    if (!signalModel.signal_ready) {
+        target.textContent = `Not ready: ${signalModel.reason || "No compatible champion is available."}`;
+        return;
+    }
+    target.textContent = `Active for signals: ${signalModel.champion_model_id} · ${signalModel.symbol} ${signalModel.timeframe} · ${signalModel.label_definition_id}`;
 }
 
 function renderModelHealth(health) {
@@ -166,9 +177,10 @@ function formatDelta(value) {
     return Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(3)}` : "—";
 }
 
-function row(model) {
+function row(model, signalModel) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${model.feature_set_id}</td><td>${model.label_definition_id}</td><td>${formatMetrics(model.metrics)}</td><td>${formatFeatureImportance(model.feature_importance)}</td><td></td>`;
+    const activeForSignals = signalModel.signal_ready && signalModel.champion_model_id === model.model_id;
+    tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${formatMarketContext(model.market_context)}</td><td>${model.feature_set_id}</td><td>${model.label_definition_id}</td><td>${activeForSignals ? '<span class="badge text-bg-primary">Active</span>' : "—"}</td><td>${formatMetrics(model.metrics)}</td><td>${formatFeatureImportance(model.feature_importance)}</td><td></td>`;
     const actions = tr.lastElementChild;
     if (model.status === "candidate" || model.status === "retired") {
         const button = document.createElement("button");
@@ -189,6 +201,10 @@ function row(model) {
     historyButton.onclick = () => openReviewHistory(model);
     actions.append(historyButton);
     return tr;
+}
+
+function formatMarketContext(context) {
+    return context?.symbol && context?.timeframe ? `${context.symbol} · ${context.timeframe}` : "—";
 }
 
 async function openReviewHistory(model) {

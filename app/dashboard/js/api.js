@@ -59,6 +59,7 @@ export async function getChart() {
 }
 
 export async function getModels() { return request("/models"); }
+export async function getActiveSignalModel() { return request("/models/signal-model"); }
 export async function getModelImprovementReport() { return request("/models/improvement-report"); }
 export async function getModelExperimentPlan(parameters) {
     const query = new URLSearchParams(parameters);

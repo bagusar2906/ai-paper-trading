@@ -4,7 +4,10 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
+from app.config import TradingConfig
 from app.factories.repository_factory import RepositoryFactory
+from app.features.core_v1 import FEATURE_SET_ID
+from app.labels.future_return import FutureReturnLabel
 from app.services.model_experiment_service import ModelExperimentService
 from app.services.model_health_service import ModelHealthService
 from app.services.model_lab_assistant_service import ModelLabAssistantService
@@ -102,6 +105,53 @@ def champion(feature_set_id: str, label_definition_id: str):
         return None if model is None else {"model_id": model.model_id, "status": model.status}
     finally:
         repos.close()
+
+
+@router.get("/signal-model")
+def signal_model():
+    """Expose the exact champion contract the active strategy can use for signals."""
+    repos = RepositoryFactory()
+    try:
+        return _active_signal_model(repos)
+    finally:
+        repos.close()
+
+
+def _active_signal_model(repos) -> dict:
+    strategy = repos.strategies.get_active()
+    if strategy is None:
+        return {"signal_ready": False, "reason": "No active strategy is configured."}
+    if str(strategy.strategy_type).upper() != "AI_ASSISTED_XGB":
+        return {
+            "signal_ready": False,
+            "strategy_id": strategy.id,
+            "strategy_name": strategy.name,
+            "reason": "The active strategy does not use an XGBoost champion.",
+        }
+
+    config = strategy.config if isinstance(strategy.config, dict) else {}
+    symbol = TradingConfig.SYMBOL
+    timeframe = str(config.get("timeframe", TradingConfig.TIMEFRAME))
+    label = FutureReturnLabel(
+        int(config.get("horizon_candles", 12)),
+        float(config.get("up_return_threshold", 0.003)),
+    )
+    champion = repos.model_registry.get_champion(
+        FEATURE_SET_ID, label.definition_id, symbol, timeframe
+    )
+    result = {
+        "strategy_id": strategy.id,
+        "strategy_name": strategy.name,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "feature_set_id": FEATURE_SET_ID,
+        "label_definition_id": label.definition_id,
+        "champion_model_id": champion.model_id if champion else None,
+        "signal_ready": champion is not None,
+    }
+    if champion is None:
+        result["reason"] = "No champion matches the active strategy's symbol, timeframe, feature set, and label."
+    return result
 
 
 @router.get("/improvement-report")

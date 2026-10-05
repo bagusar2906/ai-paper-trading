@@ -25,13 +25,13 @@
         <div id="aiModelOperations" class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center"><strong>Model Operations</strong><small id="modelOperationsStatus" class="text-muted">Loading model status…</small></div>
             <div class="card-body">
-                <p class="small text-muted">Train candidates, compare them with the champion, and review AI guidance before manual promotion.</p>
+                <p class="small text-muted">Train candidates, compare them with the champion, and review AI guidance before manual promotion.</p><div id="activeSignalModel" class="alert alert-info small py-2">Checking which champion is active for signals…</div>
                 <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3" data-bs-toggle="modal" data-bs-target="#trainCandidateModal">Train Candidate</button>
                 <button id="planExperiments" type="button" class="btn btn-sm btn-outline-secondary mb-3">Plan Experiments</button>
                 <div class="mb-3"><h6 class="mb-1">Champion health</h6><div id="modelHealth" class="small text-muted">Checking feature drift…</div><button id="recordMonitoringCheck" type="button" class="btn btn-sm btn-outline-secondary mt-2">Record monitoring check</button><div id="monitoringCheckStatus" class="small text-muted mt-1"></div></div>
                 <div class="mb-3"><h6 class="mb-1">Experiment plan</h6><div id="modelExperimentPlan" class="small text-muted">Create a plan to see bounded XGBoost variations.</div><div id="modelExperimentStatus" class="small text-muted mt-1"></div></div>
                 <div class="mb-3"><h6 class="mb-1">Improvement recommendations</h6><p class="small text-muted mb-2">Candidates are ranked by review readiness, validation improvement, and stability.</p><div id="modelImprovementReport" class="text-muted small">Loading recommendations…</div></div>
-                <div class="table-responsive"><table id="modelOperations" class="table table-sm mb-0"><thead><tr><th>Model</th><th>Status</th><th>Feature set</th><th>Label</th><th>Validation metrics</th><th>Top inputs</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+                <div class="table-responsive"><table id="modelOperations" class="table table-sm mb-0"><thead><tr><th>Model</th><th>Status</th><th>Market</th><th>Feature set</th><th>Label</th><th>Signals</th><th>Validation metrics</th><th>Top inputs</th><th>Action</th></tr></thead><tbody></tbody></table></div>
             </div>
         </div>
     </main>
