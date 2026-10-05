@@ -3,6 +3,7 @@
 from uuid import uuid4
 
 from app.features.core_v1 import FEATURE_SET_ID, build_core_v1_features
+from app.config import TradingConfig
 from app.labels.future_return import FutureReturnLabel
 from app.ml.inference import ChampionModelPredictor, ChampionUnavailable
 from app.models.signal import TradingSignal
@@ -33,6 +34,7 @@ class AIAssistedXGBStrategy(Strategy):
             high_volatility_atr_percent=float(config.get("high_volatility_atr_percent", 0.01)),
         )
         self.predictor = predictor or ChampionModelPredictor()
+        self.timeframe = str(config.get("timeframe", TradingConfig.TIMEFRAME))
 
     @property
     def name(self):
@@ -77,6 +79,8 @@ class AIAssistedXGBStrategy(Strategy):
                 latest.to_frame().T,
                 FEATURE_SET_ID,
                 label.definition_id,
+                symbol=symbol,
+                timeframe=self.timeframe,
             )
             gates["champion_available"] = True
         except ChampionUnavailable as error:

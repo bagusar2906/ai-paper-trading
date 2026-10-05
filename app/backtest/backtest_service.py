@@ -127,7 +127,9 @@ class BacktestService:
                 raise ValueError("candidate has no recorded market context/out-of-sample window; retrain it before comparison")
             if context.get("symbol", "").upper() != symbol.upper() or context.get("timeframe", "").upper() != timeframe.upper():
                 raise ValueError("candidate was trained for a different symbol or timeframe")
-            champion = repos.model_registry.get_champion(FEATURE_SET_ID, label_id)
+            champion = repos.model_registry.get_champion(
+                FEATURE_SET_ID, label_id, symbol, timeframe
+            )
             if champion is None:
                 raise ValueError("no compatible champion is available for comparison")
             evaluation_start = pd.Timestamp(window["start_time"])

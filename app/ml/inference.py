@@ -21,10 +21,10 @@ class Prediction:
 class ChampionModelPredictor:
     """Loads only a checksum-verified champion artifact from the local registry."""
 
-    def predict(self, features, feature_set_id: str, label_definition_id: str) -> Prediction:
+    def predict(self, features, feature_set_id: str, label_definition_id: str, *, symbol: str | None = None, timeframe: str | None = None) -> Prediction:
         repos = RepositoryFactory()
         try:
-            registered = repos.model_registry.get_champion(feature_set_id, label_definition_id)
+            registered = repos.model_registry.get_champion(feature_set_id, label_definition_id, symbol, timeframe)
         finally:
             repos.close()
         if registered is None:
@@ -44,7 +44,7 @@ class RegisteredModelPredictor:
         self.model_id = model_id
         self.allowed_statuses = frozenset(allowed_statuses)
 
-    def predict(self, features, feature_set_id: str, label_definition_id: str) -> Prediction:
+    def predict(self, features, feature_set_id: str, label_definition_id: str, **_context) -> Prediction:
         repos = RepositoryFactory()
         try:
             registered = repos.model_registry.get(self.model_id)
