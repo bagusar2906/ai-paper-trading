@@ -23,8 +23,14 @@ class CandidateAcceptanceGate:
             "drawdown_not_worse": candidate_drawdown <= champion_drawdown,
             "profit_factor_not_worse": candidate_factor >= champion_factor,
         }
+        eligible_for_human_review = all(checks.values())
         return {
-            "eligible_for_human_review": all(checks.values()),
+            "eligible_for_human_review": eligible_for_human_review,
+            "recommendation": (
+                "PROMOTE_FOR_HUMAN_REVIEW"
+                if eligible_for_human_review
+                else "RETRAIN_OR_INVESTIGATE"
+            ),
             "automatic_promotion": False,
             "checks": checks,
             "reasons": [

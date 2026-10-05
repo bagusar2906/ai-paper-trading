@@ -19,6 +19,7 @@ def test_gate_allows_human_review_only_when_candidate_meets_all_evidence_checks(
     result = CandidateAcceptanceGate().evaluate(candidate, champion)
 
     assert result["eligible_for_human_review"] is True
+    assert result["recommendation"] == "PROMOTE_FOR_HUMAN_REVIEW"
     assert result["automatic_promotion"] is False
 
 
@@ -29,5 +30,6 @@ def test_gate_rejects_insufficient_or_worse_candidate_evidence():
     result = CandidateAcceptanceGate().evaluate(candidate, champion)
 
     assert result["eligible_for_human_review"] is False
+    assert result["recommendation"] == "RETRAIN_OR_INVESTIGATE"
     assert result["checks"]["minimum_trades"] is False
     assert result["checks"]["drawdown_not_worse"] is False

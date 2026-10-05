@@ -44,12 +44,25 @@ function renderCandidateComparison(comparison) {
     const difference = candidate.net_profit - champion.net_profit;
     const differenceClass = difference >= 0 ? "text-success" : "text-danger";
     const gate = comparison.acceptance_gate;
+    const readyForReview = gate?.eligible_for_human_review;
     const gateMessage = gate
-        ? (gate.eligible_for_human_review
-            ? "Candidate meets the minimum evidence gate for human review. It is not promoted automatically."
-            : "Candidate does not yet meet the minimum evidence gate; investigate or collect more evidence.")
+        ? (readyForReview
+            ? "Ready for human promotion review. Promotion is still manual and paper-only."
+            : "Investigate or retrain before another comparison. The candidate does not yet meet the evidence gate.")
         : "Acceptance gate unavailable for this comparison.";
-    const gateClass = gate?.eligible_for_human_review ? "text-success" : "text-warning";
+    const gateClass = readyForReview ? "alert-success" : "alert-warning";
+    const checkLabels = {
+        minimum_trades: "Minimum trade evidence",
+        same_or_more_trades: "Same or more trades than champion",
+        net_profit_not_worse: "Net profit is not worse",
+        drawdown_not_worse: "Maximum drawdown is not worse",
+        profit_factor_not_worse: "Profit factor is not worse",
+    };
+    const checks = Object.entries(gate?.checks || {}).map(([key, passed]) => `
+        <li class="${passed ? "text-success" : "text-danger"}">
+            <strong>${passed ? "Pass" : "Needs attention"}</strong> — ${checkLabels[key] || key.replaceAll("_", " ")}
+        </li>
+    `).join("");
 
     target.innerHTML = `
         <p class="mb-3">Held-out window starts ${new Date(comparison.evaluation_start).toLocaleString()}. Both models used the same candles and paper-only execution path.</p>
@@ -65,7 +78,9 @@ function renderCandidateComparison(comparison) {
             </tbody>
         </table></div>
         <p class="mb-2 ${differenceClass}">Net-profit difference: ${difference >= 0 ? "+" : ""}${difference.toFixed(2)}. Review trade count, drawdown, and the training metrics before manual promotion.</p>
-        <p class="mb-0 ${gateClass}">${gateMessage}</p>
+        <div class="alert ${gateClass} mb-2"><strong>${gate?.recommendation?.replaceAll("_", " ") || "NO RECOMMENDATION"}</strong><br>${gateMessage}</div>
+        ${checks ? `<div class="mb-2"><strong>Acceptance checks</strong><ul class="mb-0 mt-1">${checks}</ul></div>` : ""}
+        ${gate?.reasons?.length ? `<div class="small text-muted">${gate.reasons.join(" ")}</div>` : ""}
     `;
 
 }
