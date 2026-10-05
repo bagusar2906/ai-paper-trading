@@ -7,9 +7,11 @@ from fastapi import APIRouter, HTTPException
 from app.factories.repository_factory import RepositoryFactory
 from app.services.model_experiment_service import ModelExperimentService
 from app.services.model_health_service import ModelHealthService
+from app.services.model_lab_assistant_service import ModelLabAssistantService
 from app.services.model_review_guidance_service import ModelReviewGuidanceService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
+from app.ml.scheduler import ModelMonitoringJob
 
 router = APIRouter(prefix="/models", tags=["Models"])
 logger = logging.getLogger(__name__)
@@ -133,6 +135,31 @@ def model_health():
         return ModelHealthService().check()
     except (RuntimeError, ValueError) as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@router.post("/monitoring-check")
+def monitoring_check():
+    """Safe scheduler target: records a recommendation but never retrains."""
+    try:
+        return ModelMonitoringJob(
+            ModelHealthService().check, RepositoryFactory
+        ).run()
+    except (RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@router.post("/chat")
+def model_lab_chat(request: dict):
+    """Read registry evidence through a conversational, no-action interface."""
+    repos = RepositoryFactory()
+    try:
+        return ModelLabAssistantService().respond(
+            request.get("message", ""), repos.model_registry.get_all()
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    finally:
+        repos.close()
 
 
 @router.post("/{model_id}/review-guidance")

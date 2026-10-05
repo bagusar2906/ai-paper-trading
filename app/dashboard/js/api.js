@@ -65,8 +65,10 @@ export async function getModelExperimentPlan(parameters) {
     return request(`/models/experiment-plan?${query}`);
 }
 export async function getModelHealth() { return request("/models/health"); }
+export async function runModelMonitoringCheck() { return request("/models/monitoring-check", { method: "POST" }); }
 export async function getModelReviewGuidance(id) { return request(`/models/${encodeURIComponent(id)}/review-guidance`, { method: "POST" }); }
 export async function getModelReviewHistory(id) { return request(`/models/${encodeURIComponent(id)}/review-history`); }
+export async function askModelLab(message) { return request("/models/chat", { method: "POST", body: JSON.stringify({ message }) }); }
 export async function trainCandidate(payload) {
     return request("/models/train", { method: "POST", body: JSON.stringify(payload) });
 }

@@ -3,7 +3,7 @@ import pytest
 
 from app.database.models import ModelPromotionEntity, ModelVersionEntity
 from app.ml.monitoring import drift_status, population_stability_index
-from app.ml.scheduler import CandidateRetrainingJob
+from app.ml.scheduler import CandidateRetrainingJob, ModelMonitoringJob
 
 
 def test_drift_monitoring_flags_material_distribution_shift():
@@ -17,6 +17,25 @@ def test_candidate_retraining_job_refuses_non_candidates():
         status = "champion"
     with pytest.raises(ValueError, match="candidate"):
         CandidateRetrainingJob(lambda: Result()).run()
+
+
+def test_monitoring_job_records_recommendation_without_retraining(repos):
+    repos.session.add(ModelVersionEntity(
+        model_id="monitoring-champion", training_run_id="monitoring-run", status="champion",
+        artifact_path="model.pkl", artifact_sha256="a" * 64,
+        feature_set_id="core-v1", label_definition_id="future-return-up",
+        metrics_json="{}", metadata_json="{}",
+    ))
+    repos.session.commit()
+
+    report = ModelMonitoringJob(
+        lambda: {"model_id": "monitoring-champion", "recommendation": "plan_retraining"},
+        lambda: repos,
+    ).run()
+
+    history = repos.model_registry.review_history("monitoring-champion")
+    assert report["recommendation"] == "plan_retraining"
+    assert history[-1]["type"] == "monitoring_recommendation"
 
 
 def test_model_registry_deletes_non_champion_and_records_audit(repos):
