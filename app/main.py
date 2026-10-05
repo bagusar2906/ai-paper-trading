@@ -18,6 +18,7 @@ from app.database.database import init_database
 from app.database.database_initializer import initialize_database
 from app.factories.repository_factory import RepositoryFactory
 from app.scheduler.trading_scheduler import TradingScheduler
+from app.scheduler.model_monitoring_scheduler import DailyModelMonitoringScheduler
 from app.services.signal_service import SignalService
 from app.strategy.strategy_router import router as strategy_router
 from app.logging_config import configure_logging
@@ -26,6 +27,7 @@ import logging
 
 
 scheduler = TradingScheduler()
+model_monitoring_scheduler = DailyModelMonitoringScheduler()
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +51,7 @@ async def lifespan(app: FastAPI):
     # Start background trading
     #
     scheduler.start()
+    model_monitoring_scheduler.start()
 
     try:
 
@@ -57,6 +60,7 @@ async def lifespan(app: FastAPI):
     finally:
 
         scheduler.stop()
+        model_monitoring_scheduler.stop()
         logger.info("Stopped paper-trading API")
 
 
