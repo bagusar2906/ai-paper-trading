@@ -67,6 +67,11 @@ def test_candidate_training_persists_an_auditable_candidate_artifact(tmp_path, r
     assert result.metadata["feature_importance"]
     assert result.metadata["feature_importance"][0]["importance"] >= result.metadata["feature_importance"][-1]["importance"]
     assert result.metadata["feature_baseline"]["rsi_14"]["iqr"] > 0
+    final_fold = generate_walk_forward_folds(len(dataset.frame), config.walk_forward)[-1]
+    training_labels = dataset.frame[definition.name].iloc[final_fold.train_start:final_fold.train_end]
+    assert result.metadata["prediction_baseline"]["positive_rate"] == float(training_labels.mean())
+    assert result.metadata["prediction_baseline"]["rows"] == len(training_labels)
+    assert pd.Timestamp(result.metadata["prediction_baseline"]["end_time"]) < pd.Timestamp(result.metadata["evaluation_window"]["start_time"])
 
     registered = repos.model_registry.record_candidate(result)
     assert registered.status == "candidate"

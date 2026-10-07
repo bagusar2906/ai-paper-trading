@@ -9,6 +9,7 @@ import pandas as pd
 from app.factories.provider_factory import create_provider
 from app.factories.repository_factory import RepositoryFactory
 from app.features.core_v1 import build_core_v1_features
+from app.features.raw_ohlcv_v1 import build_raw_ohlcv_features
 
 
 class ModelHealthService:
@@ -37,7 +38,11 @@ class ModelHealthService:
             candles = provider.get_history(market["symbol"], market["timeframe"], 300)
         finally:
             provider.disconnect()
-        report = self.assess(metadata["feature_baseline"], build_core_v1_features(candles))
+        feature_set_id = getattr(champion, "feature_set_id", "core-v1")
+        if feature_set_id not in {"core-v1", "raw-ohlcv-v1"}:
+            raise ValueError(f"unsupported champion feature set: {feature_set_id}")
+        features = build_raw_ohlcv_features(candles) if feature_set_id == "raw-ohlcv-v1" else build_core_v1_features(candles)
+        report = self.assess(metadata["feature_baseline"], features)
         return {"model_id": champion.model_id, "market_context": market, "automatic_retraining": False, **report}
 
     def assess(self, baseline: dict, features: pd.DataFrame) -> dict:

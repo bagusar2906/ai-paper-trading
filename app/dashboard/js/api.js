@@ -73,6 +73,11 @@ export async function askModelLab(message) { return request("/models/chat", { me
 export async function trainCandidate(payload) {
     return request("/models/train", { method: "POST", body: JSON.stringify(payload) });
 }
+
+export async function getSelfTrainingStatus() { return request("/models/self-training"); }
+export async function configureSelfTraining(payload) {
+    return request("/models/self-training", { method: "PUT", body: JSON.stringify(payload) });
+}
 export async function promoteModel(id, reviewer, rationale) {
     return request(`/models/${encodeURIComponent(id)}/promote`, { method: "POST", body: JSON.stringify({ reviewer, rationale }) });
 }

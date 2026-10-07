@@ -17,6 +17,16 @@ class ModelLabAssistantService:
 
     CAPABILITY_GUIDE = (
         {
+            "button": "Enable / update self-training",
+            "purpose": "Saves the training form settings and periodically checks fresh completed candles while the backend is open. Raw price and volume inputs use no technical indicators.",
+            "result": "Skips unchanged inputs and trains new candidates only; the champion is replaced only through manual promotion.",
+        },
+        {
+            "button": "Stop self-training",
+            "purpose": "Disables future background training checks.",
+            "result": "An in-progress run may finish. Enabling or stopping self-training is done through the training form, not this chat.",
+        },
+        {
             "button": "Train Candidate",
             "purpose": "Trains an XGBoost model from completed candles using the form settings.",
             "result": "Creates a candidate only; it cannot replace a champion or trade.",

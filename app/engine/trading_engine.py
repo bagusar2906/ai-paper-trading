@@ -222,6 +222,8 @@ class TradingEngine:
 
             if mode != TradingMode.AUTO:
 
+                signal.execution_diagnostic = {"executed": False, "reason": "Trading mode is not AUTO"}
+
                 self._journal_ai_decision(signal, context, "not_auto")
 
                 logger.debug(
@@ -244,6 +246,8 @@ class TradingEngine:
 
         if not decision.allowed:
 
+            signal.execution_diagnostic = {"executed": False, "reason": decision.reason}
+
             self._journal_ai_decision(signal, context, "rejected")
 
             logger.info(
@@ -254,6 +258,7 @@ class TradingEngine:
             return
 
         if not self._journal_ai_decision(signal, context, "approved"):
+            signal.execution_diagnostic = {"executed": False, "reason": "Decision journal failed"}
             logger.error("AI-assisted paper trade rejected because its decision could not be journaled")
             return
 
@@ -266,6 +271,7 @@ class TradingEngine:
         )
 
         self.broker.execute(signal)
+        signal.execution_diagnostic = {"executed": True, "reason": "Submitted to broker"}
 
     def _journal_ai_decision(self, signal, context, risk_status):
         if context is None:

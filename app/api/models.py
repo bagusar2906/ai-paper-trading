@@ -15,9 +15,23 @@ from app.services.model_review_guidance_service import ModelReviewGuidanceServic
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 from app.ml.scheduler import ModelMonitoringJob
+from app.scheduler.self_training_scheduler import self_training_scheduler
 
 router = APIRouter(prefix="/models", tags=["Models"])
 logger = logging.getLogger(__name__)
+
+
+@router.get("/self-training")
+def self_training_status():
+    return self_training_scheduler.status()
+
+
+@router.put("/self-training")
+def configure_self_training(request: dict):
+    try:
+        return self_training_scheduler.configure(request)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.post("/train")
@@ -130,6 +144,7 @@ def _active_signal_model(repos) -> dict:
         }
 
     config = strategy.config if isinstance(strategy.config, dict) else {}
+    feature_set_id = config.get("feature_set_id", FEATURE_SET_ID)
     symbol = TradingConfig.SYMBOL
     timeframe = str(config.get("timeframe", TradingConfig.TIMEFRAME))
     label = FutureReturnLabel(
@@ -137,14 +152,14 @@ def _active_signal_model(repos) -> dict:
         float(config.get("up_return_threshold", 0.003)),
     )
     champion = repos.model_registry.get_champion(
-        FEATURE_SET_ID, label.definition_id, symbol, timeframe
+        feature_set_id, label.definition_id, symbol, timeframe
     )
     result = {
         "strategy_id": strategy.id,
         "strategy_name": strategy.name,
         "symbol": symbol,
         "timeframe": timeframe,
-        "feature_set_id": FEATURE_SET_ID,
+        "feature_set_id": feature_set_id,
         "label_definition_id": label.definition_id,
         "champion_model_id": champion.model_id if champion else None,
         "signal_ready": champion is not None,
@@ -166,6 +181,9 @@ def improvement_report():
 
 @router.get("/experiment-plan")
 def experiment_plan(
+    feature_set_id: str = "core-v1",
+    symbol: str = TradingConfig.SYMBOL,
+    timeframe: str = TradingConfig.TIMEFRAME,
     bars: int = 1_000,
     horizon_candles: int = 12,
     up_return_threshold: float = 0.003,

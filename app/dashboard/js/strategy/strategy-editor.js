@@ -111,6 +111,22 @@ function renderParameterEditor(schema) {
 
     schema.forEach(field => {
 
+        if (field.type === "select") {
+            div.innerHTML += `<div class="mb-3"><label class="form-label" for="${field.key}">${field.label}</label>
+                <select id="${field.key}" class="form-select">${(field.options || []).map(option => `<option value="${option.value}" ${option.value === field.default ? "selected" : ""}>${option.label}</option>`).join("")}</select>
+                ${field.description ? `<div class="form-text">${field.description}</div>` : ""}</div>`;
+            return;
+        }
+
+        if (field.type === "boolean") {
+            div.innerHTML += `<div class="form-check mb-3">
+                <input id="${field.key}" class="form-check-input" type="checkbox" ${field.default === true ? "checked" : ""}>
+                <label class="form-check-label" for="${field.key}">${field.label}</label>
+                ${field.description ? `<div class="form-text">${field.description}</div>` : ""}
+            </div>`;
+            return;
+        }
+
         div.innerHTML += `
 
             <div class="mb-3">
@@ -127,6 +143,7 @@ function renderParameterEditor(schema) {
                     min="${field.minimum ?? ""}"
                     max="${field.maximum ?? ""}"
                     step="${field.step ?? ""}">
+                ${field.description ? `<div class="form-text">${field.description}</div>` : ""}
 
             </div>
 
@@ -134,6 +151,25 @@ function renderParameterEditor(schema) {
 
     });
 
+    const technicalToggle = document.getElementById("use_technical_filters");
+    if (technicalToggle) technicalToggle.addEventListener("change", updateModelEntryFields);
+    document.getElementById("feature_set_id")?.addEventListener("change", updateModelEntryFields);
+    updateModelEntryFields();
+
+}
+
+function updateModelEntryFields() {
+    const toggle = document.getElementById("use_technical_filters");
+    if (!toggle) return;
+    const rawInputs = document.getElementById("feature_set_id")?.value === "raw-ohlcv-v1";
+    if (rawInputs) toggle.checked = false;
+    toggle.disabled = rawInputs;
+    for (const key of ["adx_threshold", "stop_atr_multiple"]) {
+        const input = document.getElementById(key);
+        if (input) input.disabled = !toggle.checked;
+    }
+    const fixedStop = document.getElementById("model_stop_loss_percent");
+    if (fixedStop) fixedStop.disabled = toggle.checked;
 }
 
 
@@ -187,12 +223,17 @@ async function fillForm(strategy) {
             config[field.key] !== undefined
         ) {
 
-            input.value =
-                config[field.key];
+            if (field.type === "boolean") {
+                input.checked = config[field.key] === true;
+            } else {
+                input.value = config[field.key];
+            }
 
         }
 
     });
+
+    updateModelEntryFields();
 
 }
 
@@ -240,6 +281,8 @@ async function saveStrategy() {
             return;
 
         let value = input.value;
+
+        if (field.type === "boolean") value = input.checked;
 
         if (field.type === "number") {
 

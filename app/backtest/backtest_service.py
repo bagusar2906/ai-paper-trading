@@ -1,11 +1,14 @@
 import json
 import logging
+from dataclasses import asdict
+from hashlib import sha256
 
 import pandas as pd
 
 from app.api.services.statistic_service import StatisticsService
 from app.backtest.backtest_marker import BacktestMarker
 from app.backtest.candidate_acceptance_gate import CandidateAcceptanceGate
+from app.backtest.comparison_analysis import filter_diagnostics, prediction_evidence
 from app.backtest.job_manager import job_manager
 from app.brokers.paper_broker import PaperBroker
 from app.database.base import Base
@@ -79,18 +82,54 @@ class BacktestService:
             request, evaluation_history, champion_strategy, job_id, 56, 95,
             collect_decisions=True,
         )
+        if champion_report.stopped:
+            candidate_report.stopped = True
+            candidate_report.decision_trace = None
+            candidate_report.comparison = {
+                "status": "stopped",
+                "candidate_model_id": candidate.model_id,
+                "champion_model_id": champion.model_id,
+                "evaluation_start": evaluation_start.isoformat(),
+            }
+            return candidate_report
+        candidate_trace = candidate_report.decision_trace or []
+        champion_trace = champion_report.decision_trace or []
+        prediction_report = prediction_evidence(
+            evaluation_history, candidate_trace, champion_trace,
+            FutureReturnLabel(candidate_strategy.horizon_candles, candidate_strategy.up_return_threshold),
+            self._decode_metadata(candidate.metadata_json),
+        )
         diagnostic = self._decision_disagreement(
-            candidate_report.decision_trace or [], champion_report.decision_trace or []
+            candidate_trace, champion_trace
         )
         candidate_report.decision_trace = None
         champion_report.decision_trace = None
         candidate_report.comparison = {
             "status": "completed",
+            "comparison_version": 2,
             "candidate_model_id": candidate.model_id,
             "champion_model_id": champion.model_id,
             "evaluation_start": evaluation_start.isoformat(),
-            "candidate": candidate_report.statistics,
-            "champion": champion_report.statistics,
+            "candidate": asdict(candidate_report.statistics),
+            "champion": asdict(champion_report.statistics),
+            "prediction_quality": prediction_report,
+            "filter_diagnostics": {
+                "candidate": filter_diagnostics(candidate_trace),
+                "champion": filter_diagnostics(champion_trace),
+            },
+            "provenance": {
+                "candidate_sha256": candidate.artifact_sha256,
+                "champion_sha256": champion.artifact_sha256,
+                "strategy_config": config,
+                "symbol": request.symbol,
+                "timeframe": request.timeframe,
+                "initial_balance": request.initial_balance,
+                "evaluation_end": evaluation_history.index[-1].isoformat(),
+                "history_bars": len(evaluation_history),
+                "history_sha256": sha256(
+                    pd.util.hash_pandas_object(evaluation_history, index=True).values.tobytes()
+                ).hexdigest(),
+            },
             "same_history": True,
             "paper_only": True,
             "decision_diagnostic": diagnostic,
@@ -98,7 +137,9 @@ class BacktestService:
                 candidate_report.statistics, champion_report.statistics
             ),
         }
-        self._record_candidate_review(candidate.model_id, candidate_report.comparison)
+        candidate_report.comparison["history_saved"] = self._record_candidate_review(
+            candidate.model_id, candidate_report.comparison
+        )
         return candidate_report
 
     @staticmethod
@@ -107,12 +148,15 @@ class BacktestService:
         repos = RepositoryFactory()
         try:
             repos.model_registry.add_review_event(model_id, "held_out_backtest", comparison)
+            return True
         except Exception:
             logger.exception("Could not persist candidate backtest review evidence")
+            return False
         finally:
             repos.close()
 
     def _comparison_models(self, candidate_model_id, symbol, timeframe, config):
+        feature_set_id = config.get("feature_set_id", FEATURE_SET_ID)
         label_id = FutureReturnLabel(
             int(config.get("horizon_candles", 12)),
             float(config.get("up_return_threshold", 0.003)),
@@ -122,10 +166,10 @@ class BacktestService:
             candidate = repos.model_registry.get(candidate_model_id)
             if candidate is None or candidate.status != "candidate":
                 raise ValueError("select a registered candidate model; champions and retired models cannot be compared here")
-            if candidate.feature_set_id != FEATURE_SET_ID or candidate.label_definition_id != label_id:
+            if candidate.feature_set_id != feature_set_id or candidate.label_definition_id != label_id:
                 raise ValueError(
                     "candidate feature set or label does not match the selected AI Assisted XGBoost strategy: "
-                    f"expected feature_set_id={FEATURE_SET_ID!r}, label_definition_id={label_id!r}; "
+                    f"expected feature_set_id={feature_set_id!r}, label_definition_id={label_id!r}; "
                     f"candidate has feature_set_id={candidate.feature_set_id!r}, "
                     f"label_definition_id={candidate.label_definition_id!r}"
                 )
@@ -137,13 +181,20 @@ class BacktestService:
             if context.get("symbol", "").upper() != symbol.upper() or context.get("timeframe", "").upper() != timeframe.upper():
                 raise ValueError("candidate was trained for a different symbol or timeframe")
             champion = repos.model_registry.get_champion(
-                FEATURE_SET_ID, label_id, symbol, timeframe
+                feature_set_id, label_id, symbol, timeframe
             )
             if champion is None:
                 raise ValueError("no compatible champion is available for comparison")
             evaluation_start = pd.Timestamp(window["start_time"])
             if evaluation_start.tzinfo is None:
                 evaluation_start = evaluation_start.tz_localize("UTC")
+            champion_window = self._decode_metadata(champion.metadata_json).get("evaluation_window", {})
+            if not isinstance(champion_window, dict) or not champion_window.get("start_time"):
+                raise ValueError("champion has no recorded held-out window; retrain before comparing prediction quality")
+            champion_start = pd.Timestamp(champion_window["start_time"])
+            if champion_start.tzinfo is None:
+                champion_start = champion_start.tz_localize("UTC")
+            evaluation_start = max(evaluation_start, champion_start)
             return candidate, champion, evaluation_start
         finally:
             repos.close()
@@ -215,7 +266,10 @@ class BacktestService:
         return {
             "action": action,
             "probability": float(signal.confidence),
+            "time": signal.time.isoformat(),
+            "model_id": context.get("model_id"),
             "gates": context.get("gates", {}),
+            "execution": getattr(signal, "execution_diagnostic", {}),
         }
 
     @classmethod

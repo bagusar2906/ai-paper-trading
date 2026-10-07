@@ -373,6 +373,10 @@
                     </div>
                     <div class="modal-body">
                         <p class="small text-muted">Uses completed candles from the selected Market Data source. Training creates a candidate only; it never promotes or trades automatically.</p>
+                        <label for="candidateFeatureSetId" class="form-label">Model inputs</label>
+                        <div class="row mb-3"><div class="col"><label for="candidateSymbol" class="form-label">Symbol</label><input id="candidateSymbol" class="form-control" value="XAUUSD"></div><div class="col"><label for="candidateTimeframe" class="form-label">Timeframe</label><select id="candidateTimeframe" class="form-select"><option>M1</option><option selected>M5</option><option>M15</option><option>M30</option><option>H1</option><option>H4</option><option>D1</option></select></div></div>
+                        <select id="candidateFeatureSetId" class="form-select mb-3"><option value="raw-ohlcv-v1">Raw price and volume only</option><option value="core-v1">Price, volume and technical indicators</option></select>
+                        <p class="small text-muted">Raw inputs use the last 12 completed candles without ADX, RSI, EMA or ATR. Choose the same model inputs in your strategy.</p>
                         <label for="candidateBars" class="form-label">Completed candles</label>
                         <input id="candidateBars" class="form-control mb-3" type="number" min="250" max="5000" step="1" value="1000">
                         <label for="candidateHorizon" class="form-label">Prediction horizon (candles)</label>
@@ -389,6 +393,7 @@
                             <div class="col-md-6"><label for="candidateProbabilityThreshold" class="form-label">Probability threshold</label><input id="candidateProbabilityThreshold" class="form-control" type="number" min="0.40" max="0.70" step="0.01" value="0.50"></div>
                         </div>
                         <div id="candidateTrainingStatus" class="small mt-3" role="status" aria-live="polite"></div>
+                        <div class="border-top mt-3 pt-3"><h6>Self-training while the app is running</h6><p class="small text-muted">Uses these training settings and the selected market-data source. Checks for fresh completed candles, skips unchanged inputs, and creates candidates for review. Learning happens during retraining; it does not replace the champion automatically. Stopping prevents future runs; a run already in progress can finish.</p><label for="selfTrainingInterval" class="form-label">Check every (minutes)</label><input id="selfTrainingInterval" class="form-control mb-2" type="number" min="5" max="1440" step="1" value="60"><button id="enableSelfTraining" type="button" class="btn btn-sm btn-outline-primary">Enable / update self-training</button><button id="disableSelfTraining" type="button" class="btn btn-sm btn-outline-secondary">Stop self-training</button><div id="selfTrainingStatus" class="small mt-2" role="status" aria-live="polite"></div></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

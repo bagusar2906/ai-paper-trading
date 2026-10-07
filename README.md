@@ -244,3 +244,28 @@ Older candidates do not contain this provenance and must be retrained before
 comparison. A completed comparison displays net profit, profit factor, maximum
 drawdown, win rate, and trade count for review. Promotion remains a manual,
 audited decision from **AI Model Operations**.
+
+### Raw market learning and background self-training
+
+In **Train Candidate**, choose **Raw price and volume only** to learn from
+the current and previous 11 completed OHLCV candles. This feature set contains
+no ADX, RSI, EMA, ATR, or other technical indicators. In the AI Assisted XGBoost
+strategy editor, select the same **Model inputs**. Raw models use probability
+thresholds for BUY/SELL/HOLD entries and a fixed percentage stop with the
+configured reward/risk ratio. Technical entry filters are disabled; position
+sizing and risk limits still apply. The target remains the selected upward
+return event: a low probability is not a separate learned downward-move target.
+
+The training form also provides **Enable / update self-training** and **Stop
+self-training**. Enabling saves the current symbol, timeframe, input choice,
+and training parameters. The backend checks immediately and then at the selected
+interval (5–1440 minutes; default 60). It fetches completed candles from the
+selected provider and skips inputs already represented in the model registry.
+Data or training failures are shown in the status and retried at the next interval.
+Only one training run can execute at a time, including manual runs.
+
+Self-training runs while the backend is open, even if its browser tab is closed.
+The setting survives restarts; stopping the backend stops the loop. Disabling
+prevents future runs while an in-progress run may finish. All output models
+remain candidates until manual promotion. This is periodic supervised retraining,
+not reinforcement learning or automatic adaptation of the executing champion.

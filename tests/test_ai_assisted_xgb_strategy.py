@@ -27,12 +27,12 @@ def _candles():
 
 
 class _Predictor:
-    def predict(self, features, feature_set_id, label_definition_id):
+    def predict(self, features, feature_set_id, label_definition_id, **context):
         return Prediction("champion-xgb-v1", 0.8)
 
 
 class _UnavailablePredictor:
-    def predict(self, features, feature_set_id, label_definition_id):
+    def predict(self, features, feature_set_id, label_definition_id, **context):
         raise ChampionUnavailable("no promoted champion model is available")
 
 
@@ -44,9 +44,10 @@ def test_rule_based_regime_is_explainable():
 
 def test_ai_assisted_schema_is_serializable_for_the_strategy_editor():
     assert [field.key for field in AIAssistedXGBStrategy.schema()] == [
+        "feature_set_id", "use_technical_filters",
         "horizon_candles", "up_return_threshold", "long_probability_threshold",
         "short_probability_threshold", "adx_threshold", "stop_atr_multiple",
-        "reward_risk_ratio",
+        "model_stop_loss_percent", "reward_risk_ratio",
     ]
 
 
@@ -84,3 +85,29 @@ def test_ai_assisted_decision_is_journaled_after_risk_rejection(repos):
     entry = repos.decision_journal.get_by_decision_id("decision-risk-rejected")
     assert entry.risk_status == "rejected"
     assert entry.paper_only is True
+    assert signal.execution_diagnostic == {"executed": False, "reason": "HOLD signal"}
+
+
+def test_model_probability_mode_ignores_technical_filters_and_atr(monkeypatch):
+    features = _features()
+    features.loc[:, "adx_14"] = 1
+    features.loc[:, "rsi_14"] = 99
+    features.loc[:, "atr_percent"] = .5
+    features.loc[:, "atr_14"] = 999
+    monkeypatch.setattr("app.strategy.ai_assisted_xgb.build_core_v1_features", lambda df: features)
+    hybrid = AIAssistedXGBStrategy(predictor=_Predictor()).generate_signal("XAUUSD", _candles())
+    strategy = AIAssistedXGBStrategy({"use_technical_filters": False, "model_stop_loss_percent": 1}, predictor=_Predictor())
+    strategy.regimes.classify = lambda _: (_ for _ in ()).throw(AssertionError("must not classify a regime"))
+    pure = strategy.generate_signal("XAUUSD", _candles())
+    assert hybrid.action == SignalAction.HOLD
+    assert pure.action == SignalAction.BUY
+    assert pure.stop_loss == pure.price * .99
+    assert pure.ai_lab_context["gates"]["technical_filters_enabled"] is False
+    assert "adx" not in pure.ai_lab_context["gates"]
+
+
+def test_model_probability_mode_holds_without_champion(monkeypatch):
+    monkeypatch.setattr("app.strategy.ai_assisted_xgb.build_core_v1_features", lambda df: _features())
+    signal = AIAssistedXGBStrategy({"use_technical_filters": False}, predictor=_UnavailablePredictor()).generate_signal("XAUUSD", _candles())
+    assert signal.action == SignalAction.HOLD
+    assert signal.ai_lab_context["model_id"] is None

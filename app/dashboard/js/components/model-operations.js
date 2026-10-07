@@ -1,4 +1,5 @@
 import { deleteModel, getActiveSignalModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModelReviewHistory, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
+import { configureSelfTraining, getSelfTrainingStatus } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -18,6 +19,57 @@ export function initializeModelOperations() {
 
     const planButton = document.getElementById("planExperiments");
     if (planButton) planButton.addEventListener("click", () => planExperiments(planButton));
+    document.getElementById("enableSelfTraining")?.addEventListener("click", () => setSelfTraining(true));
+    document.getElementById("disableSelfTraining")?.addEventListener("click", () => setSelfTraining(false));
+    refreshSelfTraining(true);
+}
+
+async function refreshSelfTraining(restoreConfig = false) {
+    const target = document.getElementById("selfTrainingStatus");
+    if (!target) return;
+    try {
+        const report = await getSelfTrainingStatus();
+        showSelfTrainingStatus(report);
+        if (restoreConfig && report.configuration.enabled) {
+            for (const [key, value] of Object.entries(report.configuration.training)) {
+                const input = document.getElementById(trainingFieldId(key));
+                if (input) input.value = value;
+            }
+            document.getElementById("selfTrainingInterval").value = report.configuration.interval_minutes;
+        }
+    } catch (error) {
+        target.textContent = `Self-training status unavailable: ${error.message}`;
+    }
+}
+
+function showSelfTrainingStatus(report) {
+    const target = document.getElementById("selfTrainingStatus");
+    if (!target) return;
+    const config = report.configuration;
+    const last = report.last_run || {};
+    const labels = { candidate_created: 'New candidate trained', skipped_unchanged: 'Skipped: market data and settings are unchanged', failed: 'Last attempt failed', running: 'Training in progress', interrupted: 'Previous training was interrupted when the app closed' };
+    const inputs = config.training?.feature_set_id === 'raw-ohlcv-v1' ? 'raw price and volume' : 'indicator inputs';
+    const summary = config.enabled ? `Enabled: ${config.training.symbol} ${config.training.timeframe}, ${inputs}, every ${config.interval_minutes} minutes while the app backend is running.` : 'Self-training is off.';
+    const progress = report.running ? ' Training in progress.' : last.status ? ` ${labels[last.status] || last.status}${last.model_id ? `: ${last.model_id}` : ''}.` : '';
+    target.textContent = `${summary}${progress}${last.message ? ` ${last.message}` : ''}${config.enabled && last.next_check_at && !report.running ? ` Next check: ${new Date(last.next_check_at).toLocaleString()}.` : ''}`;
+    const stop = document.getElementById("disableSelfTraining");
+    if (stop) stop.disabled = !config.enabled;
+}
+
+async function setSelfTraining(enabled) {
+    const target = document.getElementById("selfTrainingStatus");
+    const button = document.getElementById(enabled ? "enableSelfTraining" : "disableSelfTraining");
+    button.disabled = true;
+    let updated = false;
+    try {
+        const payload = enabled ? { enabled, interval_minutes: Number(document.getElementById("selfTrainingInterval").value), training: trainingParameters() } : { enabled };
+        showSelfTrainingStatus(await configureSelfTraining(payload));
+        updated = true;
+    } catch (error) {
+        target.textContent = `Could not update self-training: ${error.message}`;
+    } finally {
+        button.disabled = !enabled && updated;
+    }
 }
 
 async function planExperiments(button) {
@@ -66,10 +118,14 @@ function applyExperiment(parameters) {
 
 function trainingParameters() {
     const names = ["bars", "horizon_candles", "up_return_threshold", "n_estimators", "max_depth", "learning_rate", "probability_threshold"];
-    return Object.fromEntries(names.map(name => {
+    return {
+        feature_set_id: document.getElementById("candidateFeatureSetId")?.value || "core-v1",
+        symbol: document.getElementById("candidateSymbol")?.value || "XAUUSD",
+        timeframe: document.getElementById("candidateTimeframe")?.value || "M5",
+        ...Object.fromEntries(names.map(name => {
         const input = document.getElementById(trainingFieldId(name));
         return [name, Number(input?.value)];
-    }));
+    })) };
 }
 
 function trainingFieldId(name) {
@@ -81,6 +137,7 @@ function trainingFieldId(name) {
 }
 
 export async function refreshModelOperations() {
+    await refreshSelfTraining();
     const body = document.querySelector("#modelOperations tbody");
     const status = document.getElementById("modelOperationsStatus");
     if (!body) return;

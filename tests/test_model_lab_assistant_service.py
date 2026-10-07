@@ -40,6 +40,8 @@ def test_assistant_explains_all_model_lab_buttons_from_its_capability_guide():
     response = ModelLabAssistantService().respond("What does every button do?", [])
 
     assert "Train Candidate" in response["answer"]
+    assert "Enable / update self-training" in response["answer"]
+    assert "Raw price and volume inputs use no technical indicators" in response["answer"]
     assert "Get AI review guidance" in response["answer"]
     assert "Deleting a champion stops its future signal use" in response["answer"]
 

@@ -121,6 +121,12 @@ class CandidateTrainer:
                 "row_count": dataset.snapshot.row_count,
             },
             "training_config": asdict(config),
+            "prediction_baseline": {
+                "positive_rate": float(final_y.mean()),
+                "rows": len(final_y),
+                "start_time": str(final_y.index.min()),
+                "end_time": str(final_y.index.max()),
+            },
             "folds": fold_reports,
             "calibration_method": calibration_method,
             "package_versions": {
@@ -182,6 +188,7 @@ class CandidateTrainer:
             pd.util.hash_pandas_object(dataset.frame, index=True).values.tobytes()
         ).hexdigest()
         settings = {
+            "training_metadata_version": 2,
             "feature_set_id": dataset.snapshot.feature_set_id,
             "label_definition_id": dataset.snapshot.label_definition_id,
             "training_config": asdict(config),

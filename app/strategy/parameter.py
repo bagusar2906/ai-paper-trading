@@ -16,3 +16,7 @@ class StrategyParameter(BaseModel):
     maximum: float | None = None
 
     step: float | None = None
+
+    description: str | None = None
+
+    options: list[dict[str, str]] | None = None

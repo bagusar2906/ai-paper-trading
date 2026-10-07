@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from threading import Lock
 
 from app.config import TradingConfig
 from app.factories.provider_factory import create_provider
@@ -19,6 +20,7 @@ class ModelTrainingService:
     MIN_HISTORY_BARS = 250
     MAX_HISTORY_BARS = 5_000
     SUPPORTED_TIMEFRAMES = {"M1", "M5", "M15", "M30", "H1", "H4", "D1"}
+    _training_lock = Lock()
 
     def __init__(
         self,
@@ -33,6 +35,14 @@ class ModelTrainingService:
         self.artifact_directory = Path(artifact_directory)
 
     def train_candidate(self, request: dict) -> dict:
+        if not self._training_lock.acquire(blocking=False):
+            raise RuntimeError("Another model training run is already in progress. Try again after it finishes.")
+        try:
+            return self._train_candidate(request)
+        finally:
+            self._training_lock.release()
+
+    def validate_request(self, request: dict) -> dict:
         symbol = self._string(request, "symbol", TradingConfig.SYMBOL)
         timeframe = self._string(request, "timeframe", TradingConfig.TIMEFRAME).upper()
         if timeframe not in self.SUPPORTED_TIMEFRAMES:
@@ -47,6 +57,24 @@ class ModelTrainingService:
         max_depth = self._integer(request, "max_depth", 3, 1, 8)
         learning_rate = self._number(request, "learning_rate", 0.05, 0.01, 0.30)
         probability_threshold = self._number(request, "probability_threshold", 0.50, 0.40, 0.70)
+        feature_set_id = self._string(request, "feature_set_id", "core-v1")
+        if feature_set_id not in {"core-v1", "raw-ohlcv-v1"}:
+            raise ValueError(f"unsupported feature set: {feature_set_id}")
+        return {
+            "symbol": symbol, "timeframe": timeframe, "bars": bars,
+            "horizon_candles": horizon, "up_return_threshold": threshold,
+            "n_estimators": n_estimators, "max_depth": max_depth,
+            "learning_rate": learning_rate, "probability_threshold": probability_threshold,
+            "feature_set_id": feature_set_id,
+        }
+
+    def _train_candidate(self, request: dict) -> dict:
+        parameters = self.validate_request(request)
+        symbol, timeframe, bars = (parameters[key] for key in ("symbol", "timeframe", "bars"))
+        horizon, threshold = parameters["horizon_candles"], parameters["up_return_threshold"]
+        n_estimators, max_depth = parameters["n_estimators"], parameters["max_depth"]
+        learning_rate, probability_threshold = parameters["learning_rate"], parameters["probability_threshold"]
+        feature_set_id = parameters["feature_set_id"]
 
         logger.info(
             "Starting candidate training symbol=%s timeframe=%s bars=%s horizon=%s threshold=%s",
@@ -63,7 +91,7 @@ class ModelTrainingService:
             horizon_candles=horizon,
             up_return_threshold=threshold,
         )
-        dataset = build_training_dataset(candles, definition)
+        dataset = build_training_dataset(candles, definition, feature_set_id)
         config = CandidateTrainingConfig(
             walk_forward=self._walk_forward_config(len(dataset.frame), horizon),
             n_estimators=n_estimators,

@@ -1,8 +1,10 @@
 """Optional paper-only strategy that combines champion probabilities and rules."""
 
 from uuid import uuid4
+import math
 
 from app.features.core_v1 import FEATURE_SET_ID, build_core_v1_features
+from app.features.raw_ohlcv_v1 import FEATURE_SET_ID as RAW_FEATURE_SET_ID, LOOKBACK_CANDLES, build_raw_ohlcv_features
 from app.config import TradingConfig
 from app.labels.future_return import FutureReturnLabel
 from app.ml.inference import ChampionModelPredictor, ChampionUnavailable
@@ -22,6 +24,19 @@ class AIAssistedXGBStrategy(Strategy):
         self.up_return_threshold = float(config.get("up_return_threshold", 0.003))
         self.long_probability_threshold = float(config.get("long_probability_threshold", 0.70))
         self.short_probability_threshold = float(config.get("short_probability_threshold", 0.30))
+        self.feature_set_id = config.get("feature_set_id", FEATURE_SET_ID)
+        if self.feature_set_id not in {FEATURE_SET_ID, RAW_FEATURE_SET_ID}:
+            raise ValueError(f"unsupported feature set: {self.feature_set_id}")
+        self.use_technical_filters = config.get("use_technical_filters", self.feature_set_id != RAW_FEATURE_SET_ID)
+        if not isinstance(self.use_technical_filters, bool):
+            raise ValueError("use_technical_filters must be a boolean")
+        if self.feature_set_id == RAW_FEATURE_SET_ID and self.use_technical_filters:
+            raise ValueError("raw price/volume models require technical entry filters to be off")
+        self.model_stop_loss_percent = float(config.get("model_stop_loss_percent", 0.5))
+        if not math.isfinite(self.model_stop_loss_percent) or not 0 < self.model_stop_loss_percent < 100:
+            raise ValueError("model_stop_loss_percent must be between zero and 100")
+        if not (0 <= self.short_probability_threshold < self.long_probability_threshold <= 1):
+            raise ValueError("probability thresholds must be between zero and one, with short below long")
         self.adx_threshold = float(config.get("adx_threshold", 25))
         self.rsi_long_min = float(config.get("rsi_long_min", 50))
         self.rsi_long_max = float(config.get("rsi_long_max", 70))
@@ -43,18 +58,21 @@ class AIAssistedXGBStrategy(Strategy):
     @classmethod
     def schema(cls):
         return [
+            StrategyParameter(key="feature_set_id", label="Model inputs", type="select", default=FEATURE_SET_ID, options=[{"value": FEATURE_SET_ID, "label": "Price, volume and technical indicators"}, {"value": RAW_FEATURE_SET_ID, "label": "Raw price and volume only"}], description="Must match the model's training inputs. Raw price/volume uses the last 12 completed candles without technical indicators. Learning occurs during training and retraining."),
+            StrategyParameter(key="use_technical_filters", label="Use ADX, RSI and trend entry filters", type="boolean", default=True, description="Turn off for entries based only on model probability thresholds. Raw price/volume models always run with these filters off."),
             StrategyParameter(key="horizon_candles", label="Label horizon candles", type="number", default=12, minimum=1, maximum=100, step=1),
             StrategyParameter(key="up_return_threshold", label="Up-return threshold", type="number", default=0.003, minimum=0.00001, maximum=1, step=0.00001),
             StrategyParameter(key="long_probability_threshold", label="Long probability", type="number", default=0.70, minimum=0.5, maximum=1, step=0.01),
-            StrategyParameter(key="short_probability_threshold", label="Short probability", type="number", default=0.30, minimum=0, maximum=0.5, step=0.01),
+            StrategyParameter(key="short_probability_threshold", label="Short probability", type="number", default=0.30, minimum=0, maximum=0.5, step=0.01, description="SELL when the up-event probability is at or below this threshold. The model predicts an upward return event; low probability is not a separate prediction of a downward move."),
             StrategyParameter(key="adx_threshold", label="ADX threshold", type="number", default=25, minimum=1, maximum=100, step=1),
             StrategyParameter(key="stop_atr_multiple", label="Stop ATR multiple", type="number", default=1.5, minimum=0.1, maximum=10, step=0.1),
+            StrategyParameter(key="model_stop_loss_percent", label="Stop loss (%) when technical filters are off", type="number", default=0.5, minimum=0.01, maximum=99, step=0.01, description="Fixed percentage of entry price; replaces the ATR stop in model probability mode. Position sizing and risk limits still apply."),
             StrategyParameter(key="reward_risk_ratio", label="Reward/risk ratio", type="number", default=2, minimum=0.1, maximum=10, step=0.1),
         ]
 
     @property
     def minimum_bars(self):
-        return 60
+        return LOOKBACK_CANDLES if self.feature_set_id == RAW_FEATURE_SET_ID else 60
 
     def prepare(self, df):
         # Feature calculation happens in generate_signal so this strategy never
@@ -64,62 +82,74 @@ class AIAssistedXGBStrategy(Strategy):
     def generate_signal(self, symbol, df):
         price = float(df.iloc[-1]["Close"])
         timestamp = df.index[-1]
-        gates = {"data_fresh": True, "champion_available": False}
+        gates = {"data_fresh": True, "champion_available": False, "technical_filters_enabled": self.use_technical_filters}
         reasons = []
         try:
-            features = build_core_v1_features(df)
+            features = build_raw_ohlcv_features(df) if self.feature_set_id == RAW_FEATURE_SET_ID else build_core_v1_features(df)
             latest = features.iloc[-1]
         except (ValueError, IndexError) as error:
             return self._hold(symbol, price, timestamp, gates, [f"feature validation failed: {error}"])
 
-        regime = self.regimes.classify(latest)
+        regime = self.regimes.classify(latest) if self.use_technical_filters else None
+        regime_name = regime.regime if regime else "model_probability"
+        regime_reasons = regime.reasons if regime else []
         label = FutureReturnLabel(self.horizon_candles, self.up_return_threshold)
         try:
             prediction = self.predictor.predict(
                 latest.to_frame().T,
-                FEATURE_SET_ID,
+                self.feature_set_id,
                 label.definition_id,
                 symbol=symbol,
                 timeframe=self.timeframe,
             )
             gates["champion_available"] = True
         except ChampionUnavailable as error:
-            return self._hold(symbol, price, timestamp, gates, regime.reasons + [str(error)], regime.regime)
+            return self._hold(symbol, price, timestamp, gates, regime_reasons + [str(error)], regime_name)
 
         probability = prediction.probability_up
+        if not math.isfinite(probability) or not 0 <= probability <= 1:
+            return self._hold(symbol, price, timestamp, gates, ["model returned an invalid probability"], regime_name)
         gates.update({
-            "adx": bool(latest["adx_14"] >= self.adx_threshold),
             "long_probability": bool(probability >= self.long_probability_threshold),
             "short_probability": bool(probability <= self.short_probability_threshold),
-            "long_rsi": bool(self.rsi_long_min <= latest["rsi_14"] <= self.rsi_long_max),
-            "short_rsi": bool(self.rsi_short_min <= latest["rsi_14"] <= self.rsi_short_max),
-            "trend_up": regime.regime == "trend_up",
-            "trend_down": regime.regime == "trend_down",
         })
+        if self.use_technical_filters:
+            gates.update({
+                "adx": bool(latest["adx_14"] >= self.adx_threshold),
+                "long_rsi": bool(self.rsi_long_min <= latest["rsi_14"] <= self.rsi_long_max),
+                "short_rsi": bool(self.rsi_short_min <= latest["rsi_14"] <= self.rsi_short_max),
+                "trend_up": regime_name == "trend_up",
+                "trend_down": regime_name == "trend_down",
+            })
         action = SignalAction.HOLD
-        if all(gates[key] for key in ("adx", "long_probability", "long_rsi", "trend_up")):
+        long_gates = ("adx", "long_probability", "long_rsi", "trend_up") if self.use_technical_filters else ("long_probability",)
+        short_gates = ("adx", "short_probability", "short_rsi", "trend_down") if self.use_technical_filters else ("short_probability",)
+        if all(gates[key] for key in long_gates):
             action = SignalAction.BUY
-            reasons.append("champion probability and long technical/regime gates passed")
-        elif all(gates[key] for key in ("adx", "short_probability", "short_rsi", "trend_down")):
+            reasons.append("model probability and long technical/regime gates passed" if self.use_technical_filters else "model long probability threshold passed; technical entry filters disabled")
+        elif all(gates[key] for key in short_gates):
             action = SignalAction.SELL
-            reasons.append("champion probability and short technical/regime gates passed")
+            reasons.append("model probability and short technical/regime gates passed" if self.use_technical_filters else "model short probability threshold passed; technical entry filters disabled")
         else:
-            reasons.append("one or more probability, technical, or regime gates did not pass")
-        stop_distance = float(latest["atr_14"] * self.stop_atr_multiple)
+            reasons.append("one or more probability, technical, or regime gates did not pass" if self.use_technical_filters else "model probability is between the entry thresholds")
+        stop_distance = float(latest["atr_14"] * self.stop_atr_multiple) if self.use_technical_filters else price * self.model_stop_loss_percent / 100
         stop_loss, take_profit = self._risk_levels(action, price, stop_distance)
         signal = TradingSignal(
             symbol=symbol, action=action, price=price, time=timestamp,
-            confidence=probability, reason="; ".join(regime.reasons + reasons),
-            ema=float(latest["ema_20"]), rsi=float(latest["rsi_14"]), adx=float(latest["adx_14"]),
-            plus_di=float(latest["plus_di_14"]), minus_di=float(latest["minus_di_14"]),
+            confidence=probability, reason="; ".join(regime_reasons + reasons),
+            ema=float(latest["ema_20"]) if "ema_20" in latest else None,
+            rsi=float(latest["rsi_14"]) if "rsi_14" in latest else None,
+            adx=float(latest["adx_14"]) if "adx_14" in latest else None,
+            plus_di=float(latest["plus_di_14"]) if "plus_di_14" in latest else None,
+            minus_di=float(latest["minus_di_14"]) if "minus_di_14" in latest else None,
             stop_loss=stop_loss, take_profit=take_profit,
         )
         signal.ai_lab_context = {
             "decision_id": uuid4().hex,
             "model_id": prediction.model_id,
-            "regime": regime.regime,
+            "regime": regime_name,
             "gates": gates,
-            "reasons": regime.reasons + reasons,
+            "reasons": regime_reasons + reasons,
         }
         return signal
 
