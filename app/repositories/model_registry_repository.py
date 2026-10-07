@@ -62,7 +62,7 @@ class ModelRegistryRepository(BaseRepository):
             return []
         history = metadata.get("review_history", [])
         return history if isinstance(history, list) else []
-    def record_candidate(self, result):
+    def record_candidate(self, result, *, replace_matching=False):
         if result.status != "candidate":
             raise ValueError("only candidate models may be registered in this phase")
         snapshot = result.metadata["feature_snapshot"]
@@ -88,8 +88,70 @@ class ModelRegistryRepository(BaseRepository):
         )
         self.session.add(training)
         self.session.add(model)
-        self.session.commit()
+        try:
+            model._replaced_candidates = self._replace_matching_candidates(model) if replace_matching else []
+            training.metadata_json = model.metadata_json
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise
         return model
+
+    def _replace_matching_candidates(self, replacement):
+        """Remove only older candidates in this explicitly marked training family."""
+        metadata = json.loads(replacement.metadata_json)
+        family = metadata.get("candidate_family")
+        if not isinstance(family, dict) or not family.get("key") or replacement.status != "candidate":
+            return []
+        removed = []
+        history = metadata.get("review_history", [])
+        history = history if isinstance(history, list) else []
+        for previous in self.get_candidates():
+            if previous.model_id == replacement.model_id:
+                continue
+            try:
+                previous_metadata = json.loads(previous.metadata_json)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(previous_metadata, dict) or previous_metadata.get("candidate_family") != family:
+                continue
+            record = {"model_id": previous.model_id, "artifact_path": previous.artifact_path}
+            evidence = {"previous_model_id": previous.model_id, "previous_training_run_id": previous.training_run_id,
+                        "previous_metrics": json.loads(previous.metrics_json)}
+            # Preserve the last reviewed metadata with the historical training
+            # run, rather than attaching stale analysis to the fresh model.
+            training = self.session.get(TrainingRunEntity, previous.training_run_id)
+            if training:
+                training.metadata_json = previous.metadata_json
+            deleted = (self.session.query(ModelVersionEntity)
+                       .filter_by(model_id=previous.model_id, status="candidate")
+                       .delete(synchronize_session="fetch"))
+            if not deleted:
+                continue
+            self.session.add(ModelPromotionEntity(model_id=replacement.model_id,
+                             previous_model_id=record["model_id"], action="replace_candidate",
+                             reviewer="model_training", rationale="Replaced by a successfully trained candidate with the same source and settings."))
+            history.append({"type": "candidate_replaced", "recorded_at": datetime.now(timezone.utc).isoformat(), "evidence": evidence})
+            removed.append(record)
+        metadata["review_history"] = history[-50:]
+        replacement.metadata_json = json.dumps(metadata, sort_keys=True)
+        return removed
+
+    def replace_matching_candidates(self, model_id, family):
+        """Apply rolling retention to an unchanged candidate without retraining it."""
+        model = self.get(model_id)
+        if model is None or model.status != "candidate":
+            return []
+        try:
+            metadata = json.loads(model.metadata_json)
+            if not isinstance(metadata, dict) or metadata.get("candidate_family") != family:
+                return []
+            removed = self._replace_matching_candidates(model)
+            self.session.commit()
+            return removed
+        except Exception:
+            self.session.rollback()
+            raise
 
     def get(self, model_id: str):
         return self.session.get(ModelVersionEntity, model_id)

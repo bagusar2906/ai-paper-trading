@@ -70,7 +70,7 @@ class SelfTrainingScheduler:
             parameters = request.get("training", {})
             if not isinstance(parameters, dict):
                 raise ValueError("training must be an object")
-            parameters = {"feature_set_id": "raw-ohlcv-v1", **parameters}
+            parameters = {"feature_set_id": "raw-ohlcv-v1", "replace_previous_candidate": True, **parameters}
             current = {"enabled": True, "interval_minutes": interval,
                        "training": ModelTrainingService().validate_request(parameters)}
         self._write(self.CONFIG_KEY, current)
@@ -96,7 +96,9 @@ class SelfTrainingScheduler:
                 report = {"status": "skipped_unchanged" if result["status"] == "duplicate" else "candidate_created",
                           "model_id": result.get("model_id"), "started_at": started,
                           "finished_at": datetime.now(timezone.utc).isoformat(),
-                          "training": config["training"], "data_sync": result.get("data_sync")}
+                          "training": config["training"], "data_sync": result.get("data_sync"),
+                          "replaced_model_ids": result.get("replaced_model_ids", []),
+                          "cleanup_warnings": result.get("cleanup_warnings", [])}
             except Exception as error:
                 logger.exception("Self-training attempt failed; it will retry at the next interval")
                 report = {"status": "failed", "started_at": started,

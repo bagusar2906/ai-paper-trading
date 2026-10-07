@@ -59,6 +59,8 @@ export async function getChart() {
 }
 
 export async function getModels() { return request("/models"); }
+export async function getModelLabDataSource() { return request("/models/data-source"); }
+export async function setModelLabDataSource(data_source) { return request("/models/data-source", {method: "PUT", body: JSON.stringify({data_source})}); }
 export async function getActiveSignalModel() { return request("/models/signal-model"); }
 export async function getModelImprovementReport() { return request("/models/improvement-report"); }
 export async function getModelExperimentPlan(parameters) {

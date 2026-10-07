@@ -13,6 +13,7 @@ from app.services.model_health_service import ModelHealthService
 from app.services.model_lab_assistant_service import ModelLabAssistantService
 from app.services.model_review_guidance_service import ModelReviewGuidanceService
 from app.services.model_analysis_service import ModelAnalysisService
+from app.services.model_lab_data_source_service import ModelLabDataSourceService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 from app.ml.scheduler import ModelMonitoringJob
@@ -20,6 +21,19 @@ from app.scheduler.self_training_scheduler import self_training_scheduler
 
 router = APIRouter(prefix="/models", tags=["Models"])
 logger = logging.getLogger(__name__)
+
+
+@router.get("/data-source")
+def model_lab_data_source():
+    return ModelLabDataSourceService().get()
+
+
+@router.put("/data-source")
+def configure_model_lab_data_source(request: dict):
+    try:
+        return ModelLabDataSourceService().set(request.get("data_source"))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.get("/self-training")
@@ -91,7 +105,10 @@ def _market_context(metadata_json: str | None) -> dict | None:
     symbol, timeframe = context.get("symbol"), context.get("timeframe")
     if not isinstance(symbol, str) or not isinstance(timeframe, str):
         return None
-    return {"symbol": symbol, "timeframe": timeframe}
+    result = {"symbol": symbol, "timeframe": timeframe}
+    if isinstance(context.get("data_source"), str):
+        result["data_source"] = context["data_source"]
+    return result
 
 
 def _feature_importance(metadata_json: str | None) -> list[dict]:
@@ -182,6 +199,7 @@ def improvement_report():
 
 @router.get("/experiment-plan")
 def experiment_plan(
+    data_source: str = "trading",
     feature_set_id: str = "core-v1",
     symbol: str = TradingConfig.SYMBOL,
     timeframe: str = TradingConfig.TIMEFRAME,

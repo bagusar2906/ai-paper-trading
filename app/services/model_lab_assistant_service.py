@@ -24,7 +24,7 @@ class ModelLabAssistantService:
         {
             "button": "Enable / update self-training",
             "purpose": "Saves the training form settings and periodically checks fresh completed candles while the backend is open. After shutdown, catches up from the last saved candle in batches before training. Raw price and volume inputs use no technical indicators.",
-            "result": "Skips unchanged inputs and trains new candidates only; the champion is replaced only through manual promotion.",
+            "result": "Skips unchanged inputs. By default, successful training replaces older self-trained candidates with the same settings; champions and retired models are kept. The champion is replaced only through manual promotion.",
         },
         {
             "button": "Stop self-training",
@@ -33,8 +33,8 @@ class ModelLabAssistantService:
         },
         {
             "button": "Train Candidate",
-            "purpose": "Trains an XGBoost model from completed candles using the form settings.",
-            "result": "Creates a candidate only; it cannot replace a champion or trade.",
+            "purpose": "Trains an XGBoost model from completed candles using the form settings and selected Model Lab data source.",
+            "result": "By default, successfully verified training replaces older manual candidates with the same source and settings. Uncheck Replace previous candidate to keep every version. It cannot replace a champion or trade.",
         },
         {
             "button": "Plan Experiments",

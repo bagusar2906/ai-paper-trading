@@ -1,6 +1,8 @@
 """Manual, candidate-only training orchestration for the paper-trading UI."""
 
 import logging
+from hashlib import sha256
+import json
 from pathlib import Path
 from threading import Lock
 
@@ -12,6 +14,7 @@ from app.labels.future_return import FutureReturnLabel
 from app.ml.training import CandidateTrainer, CandidateTrainingConfig
 from app.ml.validation import WalkForwardConfig
 from app.services.training_data_sync_service import TrainingDataSyncService
+from app.services.model_lab_data_source_service import ModelLabDataSourceService
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +47,10 @@ class ModelTrainingService:
             self._training_lock.release()
 
     def validate_request(self, request: dict) -> dict:
+        replace_previous = request.get("replace_previous_candidate", True)
+        if not isinstance(replace_previous, bool):
+            raise ValueError("replace_previous_candidate must be a boolean")
+        data_source = ModelLabDataSourceService.validate(request.get("data_source", "trading"))
         symbol = self._string(request, "symbol", TradingConfig.SYMBOL)
         timeframe = self._string(request, "timeframe", TradingConfig.TIMEFRAME).upper()
         if timeframe not in self.SUPPORTED_TIMEFRAMES:
@@ -67,6 +74,8 @@ class ModelTrainingService:
             "n_estimators": n_estimators, "max_depth": max_depth,
             "learning_rate": learning_rate, "probability_threshold": probability_threshold,
             "feature_set_id": feature_set_id,
+            "data_source": data_source,
+            "replace_previous_candidate": replace_previous,
         }
 
     def _train_candidate(self, request: dict, *, backfill: bool = False) -> dict:
@@ -82,7 +91,7 @@ class ModelTrainingService:
             symbol, timeframe, bars, horizon, threshold,
         )
 
-        provider = self.provider_factory()
+        provider = self.provider_factory() if parameters["data_source"] == "trading" else self.provider_factory(parameters["data_source"])
         data_sync = None
         try:
             if backfill:
@@ -105,7 +114,14 @@ class ModelTrainingService:
             probability_threshold=probability_threshold,
         )
         market_context = {"symbol": symbol.upper(), "timeframe": timeframe}
+        source = getattr(provider, "source_name", None)
+        if source:
+            market_context["data_source"] = source
         identity = CandidateTrainer.training_identity(dataset, config, market_context)
+        family_settings = {key: value for key, value in parameters.items() if key != "replace_previous_candidate"}
+        family_settings.update(symbol=symbol.upper(), data_source=source or parameters["data_source"])
+        family = {"key": sha256(json.dumps(family_settings, sort_keys=True).encode()).hexdigest(),
+                  "origin": "self_training" if backfill else "manual"}
 
         repos = self.repository_factory()
         try:
@@ -113,10 +129,14 @@ class ModelTrainingService:
                 identity["fingerprint"]
             )
             if existing is not None:
+                removed = repos.model_registry.replace_matching_candidates(existing.model_id, family) if parameters["replace_previous_candidate"] else []
+                cleanup_warnings = self._remove_replaced_artifacts(removed)
                 return {
                     "model_id": existing.model_id,
                     "status": "duplicate",
                     "data_sync": data_sync,
+                    "replaced_model_ids": [item["model_id"] for item in removed],
+                    "cleanup_warnings": cleanup_warnings,
                     "message": "An existing model was trained with the same market data and settings. No new candidate was created.",
                 }
         finally:
@@ -129,17 +149,30 @@ class ModelTrainingService:
         result = trainer.train(
             dataset, definition.name, config
         )
+        if isinstance(getattr(result, "metadata", None), dict):
+            result.metadata["candidate_family"] = family
+        if parameters["replace_previous_candidate"]:
+            artifact = Path(result.artifact_path)
+            if not artifact.is_file() or sha256(artifact.read_bytes()).hexdigest() != result.artifact_sha256:
+                self._remove_replaced_artifacts([{"model_id": result.model_id, "artifact_path": str(artifact)}])
+                raise ValueError("New model artifact could not be verified; previous candidates were kept")
 
         repos = self.repository_factory()
         try:
-            registered = repos.model_registry.record_candidate(result)
+            registered = repos.model_registry.record_candidate(result, replace_matching=True) if parameters["replace_previous_candidate"] else repos.model_registry.record_candidate(result)
             # SQLAlchemy expires attributes after commit. Capture these while
             # the session remains open so the response does not access a
             # detached model instance after repos.close().
             model_id = registered.model_id
             status = registered.status
+            removed = getattr(registered, "_replaced_candidates", [])
+        except Exception:
+            if getattr(result, "artifact_path", None):
+                self._remove_replaced_artifacts([{"model_id": result.model_id, "artifact_path": str(result.artifact_path)}])
+            raise
         finally:
             repos.close()
+        cleanup_warnings = self._remove_replaced_artifacts(removed)
 
         logger.info(
             "Candidate training completed model_id=%s training_run_id=%s rows=%s",
@@ -157,8 +190,28 @@ class ModelTrainingService:
             "feature_set_id": dataset.snapshot.feature_set_id,
             "label_definition_id": dataset.snapshot.label_definition_id,
             "metrics": result.metrics,
+            "data_source": source,
             "data_sync": data_sync,
+            "replaced_model_ids": [item["model_id"] for item in removed],
+            "cleanup_warnings": cleanup_warnings,
         }
+
+    def _remove_replaced_artifacts(self, removed):
+        warnings = []
+        root = self.artifact_directory.resolve()
+        for item in removed:
+            artifact = Path(item["artifact_path"])
+            for target in (artifact, artifact.with_suffix(".json")):
+                path = target.resolve()
+                if root not in path.parents:
+                    warnings.append(f"Artifact outside the managed folder was kept: {item['model_id']}")
+                    continue
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("Could not remove superseded candidate artifact: %s", path, exc_info=True)
+                    warnings.append(f"Could not remove superseded artifact: {item['model_id']}")
+        return warnings
 
     @staticmethod
     def _walk_forward_config(row_count: int, horizon: int) -> WalkForwardConfig:

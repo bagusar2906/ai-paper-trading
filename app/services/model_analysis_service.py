@@ -158,7 +158,7 @@ class ModelAnalysisService:
             "validation_observations": observations, "fold_count": len(folds), "fold_ranges": ranges,
             "calibration_bins": calibration, "top_features": top_features,
             "training_positive_rate": _number(baseline.get("positive_rate")),
-            "market": {key: str(market.get(key, "not recorded")) for key in ("symbol", "timeframe")},
+            "market": {key: str(market.get(key, "not recorded")) for key in ("symbol", "timeframe", "data_source")},
             "data_period": {key: str(snapshot.get(key, "not recorded")) for key in ("start_time", "end_time")},
             "evidence_notes": notes,
         }

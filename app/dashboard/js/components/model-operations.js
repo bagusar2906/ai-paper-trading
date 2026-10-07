@@ -1,12 +1,16 @@
 import { deleteModel, getActiveSignalModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModelReviewHistory, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 import { configureSelfTraining, getSelfTrainingStatus } from "../api.js";
 import { analyzeModel } from "../api.js";
+import { getModelLabDataSource, setModelLabDataSource } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
 let analysisRequest = 0;
+let modelDataSourcePending = false;
+const DATA_SOURCE_LABELS = {trading: "Trading app source", mt5: "MetaTrader 5", oanda: "OANDA", yahoo: "Yahoo Finance", twelve_data: "Twelve Data"};
 
 export function initializeModelOperations() {
+    initializeModelDataSource();
     const submitButton = document.getElementById("submitCandidateTraining");
     if (submitButton) submitButton.addEventListener("click", () => train(submitButton));
 
@@ -26,6 +30,38 @@ export function initializeModelOperations() {
     refreshSelfTraining(true);
 }
 
+async function initializeModelDataSource() {
+    const select = document.getElementById("candidateDataSource");
+    const status = document.getElementById("modelLabDataSourceStatus");
+    if (!select || !status) return;
+    modelDataSourcePending = true;
+    select.disabled = true;
+    const show = source => {status.textContent = `AI Model Lab source: ${DATA_SOURCE_LABELS[source] || source}. Use Enable / update self-training to apply changes to background training.`;};
+    try {
+        const saved = await getModelLabDataSource();
+        select.value = saved.data_source;
+        show(saved.data_source);
+    } catch (error) {
+        status.textContent = `Could not load saved source: ${error.message}. Select a source before training.`;
+    } finally {
+        select.disabled = false;
+        modelDataSourcePending = false;
+    }
+    select.addEventListener("change", async () => {
+        modelDataSourcePending = true;
+        select.disabled = true;
+        try {
+            const saved = await setModelLabDataSource(select.value);
+            show(saved.data_source);
+        } catch (error) {
+            status.textContent = `Source preference was not saved: ${error.message}. New training still uses the selected source.`;
+        } finally {
+            select.disabled = false;
+            modelDataSourcePending = false;
+        }
+    });
+}
+
 async function refreshSelfTraining(restoreConfig = false) {
     const target = document.getElementById("selfTrainingStatus");
     if (!target) return;
@@ -34,8 +70,12 @@ async function refreshSelfTraining(restoreConfig = false) {
         showSelfTrainingStatus(report);
         if (restoreConfig && report.configuration.enabled) {
             for (const [key, value] of Object.entries(report.configuration.training)) {
+                if (key === "data_source") continue;
                 const input = document.getElementById(trainingFieldId(key));
-                if (input) input.value = value;
+                if (input) {
+                    if (key === "replace_previous_candidate") input.checked = value;
+                    else input.value = value;
+                }
             }
             document.getElementById("selfTrainingInterval").value = report.configuration.interval_minutes;
         }
@@ -51,17 +91,20 @@ function showSelfTrainingStatus(report) {
     const last = report.last_run || {};
     const labels = { candidate_created: 'New candidate trained', skipped_unchanged: 'Skipped: market data and settings are unchanged', failed: 'Last attempt failed', running: 'Training in progress', interrupted: 'Previous training was interrupted when the app closed' };
     const inputs = config.training?.feature_set_id === 'raw-ohlcv-v1' ? 'raw price and volume' : 'indicator inputs';
-    const summary = config.enabled ? `Enabled: ${config.training.symbol} ${config.training.timeframe}, ${inputs}, every ${config.interval_minutes} minutes while the app backend is running.` : 'Self-training is off.';
+    const summary = config.enabled ? `Enabled: ${config.training.symbol} ${config.training.timeframe}, ${inputs}, every ${config.interval_minutes} minutes while the app backend is running. Source: ${DATA_SOURCE_LABELS[config.training.data_source || 'trading'] || config.training.data_source}.` : 'Self-training is off.';
     const progress = report.running ? ' Training in progress.' : last.status ? ` ${labels[last.status] || last.status}${last.model_id ? `: ${last.model_id}` : ''}.` : '';
     const sync = last.data_sync;
+    const retention = config.training?.replace_previous_candidate !== false ? " Keeps the latest candidate per training setup." : " Keeps every trained candidate.";
+    const replacement = last.replaced_model_ids?.length ? ` Replaced ${last.replaced_model_ids.length} previous candidate(s).` : '';
     const catchup = sync ? ` Data caught up: ${sync.downloaded_bars} new candles saved${sync.resumed_from ? `, resumed from ${new Date(sync.resumed_from).toLocaleString()}` : ''}. Last saved candle: ${new Date(sync.last_candle_at).toLocaleString()}. Training uses the latest ${sync.training_window_bars} candles.` : '';
-    target.textContent = `${summary}${progress}${catchup}${last.message ? ` ${last.message}` : ''}${config.enabled && last.next_check_at && !report.running ? ` Next check: ${new Date(last.next_check_at).toLocaleString()}.` : ''}`;
+    target.textContent = `${summary}${config.enabled ? retention : ''}${progress}${replacement}${catchup}${last.cleanup_warnings?.length ? ` ${last.cleanup_warnings.join(' ')}` : ''}${last.message ? ` ${last.message}` : ''}${config.enabled && last.next_check_at && !report.running ? ` Next check: ${new Date(last.next_check_at).toLocaleString()}.` : ''}`;
     const stop = document.getElementById("disableSelfTraining");
     if (stop) stop.disabled = !config.enabled;
 }
 
 async function setSelfTraining(enabled) {
     const target = document.getElementById("selfTrainingStatus");
+    if (enabled && modelDataSourcePending) {target.textContent = "Wait for the data-source preference to finish loading or saving."; return;}
     const button = document.getElementById(enabled ? "enableSelfTraining" : "disableSelfTraining");
     button.disabled = true;
     let updated = false;
@@ -123,6 +166,8 @@ function applyExperiment(parameters) {
 function trainingParameters() {
     const names = ["bars", "horizon_candles", "up_return_threshold", "n_estimators", "max_depth", "learning_rate", "probability_threshold"];
     return {
+        replace_previous_candidate: document.getElementById("candidateReplacePrevious")?.checked ?? true,
+        data_source: document.getElementById("candidateDataSource")?.value || "trading",
         feature_set_id: document.getElementById("candidateFeatureSetId")?.value || "core-v1",
         symbol: document.getElementById("candidateSymbol")?.value || "XAUUSD",
         timeframe: document.getElementById("candidateTimeframe")?.value || "M5",
@@ -134,6 +179,7 @@ function trainingParameters() {
 
 function trainingFieldId(name) {
     const specialIds = {
+        replace_previous_candidate: "candidateReplacePrevious",
         horizon_candles: "candidateHorizon",
         up_return_threshold: "candidateThreshold",
     };
@@ -299,7 +345,7 @@ function renderModelAnalysis(body, report) {
     paragraph(report.source === "ai" ? "AI analysis of saved training evidence" : `Local evidence analysis · ${report.source_note || 'AI unavailable'}`, "small text-muted");
     paragraph(report.evidence.target);
     const evidence = report.evidence;
-    if (evidence.market) paragraph(`Market: ${evidence.market.symbol} ${evidence.market.timeframe} · Training dataset: ${evidence.data_period.start_time} to ${evidence.data_period.end_time}`, "small text-muted");
+    if (evidence.market) paragraph(`Market: ${evidence.market.symbol} ${evidence.market.timeframe} · Source: ${DATA_SOURCE_LABELS[evidence.market.data_source] || evidence.market.data_source || 'not recorded'} · Training dataset: ${evidence.data_period.start_time} to ${evidence.data_period.end_time}`, "small text-muted");
     paragraph(`Inputs: ${evidence.feature_set_id} · Validation observations: ${evidence.validation_observations ?? 'not recorded'} · Folds: ${evidence.fold_count} · UP decision threshold: ${evidence.probability_threshold ?? 'not recorded'}`, "small text-muted");
     paragraph(report.summary, "fw-semibold");
     for (const metric of report.metrics || []) {
@@ -330,7 +376,7 @@ function renderModelAnalysis(body, report) {
 }
 
 function formatMarketContext(context) {
-    return context?.symbol && context?.timeframe ? `${context.symbol} · ${context.timeframe}` : "—";
+    return context?.symbol && context?.timeframe ? `${context.symbol} · ${context.timeframe} · ${DATA_SOURCE_LABELS[context.data_source] || 'Source not recorded'}` : "—";
 }
 
 async function openReviewHistory(model) {
@@ -430,6 +476,7 @@ async function train(button) {
     const threshold = document.getElementById("candidateThreshold");
     const parameters = trainingParameters();
     const status = document.getElementById("candidateTrainingStatus");
+    if (modelDataSourcePending) {if (status) setTrainingStatus(status, "info", "Wait for the data-source preference to finish loading or saving."); return;}
     const dialog = document.getElementById("trainCandidateModal");
     if (!bars || !horizon || !threshold || !status || !dialog) return;
     button.disabled = true;
@@ -437,11 +484,12 @@ async function train(button) {
     try {
         const result = await trainCandidate(parameters);
         if (result.status === "duplicate") {
-            setTrainingStatus(status, "warning", `⚠ Training skipped: ${result.message}`);
+            setTrainingStatus(status, "warning", `⚠ Training skipped: ${result.message}${result.replaced_model_ids?.length ? ` Removed ${result.replaced_model_ids.length} older candidate(s).` : ''}${result.cleanup_warnings?.length ? ` ${result.cleanup_warnings.join(' ')}` : ''}`);
+            if (result.replaced_model_ids?.length) await refreshModelOperations();
             return;
         }
         await refreshModelOperations();
-        document.getElementById("modelOperationsStatus").textContent = `Candidate ${result.model_id} trained on ${result.training_rows} rows; review before promotion.`;
+        document.getElementById("modelOperationsStatus").textContent = `Candidate ${result.model_id} trained on ${result.training_rows} rows${result.replaced_model_ids?.length ? `; replaced ${result.replaced_model_ids.length} previous candidate(s)` : ''}; review before promotion.${result.cleanup_warnings?.length ? ` ${result.cleanup_warnings.join(' ')}` : ''}`;
         bootstrap.Modal.getOrCreateInstance(dialog).hide();
     } catch (error) {
         setTrainingStatus(status, "danger", `Candidate training failed: ${error.message}`);

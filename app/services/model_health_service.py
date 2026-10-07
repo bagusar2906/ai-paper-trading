@@ -33,7 +33,8 @@ class ModelHealthService:
         market = metadata.get("market_context") or {}
         if not market.get("symbol") or not market.get("timeframe") or not metadata.get("feature_baseline"):
             return {"status": "unavailable", "recommendation": "retrain_required", "automatic_retraining": False, "model_id": champion.model_id, "reasons": ["Champion lacks feature-baseline metadata; retrain it before drift monitoring."]}
-        provider = self.provider_factory()
+        source = market.get("data_source")
+        provider = self.provider_factory(source) if source else self.provider_factory()
         try:
             candles = provider.get_history(market["symbol"], market["timeframe"], 300)
         finally:

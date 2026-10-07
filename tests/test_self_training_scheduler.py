@@ -131,7 +131,8 @@ def test_self_training_downloads_raw_data_and_only_retrains_changed_inputs(tmp_p
     assert len(fetched) == 1
     assert third["data_sync"]["downloaded_bars"] == 5
     assert len(repos.market_candles.get_all()) == 305
-    assert len(repos.model_registry.get_all()) == 2
+    assert len(repos.model_registry.get_all()) == 1
+    assert third["replaced_model_ids"] == [first["model_id"]]
     assert all(model.status == "candidate" and model.feature_set_id == "raw-ohlcv-v1" for model in repos.model_registry.get_all())
 
 

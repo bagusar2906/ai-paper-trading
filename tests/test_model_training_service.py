@@ -99,6 +99,7 @@ def test_manual_training_registers_a_candidate_and_disconnects_provider(tmp_path
     )
 
     response = service.train_candidate({
+        "replace_previous_candidate": False,
         "bars": 300,
         "horizon_candles": 3,
         "up_return_threshold": 0.0001,
@@ -138,7 +139,7 @@ def test_manual_training_skips_an_identical_existing_candidate(tmp_path):
         artifact_directory=tmp_path,
     )
 
-    response = service.train_candidate({"bars": 300})
+    response = service.train_candidate({"bars": 300, "replace_previous_candidate": False})
 
     assert response["status"] == "duplicate"
     assert response["model_id"] == "candidate-xgb-existing"
