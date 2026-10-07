@@ -181,3 +181,105 @@ test('self-training restores the replacement checkbox as a boolean', async () =>
     assert.match(controls.selfTrainingStatus.textContent, /Keeps every trained candidate/);
     assert.match(controls.selfTrainingStatus.textContent, /Replaced 1 previous candidate/);
 });
+
+function trainingControls() {
+    const controls = {candidateFeatureSetId: field('raw-ohlcv-v1'), candidateSymbol: field('EURUSD'), candidateTimeframe: field('H1'), candidateDataSource: field('yahoo'), candidateBars: field('1000'), candidateHorizon: field('12'), candidateThreshold: field('.003'), candidateNEstimators: field('100'), candidateMaxDepth: field('3'), candidateLearningRate: field('.05'), candidateProbabilityThreshold: field('.5'), candidateReplacePrevious: field(''), selfTrainingInterval: field('60')};
+    for (const id of ['candidateTrainingStatus', 'trainCandidateModal', 'saveTrainingSettings', 'submitCandidateTraining', 'enableSelfTraining', 'disableSelfTraining', 'selfTrainingStatus', 'trainingSettingsTitle']) controls[id] = field('');
+    return controls;
+}
+const modalMock = {Modal: {getOrCreateInstance: () => ({show() {}})}};
+
+test('selected model editor loads its recipe and saves only that model', async () => {
+    const controls = trainingControls();
+    const saved = [];
+    const context = load('components/model-operations.js', controls, {
+        bootstrap: modalMock,
+        getModelTrainingSettings: async id => {
+            assert.equal(id, 'model-A');
+            return {training: {bars: 800, data_source: 'mt5', feature_set_id: 'core-v1', max_depth: 6, replace_previous_candidate: false}, interval_minutes: 15, notes: ['Verify older settings.']};
+        },
+        saveModelTrainingSettings: async (id, payload) => {saved.push({id, payload});},
+        configureSelfTraining: () => assert.fail('Selected model save must not change scheduler'),
+        trainCandidate: () => assert.fail('Saving must not train'),
+    });
+    await vm.runInContext('openTrainingSettings({}, {model_id:"model-A"})', context);
+    assert.equal(controls.candidateBars.value, 800);
+    assert.equal(controls.candidateReplacePrevious.checked, false);
+    assert.equal(controls.candidateDataSource.value, 'mt5');
+    assert.equal(controls.candidateMaxDepth.value, 6);
+    assert.equal(controls.selfTrainingInterval.value, 15);
+    assert.match(controls.trainingSettingsTitle.textContent, /model-A/);
+    assert.match(controls.candidateTrainingStatus.textContent, /Verify older settings/);
+    controls.candidateReplacePrevious.checked = true;
+    controls.candidateMaxDepth.value = '2';
+    await vm.runInContext('saveTrainingSettings(document.getElementById("saveTrainingSettings"))', context);
+    assert.equal(saved[0].id, 'model-A');
+    assert.equal(saved[0].payload.training.replace_previous_candidate, true);
+    assert.equal(saved[0].payload.training.max_depth, 2);
+    assert.equal(saved[0].payload.interval_minutes, 15);
+    assert.match(controls.candidateTrainingStatus.textContent, /Settings saved for model-A/);
+    assert.equal(controls.saveTrainingSettings.disabled, false);
+});
+
+test('model editor blocks stale submission while loading and after load failure', async () => {
+    const controls = trainingControls();
+    let reject;
+    const context = load('components/model-operations.js', controls, {bootstrap: modalMock,
+        getModelTrainingSettings: () => new Promise((_, fail) => {reject = fail;}),
+        trainCandidate: () => assert.fail('Must not train while loading'),
+    });
+    const pending = vm.runInContext('openTrainingSettings({}, {model_id:"gone"})', context);
+    assert.equal(controls.candidateBars.disabled, true);
+    await vm.runInContext('train({})', context);
+    reject(new Error('model not found'));
+    await pending;
+    assert.match(controls.candidateTrainingStatus.textContent, /Could not load saved settings/);
+    assert.equal(controls.saveTrainingSettings.disabled, true);
+    assert.equal(controls.submitCandidateTraining.disabled, true);
+    assert.equal(controls.enableSelfTraining.disabled, true);
+});
+
+test('global settings save preserves stopped state and polling preserves edited form', async () => {
+    const controls = trainingControls();
+    const report = {configuration: {enabled: false, interval_minutes: 20, training: {bars: 700, replace_previous_candidate: false}}, last_run: {}};
+    let sent;
+    const context = load('components/model-operations.js', controls, {bootstrap: modalMock,
+        getSelfTrainingStatus: async () => report,
+        configureSelfTraining: async payload => {sent = payload; return report;},
+    });
+    await vm.runInContext('openTrainingSettings({})', context);
+    assert.equal(controls.candidateBars.value, 700);
+    controls.candidateBars.value = '900';
+    await vm.runInContext('refreshSelfTraining(true)', context);
+    assert.equal(controls.candidateBars.value, '900');
+    await vm.runInContext('saveTrainingSettings(document.getElementById("saveTrainingSettings"))', context);
+    assert.equal(sent.save_only, true);
+    assert.equal(sent.enabled, undefined);
+    assert.equal(sent.training.bars, 900);
+    assert.match(controls.candidateTrainingStatus.textContent, /remains off/);
+});
+
+test('save failures leave model edits available for retry', async () => {
+    const controls = trainingControls();
+    const context = load('components/model-operations.js', controls, {saveModelTrainingSettings: async () => {throw new Error('offline');}});
+    vm.runInContext('selectedTrainingModel = {model_id:"A"}', context);
+    await vm.runInContext('saveTrainingSettings(document.getElementById("saveTrainingSettings"))', context);
+    assert.match(controls.candidateTrainingStatus.textContent, /Could not save.*offline/);
+    assert.equal(controls.candidateBars.value, '1000');
+    assert.equal(controls.saveTrainingSettings.disabled, false);
+});
+
+test('each model row offers its own Edit settings action and both pages expose editor', () => {
+    const nodes = [];
+    const context = load('components/model-operations.js', {}, {document: {
+        createElement: tag => {const node = {tag, append() {}, lastElementChild: {append(button) {nodes.push(button);}}}; return node;},
+    }});
+    vm.runInContext('row({model_id:"A", status:"champion", metrics:{}}, {signal_ready:false})', context);
+    const button = nodes.find(node => node.textContent === 'Edit settings');
+    assert.ok(button);
+    assert.equal(typeof button.onclick, 'function');
+    for (const name of ['index.html', 'ai-model-lab.html']) {
+        const html = fs.readFileSync(path.join(__dirname, '../app/dashboard', name), 'utf8');
+        for (const id of ['trainingSettingsTitle', 'saveTrainingSettings', 'editTrainingSettings']) assert.equal(html.split(`id="${id}"`).length - 1, 1);
+    }
+});

@@ -17,6 +17,16 @@ class ModelLabAssistantService:
 
     CAPABILITY_GUIDE = (
         {
+            "button": "Edit settings",
+            "purpose": "Opens the selected model's saved retraining settings, including replacement preference, data source, target and learner parameters.",
+            "result": "Save settings stores a recipe for this model without starting training or changing its existing scores. Train Candidate retrains with the edited form; Enable / update self-training uses it for background training.",
+        },
+        {
+            "button": "Training settings / Save settings",
+            "purpose": "Edits and saves the current background training setup, even while self-training is stopped.",
+            "result": "Saving preserves the enabled state and applies changes at the next scheduled check. When editing a selected model, saving stores only that model's retraining recipe.",
+        },
+        {
             "button": "Analyze",
             "purpose": "Explains one model's saved training results: precision, recall, ROC AUC, probability errors, calibration and consistency between validation periods.",
             "result": "Uses AI when available, otherwise clearly labeled local evidence. Saves the report in History without changing model status.",

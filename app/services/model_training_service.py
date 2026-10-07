@@ -151,6 +151,7 @@ class ModelTrainingService:
         )
         if isinstance(getattr(result, "metadata", None), dict):
             result.metadata["candidate_family"] = family
+            result.metadata["training_request"] = parameters
         if parameters["replace_previous_candidate"]:
             artifact = Path(result.artifact_path)
             if not artifact.is_file() or sha256(artifact.read_bytes()).hexdigest() != result.artifact_sha256:

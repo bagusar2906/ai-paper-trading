@@ -78,6 +78,10 @@ export async function trainCandidate(payload) {
 }
 
 export async function getSelfTrainingStatus() { return request("/models/self-training"); }
+export async function getModelTrainingSettings(modelId) { return request(`/models/${encodeURIComponent(modelId)}/training-settings`); }
+export async function saveModelTrainingSettings(modelId, payload) {
+    return request(`/models/${encodeURIComponent(modelId)}/training-settings`, {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
+}
 export async function configureSelfTraining(payload) {
     return request("/models/self-training", { method: "PUT", body: JSON.stringify(payload) });
 }

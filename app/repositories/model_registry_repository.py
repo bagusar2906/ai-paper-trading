@@ -8,6 +8,25 @@ from app.repositories.base_repository import BaseRepository
 
 
 class ModelRegistryRepository(BaseRepository):
+    def save_training_settings(self, model_id, settings):
+        model = self.get(model_id)
+        if model is None:
+            raise LookupError("model not found")
+        try:
+            metadata = json.loads(model.metadata_json or "{}")
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata["retraining_settings"] = settings
+        history = metadata.get("review_history", [])
+        if not isinstance(history, list):
+            history = []
+        history.append({"type": "training_settings_updated", "recorded_at": datetime.now(timezone.utc).isoformat(), "evidence": settings})
+        metadata["review_history"] = history[-50:]
+        model.metadata_json = json.dumps(metadata, sort_keys=True, allow_nan=False)
+        self.session.commit()
+
     @staticmethod
     def _market_context(model):
         try:

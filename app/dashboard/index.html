@@ -344,6 +344,8 @@
             <div class="card-body">
                 <p class="small text-muted">Paper-only. Promotion and rollback require a reviewer and rationale; models never self-promote.</p>
                 <button id="trainCandidate" type="button" class="btn btn-sm btn-outline-primary mb-3" data-bs-toggle="modal" data-bs-target="#trainCandidateModal">Train Candidate</button>
+                        <button id="editTrainingSettings" type="button" class="btn btn-sm btn-outline-secondary mb-3">Training settings</button>
+                        <div id="trainingSettingsSummary" class="small text-muted mb-3" role="status" aria-live="polite">Loading saved training settings…</div>
                 <div class="mb-3"><h6 class="mb-1">Champion health</h6><div id="modelHealth" class="small text-muted">Checking feature drift…</div></div>
                 <button id="planExperiments" type="button" class="btn btn-sm btn-outline-secondary mb-3">Plan Experiments</button>
                 <div class="mb-3">
@@ -368,11 +370,11 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 id="trainCandidateTitle" class="modal-title">Train XGBoost Candidate</h5>
+                        <h5 id="trainingSettingsTitle" class="modal-title">Train XGBoost Candidate</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="small text-muted">Uses completed candles from the selected Market Data source. Training creates a candidate only; it never promotes or trades automatically.</p>
+                        <p class="small text-muted">Uses completed candles from the selected Market Data source. Edit training settings and save them for future runs, or choose Train Candidate to train now. Saving settings does not start training.</p>
                         <label class="form-label" for="candidateDataSource">AI Model Lab data source</label><select id="candidateDataSource" class="form-select mb-2"><option value="trading">Use trading app source</option><option value="mt5">MetaTrader 5</option><option value="twelve_data">Twelve Data</option><option value="oanda">OANDA</option><option value="yahoo">Yahoo Finance</option></select><div id="modelLabDataSourceStatus" class="small text-muted mb-2" role="status" aria-live="polite">Loading saved Model Lab source…</div><p class="small text-muted">Choose a separate source for manual training and self-training. Each source has its own saved backfill history. Existing connection credentials are used. Yahoo uses gold futures prices for XAUUSD.</p>
 <label for="candidateFeatureSetId" class="form-label">Model inputs</label>
                         <div class="row mb-3"><div class="col"><label for="candidateSymbol" class="form-label">Symbol</label><input id="candidateSymbol" class="form-control" value="XAUUSD"></div><div class="col"><label for="candidateTimeframe" class="form-label">Timeframe</label><select id="candidateTimeframe" class="form-select"><option>M1</option><option selected>M5</option><option>M15</option><option>M30</option><option>H1</option><option>H4</option><option>D1</option></select></div></div>
@@ -399,7 +401,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button id="submitCandidateTraining" type="button" class="btn btn-primary">Train Candidate</button>
+                        <button id="saveTrainingSettings" type="button" class="btn btn-outline-primary">Save settings</button><button id="submitCandidateTraining" type="button" class="btn btn-primary">Train Candidate</button>
                     </div>
                 </div>
             </div>

@@ -22,6 +22,7 @@ class SelfTrainingScheduler:
         self._stop = threading.Event()
         self._wake = threading.Event()
         self._run_lock = threading.Lock()
+        self._config_lock = threading.RLock()
         self._thread = None
         self._next_attempt = 0
         self._revision = 0
@@ -52,30 +53,41 @@ class SelfTrainingScheduler:
         last_run = self._read(self.STATUS_KEY, {})
         if not running and last_run.get("status") == "running":
             last_run = {**last_run, "status": "interrupted"}
+        if self._next_attempt > 0:
+            last_run = {**last_run, "next_check_at": (datetime.now(timezone.utc) + timedelta(seconds=max(0, self._next_attempt - time.monotonic()))).isoformat()}
         return {"configuration": self.configuration(),
                 "last_run": last_run,
                 "running": running,
                 "automatic_promotion": False}
 
     def configure(self, request):
-        if not isinstance(request.get("enabled"), bool):
+        with self._config_lock:
+            return self._configure(request)
+
+    def _configure(self, request):
+        save_only = request.get("save_only", False)
+        if not isinstance(save_only, bool):
+            raise ValueError("save_only must be a boolean")
+        if not save_only and not isinstance(request.get("enabled"), bool):
             raise ValueError("enabled must be a boolean")
         current = self.configuration()
-        if not request["enabled"]:
+        enabled = current.get("enabled", False) if save_only else request["enabled"]
+        if not enabled and not save_only:
             current["enabled"] = False
         else:
-            interval = request.get("interval_minutes", 60)
+            interval = request.get("interval_minutes", current.get("interval_minutes", 60) if save_only else 60)
             if isinstance(interval, bool) or not isinstance(interval, int) or not 5 <= interval <= 1440:
                 raise ValueError("interval_minutes must be an integer between 5 and 1440")
             parameters = request.get("training", {})
             if not isinstance(parameters, dict):
                 raise ValueError("training must be an object")
-            parameters = {"feature_set_id": "raw-ohlcv-v1", "replace_previous_candidate": True, **parameters}
-            current = {"enabled": True, "interval_minutes": interval,
+            parameters = {"feature_set_id": "raw-ohlcv-v1", "replace_previous_candidate": True,
+                          **(current.get("training", {}) if save_only else {}), **parameters}
+            current = {"enabled": enabled, "interval_minutes": interval,
                        "training": ModelTrainingService().validate_request(parameters)}
         self._write(self.CONFIG_KEY, current)
         self._revision += 1
-        self._next_attempt = 0
+        self._next_attempt = time.monotonic() + current["interval_minutes"] * 60 if save_only else 0
         self._wake.set()
         return self.status()
 
@@ -83,8 +95,9 @@ class SelfTrainingScheduler:
         if not self._run_lock.acquire(blocking=False):
             return {"status": "busy"}
         try:
-            config = self.configuration()
-            revision = self._revision
+            with self._config_lock:
+                config = self.configuration()
+                revision = self._revision
             if not config.get("enabled"):
                 return {"status": "disabled"}
             started = datetime.now(timezone.utc).isoformat()
@@ -105,8 +118,11 @@ class SelfTrainingScheduler:
                           "finished_at": datetime.now(timezone.utc).isoformat(),
                           "message": str(error)[:250]}
             interval = config["interval_minutes"] * 60
-            report["next_check_at"] = (datetime.now(timezone.utc) + timedelta(seconds=interval)).isoformat()
-            self._next_attempt = time.monotonic() + interval if revision == self._revision else 0
+            with self._config_lock:
+                if revision == self._revision:
+                    self._next_attempt = time.monotonic() + interval
+                remaining = max(0, self._next_attempt - time.monotonic())
+            report["next_check_at"] = (datetime.now(timezone.utc) + timedelta(seconds=remaining)).isoformat()
             self._write(self.STATUS_KEY, report)
             return report
         finally:

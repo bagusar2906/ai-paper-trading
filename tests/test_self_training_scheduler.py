@@ -171,3 +171,75 @@ def test_reopened_scheduler_catches_up_immediately_and_keeps_sync_status():
         reopened.stop()
     assert reopened.status()["last_run"]["status"] == "skipped_unchanged"
     assert reopened.status()["last_run"]["data_sync"]["downloaded_bars"] == 5
+
+
+def test_saving_stopped_settings_persists_without_enabling_or_training():
+    worker = scheduler(SimpleNamespace(train_candidate=lambda *args, **kwargs: pytest.fail("save must not train")))
+    report = worker.configure({"save_only": True, "enabled": True, "interval_minutes": 20,
+                              "training": {"replace_previous_candidate": False, "bars": 800, "max_depth": 5, "data_source": "mt5"}})
+    assert report["configuration"]["enabled"] is False
+    reopened = SelfTrainingScheduler(worker.repository_factory)
+    saved = reopened.configuration()
+    assert saved["interval_minutes"] == 20
+    assert saved["training"]["replace_previous_candidate"] is False
+    assert saved["training"]["bars"] == 800
+    assert saved["training"]["max_depth"] == 5
+    assert saved["training"]["data_source"] == "mt5"
+    assert worker.run_once()["status"] == "disabled"
+
+
+def test_saving_enabled_settings_keeps_enabled_state_and_schedules_next_check(monkeypatch):
+    worker = scheduler(SimpleNamespace())
+    worker.configure({"enabled": True, "training": {"bars": 500, "data_source": "yahoo"}})
+    monkeypatch.setattr("app.scheduler.self_training_scheduler.time.monotonic", lambda: 1000)
+    report = worker.configure({"save_only": True, "enabled": False, "interval_minutes": 15,
+                              "training": {"replace_previous_candidate": False}})
+    assert report["configuration"]["enabled"] is True
+    assert worker._next_attempt == 1900
+    assert report["configuration"]["training"]["bars"] == 500
+    assert report["configuration"]["training"]["data_source"] == "yahoo"
+    assert "next_check_at" in report["last_run"]
+
+
+def test_saving_during_training_does_not_overwrite_the_new_schedule():
+    started, finish = threading.Event(), threading.Event()
+    def train(request, **kwargs):
+        assert request["bars"] == 300
+        started.set()
+        assert finish.wait(3)
+        return {"status": "candidate", "model_id": "new"}
+    worker = scheduler(SimpleNamespace(train_candidate=train))
+    worker.configure({"enabled": True, "training": {"bars": 300}})
+    thread = threading.Thread(target=worker.run_once)
+    thread.start()
+    try:
+        assert started.wait(3)
+        worker.configure({"save_only": True, "interval_minutes": 15, "training": {"bars": 500}})
+        deadline = worker._next_attempt
+    finally:
+        finish.set()
+        thread.join(timeout=3)
+    assert not thread.is_alive()
+    assert worker._next_attempt == deadline
+    assert worker.configuration()["training"]["bars"] == 500
+
+
+@pytest.mark.parametrize("settings_request", [{"save_only": "true"}, {"save_only": True, "interval_minutes": 1},
+                                    {"save_only": True, "training": {"replace_previous_candidate": "false"}}])
+def test_invalid_saved_settings_leave_the_previous_setup_unchanged(settings_request):
+    worker = scheduler(SimpleNamespace())
+    before = worker.configuration()
+    with pytest.raises(ValueError):
+        worker.configure(settings_request)
+    assert worker.configuration() == before
+
+
+def test_api_can_save_settings_while_stopped_without_starting_a_run(monkeypatch):
+    worker = scheduler(SimpleNamespace(train_candidate=lambda *args, **kwargs: pytest.fail("save must not train")))
+    monkeypatch.setattr("app.api.models.self_training_scheduler", worker)
+    client = TestClient(app)
+    response = client.put("/models/self-training", json={"save_only": True, "interval_minutes": 10,
+                          "training": {"bars": 800, "replace_previous_candidate": False}})
+    assert response.status_code == 200
+    assert response.json()["configuration"]["enabled"] is False
+    assert client.get("/models/self-training").json()["configuration"]["training"]["replace_previous_candidate"] is False

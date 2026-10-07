@@ -16,6 +16,7 @@ from app.services.model_analysis_service import ModelAnalysisService
 from app.services.model_lab_data_source_service import ModelLabDataSourceService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
+from app.services.model_training_settings_service import ModelTrainingSettingsService
 from app.ml.scheduler import ModelMonitoringJob
 from app.scheduler.self_training_scheduler import self_training_scheduler
 
@@ -62,6 +63,26 @@ def train_candidate(request: dict):
             status_code=500,
             detail="Candidate training failed unexpectedly. Check the server log.",
         ) from error
+
+
+@router.get("/{model_id}/training-settings")
+def model_training_settings(model_id: str):
+    try:
+        return ModelTrainingSettingsService().get(model_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.put("/{model_id}/training-settings")
+def save_model_training_settings(model_id: str, request: dict):
+    try:
+        return ModelTrainingSettingsService().save(model_id, request)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 @router.get("")

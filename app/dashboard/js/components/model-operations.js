@@ -2,15 +2,35 @@ import { deleteModel, getActiveSignalModel, getModelExperimentPlan, getModelHeal
 import { configureSelfTraining, getSelfTrainingStatus } from "../api.js";
 import { analyzeModel } from "../api.js";
 import { getModelLabDataSource, setModelLabDataSource } from "../api.js";
+import { getModelTrainingSettings, saveModelTrainingSettings } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
 let analysisRequest = 0;
 let modelDataSourcePending = false;
+let modelDataSourceTask = null;
+let trainingSettingsPending = false;
+let trainingFormEdited = false;
+let selectedTrainingModel = null;
 const DATA_SOURCE_LABELS = {trading: "Trading app source", mt5: "MetaTrader 5", oanda: "OANDA", yahoo: "Yahoo Finance", twelve_data: "Twelve Data"};
 
 export function initializeModelOperations() {
-    initializeModelDataSource();
+    modelDataSourceTask = initializeModelDataSource();
+    const editSettings = document.getElementById("editTrainingSettings");
+    if (editSettings) editSettings.addEventListener("click", () => openTrainingSettings(editSettings));
+    const saveSettings = document.getElementById("saveTrainingSettings");
+    if (saveSettings) saveSettings.addEventListener("click", () => saveTrainingSettings(saveSettings));
+    document.getElementById("trainCandidate")?.addEventListener("click", () => {
+        selectedTrainingModel = null;
+        const title = document.getElementById("trainingSettingsTitle");
+        if (title) title.textContent = "Train XGBoost Candidate";
+        if (!trainingSettingsPending) disableTrainingSettings(false);
+    });
+    for (const id of trainingInputIds()) {
+        const input = document.getElementById(id);
+        input?.addEventListener("input", () => {trainingFormEdited = true;});
+        input?.addEventListener("change", () => {trainingFormEdited = true;});
+    }
     const submitButton = document.getElementById("submitCandidateTraining");
     if (submitButton) submitButton.addEventListener("click", () => train(submitButton));
 
@@ -36,7 +56,7 @@ async function initializeModelDataSource() {
     if (!select || !status) return;
     modelDataSourcePending = true;
     select.disabled = true;
-    const show = source => {status.textContent = `AI Model Lab source: ${DATA_SOURCE_LABELS[source] || source}. Use Enable / update self-training to apply changes to background training.`;};
+    const show = source => {status.textContent = `AI Model Lab source: ${DATA_SOURCE_LABELS[source] || source}. Use Save settings to store the setup; use Enable / update self-training to apply changes to background training.`;};
     try {
         const saved = await getModelLabDataSource();
         select.value = saved.data_source;
@@ -51,7 +71,8 @@ async function initializeModelDataSource() {
         modelDataSourcePending = true;
         select.disabled = true;
         try {
-            const saved = await setModelLabDataSource(select.value);
+            modelDataSourceTask = setModelLabDataSource(select.value);
+            const saved = await modelDataSourceTask;
             show(saved.data_source);
         } catch (error) {
             status.textContent = `Source preference was not saved: ${error.message}. New training still uses the selected source.`;
@@ -68,19 +89,94 @@ async function refreshSelfTraining(restoreConfig = false) {
     try {
         const report = await getSelfTrainingStatus();
         showSelfTrainingStatus(report);
-        if (restoreConfig && report.configuration.enabled) {
-            for (const [key, value] of Object.entries(report.configuration.training)) {
-                if (key === "data_source") continue;
-                const input = document.getElementById(trainingFieldId(key));
-                if (input) {
-                    if (key === "replace_previous_candidate") input.checked = value;
-                    else input.value = value;
-                }
-            }
-            document.getElementById("selfTrainingInterval").value = report.configuration.interval_minutes;
-        }
+        if (restoreConfig && !trainingSettingsPending && !trainingFormEdited) restoreTrainingSettings(report.configuration);
     } catch (error) {
         target.textContent = `Self-training status unavailable: ${error.message}`;
+    }
+}
+
+function restoreTrainingSettings(config, includeSource = false) {
+    for (const [key, value] of Object.entries(config.training || {})) {
+        if (key === "data_source" && !includeSource) continue;
+        const input = document.getElementById(trainingFieldId(key));
+        if (!input) continue;
+        if (key === "replace_previous_candidate") input.checked = value;
+        else input.value = value;
+    }
+    const interval = document.getElementById("selfTrainingInterval");
+    if (interval) interval.value = config.interval_minutes;
+}
+
+function trainingInputIds() {
+    const fields = ["bars", "horizon_candles", "up_return_threshold", "n_estimators", "max_depth", "learning_rate", "probability_threshold", "feature_set_id", "symbol", "timeframe", "data_source", "replace_previous_candidate"];
+    return [...fields.map(trainingFieldId), "selfTrainingInterval"];
+}
+
+function disableTrainingSettings(disabled) {
+    for (const id of [...trainingInputIds(), "saveTrainingSettings", "submitCandidateTraining", "enableSelfTraining"]) {
+        const input = document.getElementById(id);
+        if (input) input.disabled = disabled;
+    }
+}
+
+async function openTrainingSettings(button, model = null) {
+    const status = document.getElementById("candidateTrainingStatus");
+    const dialog = document.getElementById("trainCandidateModal");
+    if (!status || !dialog) return;
+    if (trainingSettingsPending) return;
+    selectedTrainingModel = model;
+    const title = document.getElementById("trainingSettingsTitle");
+    if (title) title.textContent = model ? `Edit settings: ${model.model_id}` : "Self-training settings";
+    button.disabled = true;
+    trainingSettingsPending = true;
+    trainingFormEdited = true;
+    disableTrainingSettings(true);
+    setTrainingStatus(status, "info", "Loading saved training settings…");
+    bootstrap.Modal.getOrCreateInstance(dialog).show();
+    let loaded = false;
+    try {
+        if (modelDataSourceTask) await modelDataSourceTask.catch(() => {});
+        disableTrainingSettings(true);
+        const report = model ? await getModelTrainingSettings(model.model_id) : await getSelfTrainingStatus();
+        restoreTrainingSettings(model ? report : report.configuration, true);
+        loaded = true;
+        if (!model) showSelfTrainingStatus(report);
+        setTrainingStatus(status, "info", model ? `Editing ${model.model_id}. Save settings stores this model's retraining setup. Train Candidate uses these settings now; Enable / update self-training applies them to background training. ${(report.notes || []).join(' ')}` : "Edit any setting, then select Save settings. Training will not start when you save.");
+    } catch (error) {
+        setTrainingStatus(status, "danger", `Could not load saved settings: ${error.message}. Close and click ${model ? 'Edit settings' : 'Training settings'} to retry.`);
+    } finally {
+        trainingSettingsPending = false;
+        disableTrainingSettings(!loaded);
+        button.disabled = false;
+    }
+}
+
+async function saveTrainingSettings(button) {
+    const status = document.getElementById("candidateTrainingStatus");
+    if (modelDataSourcePending || trainingSettingsPending) {
+        setTrainingStatus(status, "info", "Wait for training settings and the data-source preference to finish loading or saving.");
+        return;
+    }
+    button.disabled = true;
+    trainingSettingsPending = true;
+    disableTrainingSettings(true);
+    const payload = {save_only: true, interval_minutes: Number(document.getElementById("selfTrainingInterval").value), training: trainingParameters()};
+    try {
+        if (selectedTrainingModel) {
+            await saveModelTrainingSettings(selectedTrainingModel.model_id, {interval_minutes: payload.interval_minutes, training: payload.training});
+            setTrainingStatus(status, "success", `Settings saved for ${selectedTrainingModel.model_id}. Train Candidate to retrain with these settings, or Enable / update self-training to use them for background training. Existing model predictions and scores stay unchanged until retraining.`);
+        } else {
+            const report = await configureSelfTraining(payload);
+            showSelfTrainingStatus(report);
+            const detail = report.configuration.enabled ? "Self-training remains enabled; new settings apply at the next scheduled check." : "Self-training remains off. Enable it when you are ready.";
+            setTrainingStatus(status, "success", `Training settings saved. ${detail}${report.running ? " The current run can finish with its previous settings." : ''}`);
+        }
+    } catch (error) {
+        setTrainingStatus(status, "danger", `Could not save training settings: ${error.message}`);
+    } finally {
+        trainingSettingsPending = false;
+        disableTrainingSettings(false);
+        button.disabled = false;
     }
 }
 
@@ -100,11 +196,14 @@ function showSelfTrainingStatus(report) {
     target.textContent = `${summary}${config.enabled ? retention : ''}${progress}${replacement}${catchup}${last.cleanup_warnings?.length ? ` ${last.cleanup_warnings.join(' ')}` : ''}${last.message ? ` ${last.message}` : ''}${config.enabled && last.next_check_at && !report.running ? ` Next check: ${new Date(last.next_check_at).toLocaleString()}.` : ''}`;
     const stop = document.getElementById("disableSelfTraining");
     if (stop) stop.disabled = !config.enabled;
+    const summaryTarget = document.getElementById("trainingSettingsSummary");
+    if (summaryTarget) summaryTarget.textContent = `${summary}${config.training?.bars ? ` Saved window: ${config.training.bars} candles.` : ''}${retention}`;
 }
 
 async function setSelfTraining(enabled) {
     const target = document.getElementById("selfTrainingStatus");
     if (enabled && modelDataSourcePending) {target.textContent = "Wait for the data-source preference to finish loading or saving."; return;}
+    if (enabled && trainingSettingsPending) {target.textContent = "Wait for training settings to finish loading or saving."; return;}
     const button = document.getElementById(enabled ? "enableSelfTraining" : "disableSelfTraining");
     button.disabled = true;
     let updated = false;
@@ -156,6 +255,8 @@ function renderExperimentPlan(plan) {
 }
 
 function applyExperiment(parameters) {
+    if (trainingSettingsPending) return;
+    trainingFormEdited = true;
     for (const [key, value] of Object.entries(parameters)) {
         const input = document.getElementById(trainingFieldId(key));
         if (input) input.value = value;
@@ -179,6 +280,7 @@ function trainingParameters() {
 
 function trainingFieldId(name) {
     const specialIds = {
+        data_source: "candidateDataSource",
         replace_previous_candidate: "candidateReplacePrevious",
         horizon_candles: "candidateHorizon",
         up_return_threshold: "candidateThreshold",
@@ -298,6 +400,11 @@ function row(model, signalModel) {
         finally { analyzeButton.disabled = false; }
     };
     actions.append(analyzeButton);
+    const editSettings = document.createElement("button");
+    editSettings.className = "btn btn-sm btn-outline-secondary me-1";
+    editSettings.textContent = "Edit settings";
+    editSettings.onclick = () => openTrainingSettings(editSettings, model);
+    actions.append(editSettings);
     if (model.status === "candidate" || model.status === "retired") {
         const button = document.createElement("button");
         button.className = "btn btn-sm btn-outline-primary";
@@ -477,6 +584,7 @@ async function train(button) {
     const parameters = trainingParameters();
     const status = document.getElementById("candidateTrainingStatus");
     if (modelDataSourcePending) {if (status) setTrainingStatus(status, "info", "Wait for the data-source preference to finish loading or saving."); return;}
+    if (trainingSettingsPending) {if (status) setTrainingStatus(status, "info", "Wait for training settings to finish loading or saving."); return;}
     const dialog = document.getElementById("trainCandidateModal");
     if (!bars || !horizon || !threshold || !status || !dialog) return;
     button.disabled = true;
