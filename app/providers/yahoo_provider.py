@@ -50,6 +50,23 @@ logger = logging.getLogger(__name__)
 
 
 class YahooProvider(DataProvider):
+    source_name = "yahoo"
+
+    def get_history_range(self, symbol, timeframe, start, end):
+        if timeframe not in _INTERVAL_MAP:
+            raise ValueError(f"Unsupported Yahoo timeframe: {timeframe}")
+        frame = yf.Ticker(self._resolve_symbol(symbol)).history(
+            start=start.to_pydatetime(), end=end.to_pydatetime(), interval=_INTERVAL_MAP[timeframe],
+            raise_errors=True,
+        )
+        if frame is None or frame.empty:
+            return pd.DataFrame()
+        frame = frame[["Open", "High", "Low", "Close", "Volume"]].copy()
+        if timeframe in {"H4", "4h"}:
+            frame = frame.resample("4h").agg({"Open": "first", "High": "max", "Low": "min",
+                                             "Close": "last", "Volume": "sum"}).dropna()
+        frame.index = pd.to_datetime(frame.index, utc=True)
+        return frame[(frame.index >= start) & (frame.index < end)]
 
     def __init__(self):
         self._connected = False

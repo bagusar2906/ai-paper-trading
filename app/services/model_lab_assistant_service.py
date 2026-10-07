@@ -17,8 +17,13 @@ class ModelLabAssistantService:
 
     CAPABILITY_GUIDE = (
         {
+            "button": "Analyze",
+            "purpose": "Explains one model's saved training results: precision, recall, ROC AUC, probability errors, calibration and consistency between validation periods.",
+            "result": "Uses AI when available, otherwise clearly labeled local evidence. Saves the report in History without changing model status.",
+        },
+        {
             "button": "Enable / update self-training",
-            "purpose": "Saves the training form settings and periodically checks fresh completed candles while the backend is open. Raw price and volume inputs use no technical indicators.",
+            "purpose": "Saves the training form settings and periodically checks fresh completed candles while the backend is open. After shutdown, catches up from the last saved candle in batches before training. Raw price and volume inputs use no technical indicators.",
             "result": "Skips unchanged inputs and trains new candidates only; the champion is replaced only through manual promotion.",
         },
         {

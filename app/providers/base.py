@@ -14,6 +14,10 @@ class DataProvider(ABC):
     Base interface for market data providers.
     """
 
+    def get_history_range(self, symbol, timeframe, start, end) -> pd.DataFrame:
+        """Fetch OHLCV within a UTC interval [start, end), without a recent-window cap."""
+        raise NotImplementedError("This provider does not support resumable historical downloads")
+
     @abstractmethod
     def connect(self) -> bool:
         """

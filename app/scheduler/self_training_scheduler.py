@@ -90,13 +90,13 @@ class SelfTrainingScheduler:
             started = datetime.now(timezone.utc).isoformat()
             self._write(self.STATUS_KEY, {"status": "running", "started_at": started})
             try:
-                result = self.trainer_factory().train_candidate(config["training"])
+                result = self.trainer_factory().train_candidate(config["training"], backfill=True)
                 if result.get("status") not in {"candidate", "duplicate"}:
                     raise ValueError("Self-training may only create a candidate or skip unchanged inputs")
                 report = {"status": "skipped_unchanged" if result["status"] == "duplicate" else "candidate_created",
                           "model_id": result.get("model_id"), "started_at": started,
                           "finished_at": datetime.now(timezone.utc).isoformat(),
-                          "training": config["training"]}
+                          "training": config["training"], "data_sync": result.get("data_sync")}
             except Exception as error:
                 logger.exception("Self-training attempt failed; it will retry at the next interval")
                 report = {"status": "failed", "started_at": started,

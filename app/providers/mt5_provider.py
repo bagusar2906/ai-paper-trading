@@ -33,6 +33,7 @@ _TIMEFRAME_MAP = {
 }
 
 class MT5Provider(DataProvider):
+    source_name = "mt5"
 
     def __init__(self):
         self._connected = False
@@ -77,6 +78,23 @@ class MT5Provider(DataProvider):
 
     def is_connected(self):
         return self._connected
+
+    def get_history_range(self, symbol, timeframe, start, end):
+        self._require_connected()
+        tf_name = _TIMEFRAME_MAP.get(timeframe)
+        if tf_name is None:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+        rates = mt5.copy_rates_range(symbol, getattr(mt5, tf_name),
+                                    start.to_pydatetime(), end.to_pydatetime())
+        if rates is None:
+            raise RuntimeError(f"MT5 history backfill failed: {mt5.last_error()}")
+        if len(rates) == 0:
+            return pd.DataFrame()
+        frame = pd.DataFrame(rates)
+        frame.index = pd.to_datetime(frame.pop("time"), unit="s", utc=True)
+        frame = frame.rename(columns={"open": "Open", "high": "High", "low": "Low",
+                                      "close": "Close", "tick_volume": "Volume"})
+        return frame[["Open", "High", "Low", "Close", "Volume"]][frame.index < end]
 
     def get_history(self, symbol, timeframe, bars):
         self._require_connected()

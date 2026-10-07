@@ -12,6 +12,7 @@ from app.services.model_experiment_service import ModelExperimentService
 from app.services.model_health_service import ModelHealthService
 from app.services.model_lab_assistant_service import ModelLabAssistantService
 from app.services.model_review_guidance_service import ModelReviewGuidanceService
+from app.services.model_analysis_service import ModelAnalysisService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 from app.ml.scheduler import ModelMonitoringJob
@@ -226,6 +227,25 @@ def model_lab_chat(request: dict):
         )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    finally:
+        repos.close()
+
+
+@router.post("/{model_id}/analyze")
+def analyze_model(model_id: str):
+    repos = RepositoryFactory()
+    try:
+        model = repos.model_registry.get(model_id)
+        if model is None:
+            raise HTTPException(status_code=404, detail="model not found")
+        result = ModelAnalysisService().analyze(model)
+        try:
+            repos.model_registry.add_review_event(model_id, "model_analysis", result)
+            result["history_saved"] = True
+        except Exception:
+            logger.exception("Could not save model analysis history")
+            result["history_saved"] = False
+        return result
     finally:
         repos.close()
 

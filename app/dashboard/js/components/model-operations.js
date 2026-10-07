@@ -1,8 +1,10 @@
 import { deleteModel, getActiveSignalModel, getModelExperimentPlan, getModelHealth, getModelImprovementReport, getModelReviewGuidance, getModelReviewHistory, getModels, promoteModel, rollbackModel, trainCandidate } from "../api.js";
 import { configureSelfTraining, getSelfTrainingStatus } from "../api.js";
+import { analyzeModel } from "../api.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
+let analysisRequest = 0;
 
 export function initializeModelOperations() {
     const submitButton = document.getElementById("submitCandidateTraining");
@@ -51,7 +53,9 @@ function showSelfTrainingStatus(report) {
     const inputs = config.training?.feature_set_id === 'raw-ohlcv-v1' ? 'raw price and volume' : 'indicator inputs';
     const summary = config.enabled ? `Enabled: ${config.training.symbol} ${config.training.timeframe}, ${inputs}, every ${config.interval_minutes} minutes while the app backend is running.` : 'Self-training is off.';
     const progress = report.running ? ' Training in progress.' : last.status ? ` ${labels[last.status] || last.status}${last.model_id ? `: ${last.model_id}` : ''}.` : '';
-    target.textContent = `${summary}${progress}${last.message ? ` ${last.message}` : ''}${config.enabled && last.next_check_at && !report.running ? ` Next check: ${new Date(last.next_check_at).toLocaleString()}.` : ''}`;
+    const sync = last.data_sync;
+    const catchup = sync ? ` Data caught up: ${sync.downloaded_bars} new candles saved${sync.resumed_from ? `, resumed from ${new Date(sync.resumed_from).toLocaleString()}` : ''}. Last saved candle: ${new Date(sync.last_candle_at).toLocaleString()}. Training uses the latest ${sync.training_window_bars} candles.` : '';
+    target.textContent = `${summary}${progress}${catchup}${last.message ? ` ${last.message}` : ''}${config.enabled && last.next_check_at && !report.running ? ` Next check: ${new Date(last.next_check_at).toLocaleString()}.` : ''}`;
     const stop = document.getElementById("disableSelfTraining");
     if (stop) stop.disabled = !config.enabled;
 }
@@ -239,6 +243,15 @@ function row(model, signalModel) {
     const activeForSignals = signalModel.signal_ready && signalModel.champion_model_id === model.model_id;
     tr.innerHTML = `<td>${model.model_id}</td><td><span class="badge text-bg-${model.status === "champion" ? "success" : "secondary"}">${model.status}</span></td><td>${formatMarketContext(model.market_context)}</td><td>${model.feature_set_id}</td><td>${model.label_definition_id}</td><td>${activeForSignals ? '<span class="badge text-bg-primary">Active</span>' : "—"}</td><td>${formatMetrics(model.metrics)}</td><td>${formatFeatureImportance(model.feature_importance)}</td><td></td>`;
     const actions = tr.lastElementChild;
+    const analyzeButton = document.createElement("button");
+    analyzeButton.className = "btn btn-sm btn-outline-info me-1";
+    analyzeButton.textContent = "Analyze";
+    analyzeButton.onclick = async () => {
+        analyzeButton.disabled = true;
+        try { await openModelAnalysis(model); }
+        finally { analyzeButton.disabled = false; }
+    };
+    actions.append(analyzeButton);
     if (model.status === "candidate" || model.status === "retired") {
         const button = document.createElement("button");
         button.className = "btn btn-sm btn-outline-primary";
@@ -258,6 +271,62 @@ function row(model, signalModel) {
     historyButton.onclick = () => openReviewHistory(model);
     actions.append(historyButton);
     return tr;
+}
+
+async function openModelAnalysis(model) {
+    const requestId = ++analysisRequest;
+    const body = document.getElementById("modelAnalysisBody");
+    document.getElementById("modelAnalysisTitle").textContent = `Analysis: ${model.model_id}`;
+    body.replaceChildren();
+    body.textContent = "Analyzing saved training results…";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modelAnalysisModal")).show();
+    try {
+        const report = await analyzeModel(model.model_id);
+        if (requestId === analysisRequest) renderModelAnalysis(body, report);
+    } catch (error) {
+        if (requestId === analysisRequest) body.textContent = `Could not analyze this model: ${error.message}. Close and click Analyze to retry.`;
+    }
+}
+
+function renderModelAnalysis(body, report) {
+    body.replaceChildren();
+    const paragraph = (text, className = "mb-2") => {
+        const element = document.createElement("p");
+        element.className = className;
+        element.textContent = text;
+        body.append(element);
+    };
+    paragraph(report.source === "ai" ? "AI analysis of saved training evidence" : `Local evidence analysis · ${report.source_note || 'AI unavailable'}`, "small text-muted");
+    paragraph(report.evidence.target);
+    const evidence = report.evidence;
+    if (evidence.market) paragraph(`Market: ${evidence.market.symbol} ${evidence.market.timeframe} · Training dataset: ${evidence.data_period.start_time} to ${evidence.data_period.end_time}`, "small text-muted");
+    paragraph(`Inputs: ${evidence.feature_set_id} · Validation observations: ${evidence.validation_observations ?? 'not recorded'} · Folds: ${evidence.fold_count} · UP decision threshold: ${evidence.probability_threshold ?? 'not recorded'}`, "small text-muted");
+    paragraph(report.summary, "fw-semibold");
+    for (const metric of report.metrics || []) {
+        const range = evidence.fold_ranges?.[metric.key];
+        const score = Number.isFinite(metric.value) ? (['precision', 'recall'].includes(metric.key) ? `${(metric.value * 100).toFixed(1)}%` : metric.value.toFixed(3)) : 'not available';
+        paragraph(`${metric.name}: ${score}${range ? ` · Fold range: ${range.min.toFixed(3)}–${range.max.toFixed(3)} (${range.folds_with_score} folds)` : ''}`, "fw-semibold mt-3 mb-1");
+        paragraph(metric.explanation, "small");
+    }
+    const bins = (evidence.calibration_bins || []).filter(bin => bin.count > 0 && Number.isFinite(bin.mean_probability) && Number.isFinite(bin.observed_rate));
+    if (bins.length) {
+        paragraph("Probability calibration: predicted likelihood versus actual event frequency (closer is better).", "fw-semibold mt-3");
+        for (const bin of bins) paragraph(`Predicted ${(bin.mean_probability * 100).toFixed(1)}% · Actual ${(bin.observed_rate * 100).toFixed(1)}% · ${bin.count} observations`, "small mb-1");
+    }
+    if (Number.isFinite(evidence.training_positive_rate)) paragraph(`UP event frequency in final training split: ${(evidence.training_positive_rate * 100).toFixed(1)}%. This is context, not a validation baseline score.`, "small mt-3");
+    if (evidence.top_features?.length) paragraph(`Top inputs: ${evidence.top_features.map(item => `${item.feature} (${item.importance ?? 'unknown'})`).join(', ')}`, "small mt-3");
+    for (const [label, items] of [["Strengths", report.strengths], ["Limitations", [...new Set([...(report.limitations || []), ...(report.evidence_notes || [])])]], ["Suggested next steps", report.next_steps]]) {
+        if (!items?.length) continue;
+        paragraph(label, "fw-semibold mt-3 mb-1");
+        const list = document.createElement("ul");
+        for (const text of items) {
+            const item = document.createElement("li");
+            item.textContent = text;
+            list.append(item);
+        }
+        body.append(list);
+    }
+    paragraph(report.history_saved ? "Saved in model history. Model status is unchanged." : "Analysis could not be saved in model history. Model status is unchanged.", "small text-muted mt-3");
 }
 
 function formatMarketContext(context) {
@@ -366,15 +435,7 @@ async function train(button) {
     button.disabled = true;
     setTrainingStatus(status, "info", "Training paper-only candidate from completed candles…");
     try {
-        const result = await trainCandidate({
-            bars: Number(bars.value),
-            horizon_candles: Number(horizon.value),
-            up_return_threshold: Number(threshold.value),
-            n_estimators: parameters.n_estimators,
-            max_depth: parameters.max_depth,
-            learning_rate: parameters.learning_rate,
-            probability_threshold: parameters.probability_threshold,
-        });
+        const result = await trainCandidate(parameters);
         if (result.status === "duplicate") {
             setTrainingStatus(status, "warning", `⚠ Training skipped: ${result.message}`);
             return;

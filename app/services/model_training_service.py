@@ -11,6 +11,7 @@ from app.features.dataset import build_training_dataset
 from app.labels.future_return import FutureReturnLabel
 from app.ml.training import CandidateTrainer, CandidateTrainingConfig
 from app.ml.validation import WalkForwardConfig
+from app.services.training_data_sync_service import TrainingDataSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +35,11 @@ class ModelTrainingService:
         self.trainer_factory = trainer_factory
         self.artifact_directory = Path(artifact_directory)
 
-    def train_candidate(self, request: dict) -> dict:
+    def train_candidate(self, request: dict, *, backfill: bool = False) -> dict:
         if not self._training_lock.acquire(blocking=False):
             raise RuntimeError("Another model training run is already in progress. Try again after it finishes.")
         try:
-            return self._train_candidate(request)
+            return self._train_candidate(request, backfill=backfill)
         finally:
             self._training_lock.release()
 
@@ -68,7 +69,7 @@ class ModelTrainingService:
             "feature_set_id": feature_set_id,
         }
 
-    def _train_candidate(self, request: dict) -> dict:
+    def _train_candidate(self, request: dict, *, backfill: bool = False) -> dict:
         parameters = self.validate_request(request)
         symbol, timeframe, bars = (parameters[key] for key in ("symbol", "timeframe", "bars"))
         horizon, threshold = parameters["horizon_candles"], parameters["up_return_threshold"]
@@ -82,8 +83,12 @@ class ModelTrainingService:
         )
 
         provider = self.provider_factory()
+        data_sync = None
         try:
-            candles = provider.get_history(symbol, timeframe, bars)
+            if backfill:
+                candles, data_sync = TrainingDataSyncService(self.repository_factory).synchronize(provider, symbol, timeframe, bars)
+            else:
+                candles = provider.get_history(symbol, timeframe, bars)
         finally:
             provider.disconnect()
 
@@ -111,6 +116,7 @@ class ModelTrainingService:
                 return {
                     "model_id": existing.model_id,
                     "status": "duplicate",
+                    "data_sync": data_sync,
                     "message": "An existing model was trained with the same market data and settings. No new candidate was created.",
                 }
         finally:
@@ -151,6 +157,7 @@ class ModelTrainingService:
             "feature_set_id": dataset.snapshot.feature_set_id,
             "label_definition_id": dataset.snapshot.label_definition_id,
             "metrics": result.metrics,
+            "data_sync": data_sync,
         }
 
     @staticmethod

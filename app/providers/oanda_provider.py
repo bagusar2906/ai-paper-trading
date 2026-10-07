@@ -5,6 +5,8 @@ from app.providers.base import DataProvider
 from app.config import OANDA_ENV, OANDA_ACCOUNT_ID
 
 _GRANULARITY_MAP = {
+    "M1": "M1", "M5": "M5", "M15": "M15", "M30": "M30",
+    "H1": "H1", "H4": "H4", "D1": "D",
     "1m": "M1",
     "5m": "M5",
     "15m": "M15",
@@ -21,6 +23,24 @@ _SYMBOL_MAP = {
 
 
 class OandaProvider(DataProvider):
+    source_name = "oanda"
+
+    def get_history_range(self, symbol, timeframe, start, end):
+        granularity = _GRANULARITY_MAP.get(timeframe)
+        if granularity is None:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+        instrument = self._resolve_symbol(symbol)
+        response = requests.get(f"{self._base_url}/v3/instruments/{instrument}/candles",
+                                headers=self._headers(), timeout=10,
+                                params={"from": start.isoformat(), "to": end.isoformat(),
+                                        "granularity": granularity, "price": "M", "includeFirst": True})
+        response.raise_for_status()
+        candles = [item for item in response.json().get("candles", []) if item.get("complete", False)]
+        return pd.DataFrame([
+            {"Open": float(item["mid"]["o"]), "High": float(item["mid"]["h"]),
+             "Low": float(item["mid"]["l"]), "Close": float(item["mid"]["c"]),
+             "Volume": float(item.get("volume", 0))} for item in candles
+        ], index=pd.DatetimeIndex([pd.to_datetime(item["time"], utc=True) for item in candles]))
 
     def __init__(self, api_key):
         self.api_key = api_key

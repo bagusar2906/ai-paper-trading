@@ -1,7 +1,14 @@
 import json
+import pytest
 
 from app.database.models import ModelVersionEntity
 from app.services.model_lab_assistant_service import ModelLabAssistantService
+
+
+@pytest.fixture(autouse=True)
+def isolate_ai_connection(monkeypatch):
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
 
 def _model(model_id, status, symbol="BTC/USDT", timeframe="1h"):

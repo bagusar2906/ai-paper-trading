@@ -71,3 +71,31 @@ test('self-training sends raw inputs and market settings and shows saved status'
     assert.equal(sent.enabled, false);
     assert.match(controls.selfTrainingStatus.textContent, /Self-training is off/);
 });
+
+test('manual training preserves selected raw inputs and market settings', async () => {
+    let sent;
+    const controls = { candidateFeatureSetId: field('raw-ohlcv-v1'), candidateSymbol: field('EURUSD'), candidateTimeframe: field('H1'),
+        candidateBars: field('1000'), candidateHorizon: field('12'), candidateThreshold: field('.003'), candidateNEstimators: field('100'),
+        candidateMaxDepth: field('3'), candidateLearningRate: field('.05'), candidateProbabilityThreshold: field('.6'),
+        candidateTrainingStatus: field(''), trainCandidateModal: field(''), submitCandidateTraining: field('') };
+    const context = load('components/model-operations.js', controls, {
+        trainCandidate: async payload => {sent = payload; return {status: 'duplicate', message: 'unchanged'};},
+    });
+    await vm.runInContext('train(document.getElementById("submitCandidateTraining"))', context);
+    assert.equal(sent.feature_set_id, 'raw-ohlcv-v1');
+    assert.equal(sent.symbol, 'EURUSD');
+    assert.equal(sent.timeframe, 'H1');
+    assert.equal(sent.probability_threshold, .6);
+    assert.equal(controls.submitCandidateTraining.disabled, false);
+});
+
+test('self-training status explains data catch-up and the training window', () => {
+    const controls = {selfTrainingStatus: field(''), disableSelfTraining: field('')};
+    const context = load('components/model-operations.js', controls);
+    context.report = {configuration: {enabled: true, interval_minutes: 60, training: {symbol: 'XAUUSD', timeframe: 'M5'}},
+        running: false, last_run: {status: 'candidate_created', data_sync: {downloaded_bars: 2500,
+            resumed_from: '2026-01-01T00:00:00Z', last_candle_at: '2026-01-07T00:00:00Z', training_window_bars: 1000}}};
+    vm.runInContext('showSelfTrainingStatus(report)', context);
+    assert.match(controls.selfTrainingStatus.textContent, /2500 new candles saved, resumed from/);
+    assert.match(controls.selfTrainingStatus.textContent, /Training uses the latest 1000 candles/);
+});

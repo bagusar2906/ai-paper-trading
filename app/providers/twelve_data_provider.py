@@ -32,6 +32,26 @@ _SYMBOL_MAP = {"XAUUSD": "XAU/USD"}
 class TwelveDataProvider(DataProvider):
     """Retrieve spot XAU/USD OHLCV data from Twelve Data."""
 
+    source_name = "twelve_data"
+
+    def get_history_range(self, symbol, timeframe, start, end):
+        self._require_connected()
+        payload = self._get("time_series", {"symbol": self._resolve_symbol(symbol),
+                            "interval": self._interval(timeframe), "timezone": "UTC",
+                            "start_date": start.strftime("%Y-%m-%d %H:%M:%S"),
+                            "end_date": end.strftime("%Y-%m-%d %H:%M:%S"), "outputsize": 5000})
+        values = payload.get("values", [])
+        if not values:
+            return pd.DataFrame()
+        frame = pd.DataFrame(values)
+        frame.index = pd.to_datetime(frame.pop("datetime"), utc=True)
+        frame = frame.rename(columns={"open": "Open", "high": "High", "low": "Low",
+                                      "close": "Close", "volume": "Volume"})
+        if "Volume" not in frame:
+            frame["Volume"] = 0.0
+        frame = frame[["Open", "High", "Low", "Close", "Volume"]].apply(pd.to_numeric, errors="raise")
+        return frame[(frame.index >= start) & (frame.index < end)].sort_index()
+
     BASE_URL = "https://api.twelvedata.com"
 
     def __init__(self, api_key: str, session=requests):
@@ -88,7 +108,7 @@ class TwelveDataProvider(DataProvider):
             "symbol": self._resolve_symbol(symbol),
             "interval": interval,
             # Fetch one extra record because the current candle is excluded.
-            "outputsize": bars + 1,
+            "outputsize": min(bars + 1, 5000),
             "timezone": "UTC",
         })
         values = payload.get("values", [])
