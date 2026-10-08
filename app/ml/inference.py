@@ -6,6 +6,7 @@ from pathlib import Path
 import pickle
 
 from app.factories.repository_factory import RepositoryFactory
+from app.ml.probabilities import positive_probability, directional_probabilities
 
 
 class ChampionUnavailable(RuntimeError):
@@ -16,6 +17,8 @@ class ChampionUnavailable(RuntimeError):
 class Prediction:
     model_id: str
     probability_up: float
+    probability_down: float | None = None
+    probability_neutral: float | None = None
 
 
 class ChampionModelPredictor:
@@ -75,7 +78,11 @@ def _predict_registered(registered, features, feature_set_id: str, label_definit
         bundle = pickle.load(stream)
     model = bundle["model"]
     calibrator = bundle.get("calibrator")
-    probability = model.predict_proba(features)[:, 1]
-    if calibrator is not None:
-        probability = calibrator.predict_proba(probability.reshape(-1, 1))[:, 1]
-    return Prediction(registered.model_id, float(probability[0]))
+    probability = positive_probability(model, calibrator, features)
+    if bundle.get("down_model") is None:
+        # Legacy UP-only artifacts cannot establish the probability of a fall.
+        return Prediction(registered.model_id, float(probability[0]))
+    down, neutral = directional_probabilities(
+        probability, positive_probability(bundle["down_model"], bundle.get("down_calibrator"), features)
+    )
+    return Prediction(registered.model_id, float(probability[0]), float(down[0]), float(neutral[0]))

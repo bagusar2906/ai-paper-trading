@@ -46,7 +46,7 @@ def test_ai_assisted_schema_is_serializable_for_the_strategy_editor():
     assert [field.key for field in AIAssistedXGBStrategy.schema()] == [
         "feature_set_id", "use_technical_filters",
         "horizon_candles", "up_return_threshold", "long_probability_threshold",
-        "short_probability_threshold", "adx_threshold", "stop_atr_multiple",
+        "down_probability_threshold", "adx_threshold", "stop_atr_multiple",
         "model_stop_loss_percent", "reward_risk_ratio",
     ]
 

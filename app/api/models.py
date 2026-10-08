@@ -193,6 +193,12 @@ def _active_signal_model(repos) -> dict:
     champion = repos.model_registry.get_champion(
         feature_set_id, label.definition_id, symbol, timeframe
     )
+    try:
+        metadata = json.loads(getattr(champion, "metadata_json", "{}") or "{}")
+    except (TypeError, ValueError):
+        metadata = {}
+    contract = metadata.get("prediction_contract", {}) if isinstance(metadata, dict) else {}
+    downside_ready = isinstance(contract, dict) and contract.get("outcomes") == ["up", "down", "neutral"]
     result = {
         "strategy_id": strategy.id,
         "strategy_name": strategy.name,
@@ -202,9 +208,12 @@ def _active_signal_model(repos) -> dict:
         "label_definition_id": label.definition_id,
         "champion_model_id": champion.model_id if champion else None,
         "signal_ready": champion is not None,
+        "downside_ready": downside_ready,
     }
     if champion is None:
         result["reason"] = "No champion matches the active strategy's symbol, timeframe, feature set, and label."
+    elif not downside_ready:
+        result["reason"] = "Legacy UP-only champion: SELL is disabled. Train and review a directional candidate, then promote it to enable SELL."
     return result
 
 

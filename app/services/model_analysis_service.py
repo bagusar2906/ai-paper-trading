@@ -99,6 +99,8 @@ class ModelAnalysisService:
         match = re.fullmatch(r"future_return_up-n(\d+)-t([0-9.eE+-]+)", label or "")
         if match:
             target = f"Predicts whether the close will rise at least {float(match[2]):.2%} after {match[1]} candles. Low UP probability does not prove a downward move."
+            if isinstance(metadata.get("prediction_contract"), dict) and metadata["prediction_contract"].get("outcomes") == ["up", "down", "neutral"]:
+                target = f"Predicts a rise or fall of at least {float(match[2]):.2%} after {match[1]} candles; smaller moves are neutral. SELL uses the learned DOWN probability."
         notes = [
             "These are pooled walk-forward validation results for the training procedure; they are not an independent test of the final saved model.",
             "Validation precision is not overall accuracy, the probability of the next prediction, or trading profit.",
@@ -162,4 +164,11 @@ class ModelAnalysisService:
             "data_period": {key: str(snapshot.get(key, "not recorded")) for key in ("start_time", "end_time")},
             "evidence_notes": notes,
         }
+        downside = scores.get("downside")
+        if isinstance(downside, dict):
+            evidence["downside_validation_scores"] = {key: _number(downside.get(key)) for key in explanations}
+            for key, (name, explanation) in explanations.items():
+                metrics.append({"key": f"down_{key}", "name": f"DOWN {name}",
+                                "value": _number(downside.get(key)),
+                                "explanation": explanation.replace("UP", "DOWN")})
         return evidence, metrics, notes

@@ -265,7 +265,11 @@ class BacktestService:
         action = getattr(signal.action, "value", str(signal.action))
         return {
             "action": action,
-            "probability": float(signal.confidence),
+            # Prediction-quality scoring still evaluates the UP event, even
+            # when SELL confidence displays the learned DOWN probability.
+            "probability": float(context.get("probability_up", signal.confidence)),
+            "probability_down": context.get("probability_down"),
+            "probability_neutral": context.get("probability_neutral"),
             "time": signal.time.isoformat(),
             "model_id": context.get("model_id"),
             "gates": context.get("gates", {}),

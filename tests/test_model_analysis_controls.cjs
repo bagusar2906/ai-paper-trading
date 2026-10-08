@@ -51,6 +51,17 @@ test('every model status offers Analyze', () => {
     }
 });
 
+test('directional analysis renders DOWN precision as a percentage and separate scores', () => {
+    const {context, controls} = load();
+    context.report = {...report, metrics: [{key: 'down_precision', name: 'DOWN Precision', value: .8, explanation: 'Predicted DOWN events.'}]};
+    vm.runInContext('renderModelAnalysis(document.getElementById("modelAnalysisBody"), report)', context);
+    assert.match(allText(controls.modelAnalysisBody), /DOWN Precision: 80.0%/);
+    context.scores = {precision: .6, downside: {precision: .8}};
+    const summary = vm.runInContext('formatMetrics(scores)', context);
+    assert.match(summary, /UP precision: 0.600/);
+    assert.match(summary, /DOWN precision: 0.800/);
+});
+
 test('older request cannot overwrite the selected model analysis', async () => {
     const requests = [];
     const {context, controls} = load({analyzeModel: id => new Promise(resolve => requests.push({id, resolve}))});

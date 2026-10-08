@@ -253,8 +253,20 @@ no ADX, RSI, EMA, ATR, or other technical indicators. In the AI Assisted XGBoost
 strategy editor, select the same **Model inputs**. Raw models use probability
 thresholds for BUY/SELL/HOLD entries and a fixed percentage stop with the
 configured reward/risk ratio. Technical entry filters are disabled; position
-sizing and risk limits still apply. The target remains the selected upward
-return event: a low probability is not a separate learned downward-move target.
+sizing and risk limits still apply. New training learns UP, DOWN, and NEUTRAL
+outcomes: UP means a rise of at least the return target, DOWN means an equal-sized
+fall, and smaller moves are neutral. The first classifier learns UP; a second
+chronological classifier separates DOWN from NEUTRAL among the non-UP examples.
+Their probabilities combine to sum to one. BUY requires the UP threshold and
+SELL requires the learned DOWN threshold (both default to 70%).
+
+Existing UP-only artifacts remain loadable, but cannot generate SELL. Train a
+new candidate, review its UP and DOWN validation scores and held-out backtest,
+then manually promote it. Self-training also creates directional candidates;
+it does not automatically replace the champion. Old saved short cutoffs map to
+the complementary required DOWN probability (0.30 maps to 70%); the strategy
+editor exposes the DOWN probability directly. Training identities are versioned
+so the first run after this update does not reuse an UP-only candidate.
 
 The training form also provides **Enable / update self-training** and **Stop
 self-training**. Enabling saves the current symbol, timeframe, input choice,

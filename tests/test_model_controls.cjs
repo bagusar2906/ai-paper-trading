@@ -48,6 +48,20 @@ test('strategy editor saves the checkbox as false and feature set as a string', 
     assert.deepEqual(JSON.parse(saved.config), { feature_set_id: 'raw-ohlcv-v1', use_technical_filters: false, model_stop_loss_percent: 1.25 });
 });
 
+test('editing an older strategy preserves its complementary SELL cutoff', async () => {
+    const controls = {strategyName: field(''), strategyDescription: field(''), strategyType: field(''), btnSaveStrategy: field(''),
+        strategyParameters: {innerHTML: ''}, down_probability_threshold: field(.7)};
+    const context = load('strategy/strategy-editor.js', controls, {
+        getStrategySchema: async () => [{key: 'down_probability_threshold', type: 'number', default: .7}],
+    });
+    context.strategy = {name: 'AI', description: '', strategy_type: 'AI_ASSISTED_XGB', config: {short_probability_threshold: .25}};
+    await vm.runInContext('fillForm(strategy)', context);
+    assert.equal(controls.down_probability_threshold.value, .75);
+    context.strategy.config.down_probability_threshold = .8;
+    await vm.runInContext('fillForm(strategy)', context);
+    assert.equal(controls.down_probability_threshold.value, .8);
+});
+
 test('self-training sends raw inputs and market settings and shows saved status', async () => {
     let sent;
     const controls = { candidateFeatureSetId: field('raw-ohlcv-v1'), candidateSymbol: field('EURUSD'), candidateTimeframe: field('H1'),

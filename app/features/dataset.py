@@ -50,8 +50,8 @@ def build_training_dataset(
     else:
         raise ValueError(f"unsupported feature set: {feature_set_id}")
     labels = add_future_return_label(candles, label_definition)
-    label_series = labels[label_definition.name]
-    frame = features.join(label_series, how="inner").dropna(
+    label_columns = [label_definition.name, "future_return_down", "future_return_neutral"]
+    frame = features.join(labels[label_columns], how="inner").dropna(
         subset=[label_definition.name]
     )
     if frame.empty:

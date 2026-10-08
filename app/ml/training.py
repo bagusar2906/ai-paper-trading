@@ -10,15 +10,16 @@ import platform
 import sys
 from uuid import uuid4
 
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.dummy import DummyClassifier
 import sklearn
 import xgboost
 from xgboost import XGBClassifier
 
 from app.features.dataset import TrainingDataset
 from app.ml.metrics import classification_metrics, reliability_bins
+from app.ml.probabilities import positive_probability, directional_probabilities
 from app.ml.validation import WalkForwardConfig, generate_walk_forward_folds
 
 
@@ -65,9 +66,13 @@ class CandidateTrainer:
         if list(frame.loc[:, features].columns) != features:
             raise ValueError("dataset feature columns do not match the registered feature contract")
         target = frame[label_column].astype(int)
+        if "future_return_down" not in frame:
+            raise ValueError("dataset is missing downward-move labels; rebuild the training dataset")
+        down_target = frame["future_return_down"].astype(int)
         folds = generate_walk_forward_folds(len(frame), config.walk_forward)
 
         all_y, all_probabilities, fold_reports = [], [], []
+        all_down_y, all_down_probabilities = [], []
         for number, fold in enumerate(folds, start=1):
             x_train = frame.iloc[fold.train_start:fold.train_end][features]
             y_train = target.iloc[fold.train_start:fold.train_end]
@@ -77,8 +82,17 @@ class CandidateTrainer:
                 x_train, y_train, config
             )
             probabilities = self._predict_probability(model, calibrator, x_validation)
+            down_model, down_calibrator, down_calibration_method = self._fit_downside(
+                x_train, y_train, down_target.iloc[fold.train_start:fold.train_end], config
+            )
+            down_probabilities, _ = directional_probabilities(
+                probabilities, self._predict_probability(down_model, down_calibrator, x_validation)
+            )
             all_y.extend(y_validation.tolist())
             all_probabilities.extend(probabilities.tolist())
+            down_y = down_target.iloc[fold.validation_start:fold.validation_end]
+            all_down_y.extend(down_y.tolist())
+            all_down_probabilities.extend(down_probabilities.tolist())
             fold_reports.append({
                 "fold": number,
                 "train_start": str(x_train.index.min()),
@@ -89,6 +103,8 @@ class CandidateTrainer:
                 "rows_validation": len(x_validation),
                 "calibration_method": calibration_method,
                 "metrics": classification_metrics(y_validation, probabilities, config.probability_threshold),
+                "down_calibration_method": down_calibration_method,
+                "down_metrics": classification_metrics(down_y, down_probabilities, config.probability_threshold),
             })
 
         # The persisted candidate is fit using the last chronological split:
@@ -100,12 +116,18 @@ class CandidateTrainer:
         model, calibrator, calibration_method = self._fit_with_chronological_calibration(
             final_x, final_y, config
         )
+        final_down_y = down_target.iloc[final_fold.train_start:final_fold.train_end]
+        down_model, down_calibrator, down_calibration_method = self._fit_downside(
+            final_x, final_y, final_down_y, config
+        )
 
         training_run_id = f"train-{uuid4().hex[:12]}"
         model_id = f"candidate-xgb-{uuid4().hex[:12]}"
         created_at = datetime.now(timezone.utc).isoformat()
         metrics = classification_metrics(all_y, all_probabilities, config.probability_threshold)
         metrics["reliability_bins"] = reliability_bins(all_y, all_probabilities)
+        metrics["downside"] = classification_metrics(all_down_y, all_down_probabilities, config.probability_threshold)
+        metrics["downside"]["reliability_bins"] = reliability_bins(all_down_y, all_down_probabilities)
         metadata = {
             "model_id": model_id,
             "training_run_id": training_run_id,
@@ -121,14 +143,19 @@ class CandidateTrainer:
                 "row_count": dataset.snapshot.row_count,
             },
             "training_config": asdict(config),
+            "prediction_contract": {"version": 1, "outcomes": ["up", "down", "neutral"],
+                                    "method": "up_then_down_given_not_up"},
             "prediction_baseline": {
                 "positive_rate": float(final_y.mean()),
+                "down_rate": float(final_down_y.mean()),
+                "neutral_rate": float(1.0 - final_y.mean() - final_down_y.mean()),
                 "rows": len(final_y),
                 "start_time": str(final_y.index.min()),
                 "end_time": str(final_y.index.max()),
             },
             "folds": fold_reports,
             "calibration_method": calibration_method,
+            "down_calibration_method": down_calibration_method,
             "package_versions": {
                 "python": sys.version.split()[0],
                 "platform": platform.platform(),
@@ -148,7 +175,9 @@ class CandidateTrainer:
         self.artifact_directory.mkdir(parents=True, exist_ok=True)
         artifact_path = self.artifact_directory / f"{model_id}.pkl"
         with artifact_path.open("wb") as stream:
-            pickle.dump({"model": model, "calibrator": calibrator, "metadata": metadata}, stream)
+            pickle.dump({"model": model, "calibrator": calibrator,
+                         "down_model": down_model, "down_calibrator": down_calibrator,
+                         "metadata": metadata}, stream)
         checksum = sha256(artifact_path.read_bytes()).hexdigest()
         metadata_path = self.artifact_directory / f"{model_id}.json"
         metadata_path.write_text(json.dumps({**metadata, "metrics": metrics, "artifact_sha256": checksum}, indent=2), encoding="utf-8")
@@ -188,7 +217,7 @@ class CandidateTrainer:
             pd.util.hash_pandas_object(dataset.frame, index=True).values.tobytes()
         ).hexdigest()
         settings = {
-            "training_metadata_version": 2,
+            "training_metadata_version": 3,
             "feature_set_id": dataset.snapshot.feature_set_id,
             "label_definition_id": dataset.snapshot.label_definition_id,
             "training_config": asdict(config),
@@ -215,7 +244,16 @@ class CandidateTrainer:
             n_jobs=1,
         )
 
-    def _fit_with_chronological_calibration(self, x_train, y_train, config):
+    def _fit_downside(self, x_train, up_target, down_target, config):
+        not_up = up_target == 0
+        return self._fit_with_chronological_calibration(
+            x_train.loc[not_up], down_target.loc[not_up], config, allow_constant=True
+        )
+
+    def _fit_with_chronological_calibration(self, x_train, y_train, config, *, allow_constant=False):
+        if allow_constant and y_train.nunique() == 1:
+            model = DummyClassifier(strategy="constant", constant=int(y_train.iloc[0])).fit(x_train, y_train)
+            return model, None, "constant_single_class_history"
         calibration_size = max(1, int(len(x_train) * config.calibration_fraction))
         model_end = len(x_train) - calibration_size
         if model_end < 2 or y_train.iloc[:model_end].nunique() < 2:
@@ -236,7 +274,4 @@ class CandidateTrainer:
 
     @staticmethod
     def _predict_probability(model, calibrator, features):
-        probability = model.predict_proba(features)[:, 1]
-        if calibrator is not None:
-            probability = calibrator.predict_proba(probability.reshape(-1, 1))[:, 1]
-        return np.clip(probability, 0.0, 1.0)
+        return positive_probability(model, calibrator, features)

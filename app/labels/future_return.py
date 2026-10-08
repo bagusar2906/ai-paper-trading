@@ -46,4 +46,13 @@ def add_future_return_label(
     result.loc[known, definition.name] = (
         future_return.loc[known] >= definition.up_return_threshold
     ).astype("int64")
+    # A small rise or flat return is neutral, never a downward-move label.
+    result["future_return_down"] = pd.Series(pd.NA, index=result.index, dtype="Int64")
+    result["future_return_neutral"] = pd.Series(pd.NA, index=result.index, dtype="Int64")
+    result.loc[known, "future_return_down"] = (
+        future_return.loc[known] <= -definition.up_return_threshold
+    ).astype("int64")
+    result.loc[known, "future_return_neutral"] = (
+        future_return.loc[known].abs() < definition.up_return_threshold
+    ).astype("int64")
     return result

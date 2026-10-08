@@ -144,7 +144,7 @@ def test_real_paper_replays_explain_identical_trades_with_different_predictions(
                               "plus_di_14": 15, "minus_di_14": 30}], index=df.index[-1:])
     monkeypatch.setattr("app.strategy.ai_assisted_xgb.build_core_v1_features", features)
     monkeypatch.setattr("app.ml.inference.RegisteredModelPredictor.predict",
-                        lambda self, *args, **kwargs: Prediction(self.model_id, .1 if self.model_id == "a" else .2))
+                        lambda self, *args, **kwargs: Prediction(self.model_id, .1 if self.model_id == "a" else .2, .75, .15 if self.model_id == "a" else .05))
     service = BacktestService()
     candidate = SimpleNamespace(model_id="a", artifact_sha256="a" * 64,
                                 metadata_json=json.dumps({"prediction_baseline": {"positive_rate": .3}}))

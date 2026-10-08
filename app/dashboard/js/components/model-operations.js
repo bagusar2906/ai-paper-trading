@@ -313,6 +313,7 @@ function renderSignalModel(signalModel) {
         return;
     }
     target.textContent = `Active for signals: ${signalModel.champion_model_id} · ${signalModel.symbol} ${signalModel.timeframe} · ${signalModel.label_definition_id}`;
+    if (signalModel.downside_ready === false) target.textContent += ` · ${signalModel.reason}`;
 }
 
 function renderModelHealth(health) {
@@ -457,7 +458,7 @@ function renderModelAnalysis(body, report) {
     paragraph(report.summary, "fw-semibold");
     for (const metric of report.metrics || []) {
         const range = evidence.fold_ranges?.[metric.key];
-        const score = Number.isFinite(metric.value) ? (['precision', 'recall'].includes(metric.key) ? `${(metric.value * 100).toFixed(1)}%` : metric.value.toFixed(3)) : 'not available';
+        const score = Number.isFinite(metric.value) ? (['precision', 'recall', 'down_precision', 'down_recall'].includes(metric.key) ? `${(metric.value * 100).toFixed(1)}%` : metric.value.toFixed(3)) : 'not available';
         paragraph(`${metric.name}: ${score}${range ? ` · Fold range: ${range.min.toFixed(3)}–${range.max.toFixed(3)} (${range.folds_with_score} folds)` : ''}`, "fw-semibold mt-3 mb-1");
         paragraph(metric.explanation, "small");
     }
@@ -511,10 +512,14 @@ async function openReviewHistory(model) {
 
 function formatMetrics(metrics = {}) {
     const values = [
-        ["Precision", metrics.precision],
-        ["Recall", metrics.recall],
-        ["ROC AUC", metrics.roc_auc],
-        ["Brier", metrics.brier_score],
+        ["UP precision", metrics.precision],
+        ["UP recall", metrics.recall],
+        ["UP ROC AUC", metrics.roc_auc],
+        ["UP Brier", metrics.brier_score],
+        ["DOWN precision", metrics.downside?.precision],
+        ["DOWN recall", metrics.downside?.recall],
+        ["DOWN ROC AUC", metrics.downside?.roc_auc],
+        ["DOWN Brier", metrics.downside?.brier_score],
     ].filter(([, value]) => Number.isFinite(value));
     return values.length
         ? values.map(([name, value]) => `${name}: ${value.toFixed(3)}`).join(" · ")

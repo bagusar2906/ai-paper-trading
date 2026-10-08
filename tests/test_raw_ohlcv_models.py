@@ -30,10 +30,10 @@ def test_raw_features_have_only_current_and_lagged_ohlcv_and_no_future_leakage()
     assert not any("rsi" in column or "adx" in column or "atr" in column or "ema" in column for column in features.columns)
 
 
-@pytest.mark.parametrize("probability,action", [(.8, SignalAction.BUY), (.2, SignalAction.SELL), (.5, SignalAction.HOLD)])
-def test_raw_strategy_uses_only_probability_with_fixed_percentage_risk(monkeypatch, probability, action):
+@pytest.mark.parametrize("probability,down,neutral,action", [(.8, .1, .1, SignalAction.BUY), (.1, .8, .1, SignalAction.SELL), (.1, .1, .8, SignalAction.HOLD)])
+def test_raw_strategy_uses_only_probability_with_fixed_percentage_risk(monkeypatch, probability, down, neutral, action):
     monkeypatch.setattr("app.strategy.ai_assisted_xgb.build_core_v1_features", lambda _: pytest.fail("raw mode must never build technical indicators"))
-    predictor = SimpleNamespace(predict=lambda features, feature_set_id, *args, **kwargs: Prediction("raw-champion", probability) if feature_set_id == "raw-ohlcv-v1" else pytest.fail("wrong contract"))
+    predictor = SimpleNamespace(predict=lambda features, feature_set_id, *args, **kwargs: Prediction("raw-champion", probability, down, neutral) if feature_set_id == "raw-ohlcv-v1" else pytest.fail("wrong contract"))
     strategy = AIAssistedXGBStrategy({"feature_set_id": "raw-ohlcv-v1", "model_stop_loss_percent": 1}, predictor=predictor)
     signal = strategy.generate_signal("XAUUSD", _candles(20))
     assert strategy.minimum_bars == 12
@@ -59,6 +59,10 @@ def test_raw_model_can_train_register_predict_and_replay(tmp_path, repos, monkey
     predictor = RegisteredModelPredictor(registered_id, {"candidate"})
     prediction = predictor.predict(build_raw_ohlcv_features(candles).iloc[-1:], "raw-ohlcv-v1", label.definition_id)
     assert 0 <= prediction.probability_up <= 1
+    assert 0 <= prediction.probability_down <= 1
+    assert 0 <= prediction.probability_neutral <= 1
+    assert prediction.probability_up + prediction.probability_down + prediction.probability_neutral == pytest.approx(1)
+    assert trained.metrics["downside"]["reliability_bins"]
     strategy = AIAssistedXGBStrategy({"feature_set_id": "raw-ohlcv-v1", "horizon_candles": 3, "up_return_threshold": .0001}, predictor=predictor)
     request = SimpleNamespace(symbol="XAUUSD", timeframe="M5", bars=30, initial_balance=10000)
     report = BacktestService()._run_strategy(request, candles.iloc[-30:], strategy, None, collect_decisions=True)

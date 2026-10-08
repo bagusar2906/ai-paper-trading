@@ -218,6 +218,13 @@ async function fillForm(strategy) {
                 field.key
             );
 
+        if (input && field.key === "down_probability_threshold" &&
+            config.down_probability_threshold === undefined &&
+            Number.isFinite(config.short_probability_threshold)) {
+            input.value = 1 - config.short_probability_threshold;
+            return;
+        }
+
         if (
             input &&
             config[field.key] !== undefined

@@ -58,6 +58,21 @@ def test_zero_precision_is_not_claimed_to_be_all_wrong():
     assert "About 0" not in report["metrics"][0]["explanation"]
 
 
+def test_directional_analysis_includes_downside_scores_and_neutral_target():
+    item = model()
+    scores = json.loads(item.metrics_json)
+    scores["downside"] = {"precision": .8, "recall": .5, "roc_auc": .7, "brier_score": .12, "log_loss": .4}
+    metadata = json.loads(item.metadata_json)
+    metadata["prediction_contract"] = {"outcomes": ["up", "down", "neutral"]}
+    item.metrics_json, item.metadata_json = json.dumps(scores), json.dumps(metadata)
+    report = ModelAnalysisService().analyze(item)
+    assert "smaller moves are neutral" in report["evidence"]["target"]
+    assert report["evidence"]["downside_validation_scores"]["precision"] == .8
+    down_precision = next(metric for metric in report["metrics"] if metric["key"] == "down_precision")
+    assert "DOWN" in down_precision["explanation"]
+    assert down_precision["value"] == .8
+
+
 def test_ai_receives_saved_scores_and_validated_narrative(monkeypatch):
     monkeypatch.setenv("AI_API_KEY", "test-key")
     monkeypatch.setenv("AI_API_BASE_URL", "http://gateway/v1")
