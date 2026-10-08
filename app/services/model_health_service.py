@@ -24,15 +24,18 @@ class ModelHealthService:
     def check(self) -> dict:
         repos = self.repository_factory()
         try:
+            # Report the scheduled self-training setting; this check only monitors health.
+            training_config = self._metadata(repos.settings.get("model_self_training_config", "{}"))
+            automatic_retraining = training_config.get("enabled") is True
             champion = next((model for model in repos.model_registry.get_all() if model.status == "champion"), None)
         finally:
             repos.close()
         if champion is None:
-            return {"status": "unavailable", "recommendation": "no_champion", "automatic_retraining": False, "reasons": ["No promoted champion model is available."]}
+            return {"status": "unavailable", "recommendation": "no_champion", "automatic_retraining": automatic_retraining, "reasons": ["No promoted champion model is available."]}
         metadata = self._metadata(champion.metadata_json)
         market = metadata.get("market_context") or {}
         if not market.get("symbol") or not market.get("timeframe") or not metadata.get("feature_baseline"):
-            return {"status": "unavailable", "recommendation": "retrain_required", "automatic_retraining": False, "model_id": champion.model_id, "reasons": ["Champion lacks feature-baseline metadata; retrain it before drift monitoring."]}
+            return {"status": "unavailable", "recommendation": "retrain_required", "automatic_retraining": automatic_retraining, "model_id": champion.model_id, "reasons": ["Champion lacks feature-baseline metadata; retrain it before drift monitoring."]}
         source = market.get("data_source")
         provider = self.provider_factory(source) if source else self.provider_factory()
         try:
@@ -44,7 +47,7 @@ class ModelHealthService:
             raise ValueError(f"unsupported champion feature set: {feature_set_id}")
         features = build_raw_ohlcv_features(candles) if feature_set_id == "raw-ohlcv-v1" else build_core_v1_features(candles)
         report = self.assess(metadata["feature_baseline"], features)
-        return {"model_id": champion.model_id, "market_context": market, "automatic_retraining": False, **report}
+        return {"model_id": champion.model_id, "market_context": market, "automatic_retraining": automatic_retraining, **report}
 
     def assess(self, baseline: dict, features: pd.DataFrame) -> dict:
         recent = features.tail(50)

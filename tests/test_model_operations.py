@@ -38,6 +38,30 @@ def test_monitoring_job_records_recommendation_without_retraining(repos):
     assert history[-1]["type"] == "monitoring_recommendation"
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_monitoring_event_reports_saved_self_training_setting(repos, monkeypatch, enabled):
+    import json
+    from app.services.model_health_service import ModelHealthService
+
+    monkeypatch.setattr(repos, "close", lambda: None)
+    repos.session.add(ModelVersionEntity(
+        model_id="monitoring-champion", training_run_id="monitoring-run", status="champion",
+        artifact_path="model.pkl", artifact_sha256="a" * 64,
+        feature_set_id="core-v1", label_definition_id="future-return-up",
+        metrics_json="{}", metadata_json="{}",
+    ))
+    repos.session.commit()
+    repos.settings.set("model_self_training_config", json.dumps({"enabled": enabled}))
+    service = ModelHealthService(repository_factory=lambda: repos)
+
+    report = ModelMonitoringJob(service.check, lambda: repos).run()
+
+    assert report["automatic_retraining"] is enabled
+    history = repos.model_registry.review_history("monitoring-champion")
+    assert history[-1]["type"] == "monitoring_recommendation"
+    assert history[-1]["evidence"]["automatic_retraining"] is enabled
+
+
 def test_model_registry_deletes_non_champion_and_records_audit(repos):
     repos.session.add(ModelVersionEntity(
         model_id="candidate-delete-test",

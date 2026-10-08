@@ -100,7 +100,9 @@ def test_health_uses_the_champions_recorded_source(monkeypatch):
     champion = SimpleNamespace(model_id="champion", status="champion", feature_set_id="core-v1",
                                metadata_json=json.dumps({"market_context": {"symbol": "XAUUSD", "timeframe": "M5", "data_source": "yahoo"},
                                                          "feature_baseline": {"Close": {"median": 1, "iqr": 1}}}))
-    repos = SimpleNamespace(model_registry=SimpleNamespace(get_all=lambda: [champion]), close=lambda: None)
+    repos = SimpleNamespace(model_registry=SimpleNamespace(get_all=lambda: [champion]),
+                            settings=SimpleNamespace(get=lambda key, default=None: default),
+                            close=lambda: None)
     selected = []
     def create(source):
         selected.append(source)
