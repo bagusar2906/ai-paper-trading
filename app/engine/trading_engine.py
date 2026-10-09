@@ -21,6 +21,7 @@ class TradingEngine:
         timeframe,
         bars=300,
         respect_trading_mode=True,
+        resume_pending=False,
     ):
         self.provider = provider
         self.strategy = strategy
@@ -31,6 +32,7 @@ class TradingEngine:
         self.bars = bars
 
         self.respect_trading_mode = respect_trading_mode
+        self.resume_pending = resume_pending
 
         self.equity_history = []
 
@@ -42,6 +44,11 @@ class TradingEngine:
     # ------------------------------------------------------------------
 
     def run_once(self, df=None):
+
+        if df is None and self.resume_pending:
+            from app.services.trading_recovery_service import TradingRecoveryService
+
+            return TradingRecoveryService(self).run()
 
         #
         # Load market data

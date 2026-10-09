@@ -1,6 +1,6 @@
 from app.database.models import AccountEntity
 from app.models.account import Account
-from app.repositories.base_repository import BaseRepository
+from app.repositories.base_repository import BaseRepository, commit_or_flush
 
 
 class AccountRepository(BaseRepository):
@@ -31,7 +31,7 @@ class AccountRepository(BaseRepository):
         )
 
         self.session.add(entity)
-        self.session.commit()
+        commit_or_flush(self.session)
 
     def update(self, account: Account):
 
@@ -43,4 +43,4 @@ class AccountRepository(BaseRepository):
         entity.free_margin = account.free_margin
         entity.floating_pnl = account.floating_pnl
 
-        self.session.commit()
+        commit_or_flush(self.session)

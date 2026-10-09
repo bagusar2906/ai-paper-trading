@@ -40,4 +40,5 @@ def create_engine():
         symbol=TradingConfig.SYMBOL,
         timeframe=TradingConfig.TIMEFRAME,
         bars=TradingConfig.HISTORY_BARS,
+        resume_pending=True,
     )

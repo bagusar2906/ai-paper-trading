@@ -1,5 +1,5 @@
 from app.database.models import PositionEntity
-from app.repositories.base_repository import BaseRepository
+from app.repositories.base_repository import BaseRepository, commit_or_flush
 
 
 class PositionRepository(BaseRepository):
@@ -7,12 +7,12 @@ class PositionRepository(BaseRepository):
     def add(self, position):
 
         self.session.add(position)
-        self.session.commit()
+        commit_or_flush(self.session)
 
     def remove(self, position):
 
         self.session.delete(position)
-        self.session.commit()
+        commit_or_flush(self.session)
 
     def get_all(self):
 
@@ -33,4 +33,4 @@ class PositionRepository(BaseRepository):
     
     def update(self, position):
 
-        self.session.commit()
+        commit_or_flush(self.session)

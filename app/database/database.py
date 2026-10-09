@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -7,10 +8,14 @@ from app.database.base import Base
 # IMPORTANT: import all models so SQLAlchemy knows about them
 import app.database.models
 
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
+DATABASE_PATH = Path(os.environ.get(
+    "PAPER_TRADING_DB_PATH",
+    str(Path(__file__).resolve().parents[2] / "data" / "paper_trading.db"),
+)).resolve()
+DATA_DIR = DATABASE_PATH.parent
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DATABASE_URL = f"sqlite:///{DATA_DIR / 'paper_trading.db'}"
+DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 engine = create_engine(
     DATABASE_URL,

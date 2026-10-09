@@ -132,7 +132,7 @@ class PaperBroker(Broker):
             exit_price=price,
             pnl=pnl,
             opened_at=position.opened_at,
-            closed_at=datetime.now(),
+            closed_at=getattr(self, "simulation_time", None) or datetime.now(),
         )
 
         self.repos.trades.add(trade)

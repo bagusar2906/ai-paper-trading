@@ -3,7 +3,7 @@ from datetime import timezone
 
 from app.database.models import DecisionJournalEntity
 from app.market_data.contracts import DecisionJournalEntry
-from app.repositories.base_repository import BaseRepository
+from app.repositories.base_repository import BaseRepository, commit_or_flush
 
 
 class DecisionJournalRepository(BaseRepository):
@@ -26,7 +26,7 @@ class DecisionJournalRepository(BaseRepository):
             paper_only=True,
         )
         self.session.add(entity)
-        self.session.commit()
+        commit_or_flush(self.session)
         return entity
 
     def get_by_decision_id(self, decision_id: str) -> DecisionJournalEntity | None:

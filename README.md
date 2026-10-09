@@ -281,3 +281,30 @@ The setting survives restarts; stopping the backend stops the loop. Disabling
 prevents future runs while an in-progress run may finish. All output models
 remain candidates until manual promotion. This is periodic supervised retraining,
 not reinforcement learning or automatic adaptation of the executing champion.
+
+
+### Automatic paper-trading recovery
+
+When the backend restarts with trading mode set to **AUTO**, it resumes from
+the last successfully processed completed candle. The API scheduler and
+`run_worker.py` both use this recovery path. Saved account balances, open
+positions, trade history, and the AUTO setting survive the restart.
+
+Each candle saves its paper-trade changes and checkpoint in one transaction.
+Recovery downloads missed candles in bounded pages and processes them in time
+order, including gaps longer than the normal strategy history window. Already
+processed candles are skipped. A failed candle rolls back and is retried on the
+next cycle; unavailable provider history preserves the checkpoint and is logged
+instead of silently jumping forward. Market closures do not create fake candles.
+
+Catch-up uses the active strategy/model at restart and the existing candle-close
+execution and TP/SL rules. It does not reconstruct intrabar fills or guarantee
+identical AI responses to those that would have been produced during downtime.
+The first run after installing this feature starts at the latest completed
+candle and establishes the checkpoint. MANUAL mode processes only the latest
+candle, without replaying automatic entries from the gap.
+
+The default database is always `data/paper_trading.db` inside this project,
+regardless of the folder used to launch the backend. Set `PAPER_TRADING_DB_PATH`
+to use another database, including an isolated database for tests. Keep the
+database file when restarting or moving the app.

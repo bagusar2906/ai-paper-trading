@@ -1,7 +1,7 @@
 
 from app.database.models import SignalEntity
 from app.models.signal import TradingSignal
-from app.repositories.base_repository import BaseRepository
+from app.repositories.base_repository import BaseRepository, commit_or_flush
 
 
 class SignalRepository(BaseRepository):
@@ -20,7 +20,7 @@ class SignalRepository(BaseRepository):
         )
 
         self.session.add(entity)
-        self.session.commit()
+        commit_or_flush(self.session)
 
     def upsert_for_candle(self, signal: TradingSignal):
         """Store one current signal for a symbol on a specific candle.
@@ -56,7 +56,7 @@ class SignalRepository(BaseRepository):
         entity.reason = signal.reason
         entity.confidence = signal.confidence
 
-        self.session.commit()
+        commit_or_flush(self.session)
         return entity
 
     def get_all(self):

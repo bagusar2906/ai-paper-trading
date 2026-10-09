@@ -164,6 +164,18 @@ class SettingEntity(Base):
         String(255)
     )
 
+
+class TradingCheckpointEntity(Base):
+    """The last committed paper candle and its raw indicator warm-up window."""
+
+    __tablename__ = "trading_checkpoints"
+
+    source: Mapped[str] = mapped_column(String(50), primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(20), primary_key=True)
+    timeframe: Mapped[str] = mapped_column(String(10), primary_key=True)
+    candle_time: Mapped[datetime] = mapped_column(DateTime)
+    history_json: Mapped[str] = mapped_column(Text)
+
 # ==========================================================
 # Strategy Profile
 # ==========================================================
