@@ -10,6 +10,7 @@ from app.features.core_v1 import FEATURE_SET_ID
 from app.labels.future_return import FutureReturnLabel
 from app.services.model_experiment_service import ModelExperimentService
 from app.services.controlled_model_experiment_service import ControlledModelExperimentService
+from app.services.model_training_coach_service import ModelTrainingCoachService
 from app.services.model_health_service import ModelHealthService
 from app.services.model_lab_assistant_service import ModelLabAssistantService
 from app.services.model_review_guidance_service import ModelReviewGuidanceService
@@ -88,6 +89,33 @@ def run_controlled_experiments(model_id: str):
     except Exception as error:
         logger.exception("Controlled model experiment failed")
         raise HTTPException(status_code=500, detail="Experiment failed. Check the server log.") from error
+
+
+@router.post("/{model_id}/training-coach")
+def review_training_coach(model_id: str):
+    return _coach_action(lambda: ModelTrainingCoachService().review(model_id))
+
+
+@router.post("/{model_id}/training-coach/run")
+def run_training_coach(model_id: str, request: dict):
+    return _coach_action(lambda: ModelTrainingCoachService().run_recommendations(model_id, request.get("coach_id")))
+
+
+@router.post("/{model_id}/training-coach/validate")
+def validate_training_coach(model_id: str):
+    return _coach_action(lambda: ModelTrainingCoachService().validate_fresh(model_id))
+
+
+def _coach_action(action):
+    try:
+        return action()
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Training coach failed")
+        raise HTTPException(status_code=500, detail="Training coach failed. Check the server log.") from error
 
 
 @router.get("/{model_id}/training-settings")

@@ -79,6 +79,9 @@ export async function trainCandidate(payload) {
 
 export async function getSelfTrainingStatus() { return request("/models/self-training"); }
 export async function getModelTrainingSettings(modelId) { return request(`/models/${encodeURIComponent(modelId)}/training-settings`); }
+export async function reviewTrainingCoach(modelId) { return request(`/models/${encodeURIComponent(modelId)}/training-coach`, {method: "POST"}); }
+export async function runTrainingCoach(modelId, coach_id) { return request(`/models/${encodeURIComponent(modelId)}/training-coach/run`, {method: "POST", body: JSON.stringify({coach_id})}); }
+export async function validateTrainingCoach(modelId) { return request(`/models/${encodeURIComponent(modelId)}/training-coach/validate`, {method: "POST"}); }
 export async function getControlledExperimentPlan(modelId) { return request(`/models/${encodeURIComponent(modelId)}/controlled-experiments`); }
 export async function runControlledExperiments(modelId) { return request(`/models/${encodeURIComponent(modelId)}/controlled-experiments`, {method: "POST"}); }
 

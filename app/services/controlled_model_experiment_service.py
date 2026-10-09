@@ -21,6 +21,7 @@ from app.ml.training import CandidateTrainer, CandidateTrainingConfig
 from app.services.model_experiment_service import ModelExperimentService
 from app.services.model_training_service import ModelTrainingService
 from app.services.model_training_settings_service import ModelTrainingSettingsService
+from app.services.training_coach_evidence import collect_reports, fresh_boundary
 
 
 class ControlledModelExperimentService:
@@ -58,16 +59,16 @@ class ControlledModelExperimentService:
                           "The current recipe is retrained; the selected model's existing scores are not reused.",
                           "Results guide experimentation. Confirm the preferred recipe on fresh future data before promotion."]}
 
-    def run(self, model_id):
+    def run(self, model_id, *, plan=None):
         if not ModelTrainingService._training_lock.acquire(blocking=False):
             raise RuntimeError("Another model training run is in progress. Retry after it finishes.")
         try:
-            return self._run(model_id)
+            return self._run(model_id, plan=plan)
         finally:
             ModelTrainingService._training_lock.release()
 
-    def _run(self, model_id):
-        plan = self.plan(model_id)
+    def _run(self, model_id, *, plan=None):
+        plan = self._validate_plan(model_id, plan) if plan is not None else self.plan(model_id)
         parameters = plan["parameters"]
         provider = self.provider_factory() if parameters["data_source"] == "trading" else self.provider_factory(parameters["data_source"])
         try:
@@ -88,6 +89,29 @@ class ControlledModelExperimentService:
         if len(common) <= holdout_count:
             raise ValueError("not enough shared history for experiments; request more candles")
         holdout_index = common[-holdout_count:]
+        references = list(plan.get("fresh_references", []))
+        if plan.get("coach_id"):
+            # Re-read under the training lock: replaying a saved coach plan
+            # must not reuse a period scored since that plan was generated.
+            repos = self.repository_factory()
+            try:
+                experiments, validations = collect_reports(repos.model_registry.get_all(), parameters)
+                references.extend([*experiments[-1:], *validations[-1:]])
+            finally:
+                repos.close()
+        boundaries = [fresh_boundary(report, candles) for report in references]
+        if plan.get("fresh_after"):
+            boundaries.append(pd.Timestamp(plan["fresh_after"]))
+        if boundaries:
+            fresh_after = max(boundaries)
+            if pd.isna(fresh_after) or fresh_after.tzinfo is None:
+                raise ValueError("fresh evaluation boundary must be a timezone-aware timestamp")
+            holdout_index = holdout_index[holdout_index > fresh_after]
+            if len(holdout_index) < self.MIN_HOLDOUT_ROWS:
+                return {"model_id": model_id, "status": "waiting_for_fresh_data",
+                        "samples": len(holdout_index), "required_samples": self.MIN_HOLDOUT_ROWS,
+                        "fresh_after": fresh_after.isoformat(), "automatic_promotion": False,
+                        "notes": ["Wait for enough new candles with known future outcomes. No candidates were trained."]}
         # Purge by original candle position, not feature rows: no training
         # label may inspect a price at or after the first holdout timestamp.
         first_holdout = candles.index.get_loc(holdout_index[0])
@@ -103,9 +127,12 @@ class ControlledModelExperimentService:
                   "label_definition_id": definition.definition_id, "probability_threshold": parameters["probability_threshold"],
                   "training_start": train_index[0].isoformat(), "training_end": train_index[-1].isoformat(),
                   "evaluation_start": holdout_index[0].isoformat(), "evaluation_end": holdout_index[-1].isoformat(),
+                  "outcome_end_time": candles.index[candles.index.get_loc(holdout_index[-1]) + definition.horizon_candles].isoformat(),
                   "training_rows": len(train_index), "samples": len(holdout_index), "purge_candles": definition.horizon_candles,
                   "history_sha256": sha256(pd.util.hash_pandas_object(candles, index=True).values.tobytes()).hexdigest(),
                   "baseline": {}, "results": [], "automatic_promotion": False, "notes": plan["notes"]}
+        if plan.get("coach_id"):
+            report["coach_id"] = plan["coach_id"]
         for direction, column in (("up", definition.name), ("down", "future_return_down")):
             rate = float(reference.loc[train_index, column].mean())
             y = reference.loc[holdout_index, column].astype(int)
@@ -133,7 +160,7 @@ class ControlledModelExperimentService:
                 for direction, column, probabilities in (("up", definition.name, up), ("down", "future_return_down", down)):
                     scores[direction] = probability_scores(evaluation[column], probabilities, settings["probability_threshold"])
                     scores[direction].update(baseline_comparison(scores[direction], report["baseline"][direction]["scores"]))
-                row.update(status="completed", model_id=result.model_id, scores=scores)
+                row.update(status="completed", model_id=result.model_id, artifact_sha256=result.artifact_sha256, scores=scores)
                 result.metadata["training_request"] = settings
                 result.metadata["candidate_family"] = {"key": sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest(), "origin": "controlled_experiment"}
                 result.metadata["evaluation_window"] = {"start_time": report["evaluation_start"], "end_time": report["evaluation_end"]}
@@ -165,12 +192,38 @@ class ControlledModelExperimentService:
         report["history_saved"] = self._save(model_id, report)
         return report
 
+
+    @staticmethod
+    def _validate_plan(model_id, plan):
+        if not isinstance(plan, dict) or plan.get("model_id") != model_id:
+            raise ValueError("experiment plan does not match the selected model")
+        service = ModelTrainingService()
+        baseline = service.validate_request(plan.get("parameters", {}))
+        variants = plan.get("variants")
+        if not isinstance(variants, list) or not 1 <= len(variants) <= 4:
+            raise ValueError("choose between one and four bounded recipes")
+        fixed = ("symbol", "timeframe", "data_source", "bars", "horizon_candles",
+                 "up_return_threshold", "probability_threshold")
+        cleaned, ids = [], set()
+        for variant in variants:
+            if not isinstance(variant, dict) or not isinstance(variant.get("id"), str) or variant["id"] in ids:
+                raise ValueError("recipe identifiers must be unique strings")
+            parameters = service.validate_request(variant.get("parameters", {}))
+            if any(parameters[key] != baseline[key] for key in fixed):
+                raise ValueError("recipes must share the market, target, candle count and probability threshold")
+            parameters["replace_previous_candidate"] = False
+            cleaned.append({**variant, "parameters": parameters})
+            ids.add(variant["id"])
+        baseline["replace_previous_candidate"] = False
+        return {**plan, "parameters": baseline, "variants": cleaned,
+                "notes": list(plan.get("notes", []))}
+
     @staticmethod
     def _probabilities(result, features):
-        payload = result.artifact_path.read_bytes()
+        payload = Path(result.artifact_path).read_bytes()
         if sha256(payload).hexdigest() != result.artifact_sha256:
             raise ValueError("experiment artifact checksum failed")
-        # Only artifacts just created locally by the trainer are accepted.
+        # Only checksum-verified artifacts created locally by the trainer are accepted.
         bundle = pickle.loads(payload)
         up = positive_probability(bundle["model"], bundle.get("calibrator"), features)
         down, _ = directional_probabilities(up, positive_probability(bundle["down_model"], bundle.get("down_calibrator"), features))

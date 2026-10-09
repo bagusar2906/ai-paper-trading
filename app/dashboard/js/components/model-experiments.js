@@ -4,7 +4,9 @@ let selection = 0;
 let pending = null;
 const reports = new Map();
 const recipeNames = {"current-recipe": "Current recipe", "feature-check": "Alternative features",
-    "conservative-calibration": "Simpler trees", "capacity-check": "More capacity"};
+    "conservative-calibration": "Simpler trees", "capacity-check": "More capacity",
+    "promising-settings": "Promising settings", "simpler-trees": "Simpler trees",
+    "slower-learning": "Slower learning", "more-capacity": "More capacity"};
 
 function element(tag, text, className = "") {
     const node = document.createElement(tag);

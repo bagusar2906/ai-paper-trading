@@ -300,6 +300,30 @@ confirm a preferred recipe on fresh future data before manual promotion.
 Candidate Comparison backtests also show DOWN quality and Brier skill when
 both models provide directional predictions.
 
+Use **Coach** beside a model to review saved experiment evidence and plan the
+next bounded tests. The coach diagnoses rare events, zero positive predictions,
+ranking/calibration tradeoffs and fresh-period consistency. It uses the existing
+AI configuration (AI_API_KEY or OPENAI_API_KEY, AI_API_BASE_URL and
+OPENAI_TRADING_MODEL); if AI is unavailable or returns an invalid recommendation,
+the screen clearly identifies the local evidence-based fallback.
+
+**Run recommended tests** trains the selected reference recipe and up to three
+bounded alternatives chosen by the coach. The AI selects option identifiers;
+the server owns all parameters and keeps the market, target, candle count and
+decision threshold fixed. Saved plans require a new review after settings
+changes. Each run rechecks the latest evaluation boundaries, so replaying a
+plan cannot reuse an already scored period.
+
+**Validate on fresh data** scores the saved experiment artifacts without
+retraining and keeps their historical-rate baseline frozen. Both actions need
+at least 50 new shared observations with known future outcomes. They exclude
+all prices consumed by earlier evaluated labels, including the label horizon,
+and show a waiting message when insufficient new data exists. Fresh validation
+is saved on the tested candidates; **Review results** updates the coach's
+tracking of periods that beat the baseline in both UP and DOWN. These checks
+do not establish statistical significance or trading profitability. Promotion
+remains manual. The coach runs when requested; it is not a background schedule.
+
 Self-training runs while the backend is open, even if its browser tab is closed.
 The setting survives restarts; stopping the backend stops the loop. Disabling
 prevents future runs while an in-progress run may finish. All output models

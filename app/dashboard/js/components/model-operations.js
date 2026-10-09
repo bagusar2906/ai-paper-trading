@@ -5,6 +5,7 @@ import { getModelLabDataSource, setModelLabDataSource } from "../api.js";
 import { getModelTrainingSettings, saveModelTrainingSettings } from "../api.js";
 import { openModelProgress } from "./model-progress.js";
 import { openModelExperiments } from "./model-experiments.js";
+import { openTrainingCoach } from "./model-training-coach.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -408,6 +409,11 @@ function row(model, signalModel) {
     progressButton.textContent = "Progress";
     progressButton.onclick = () => openModelProgress(model);
     actions.append(progressButton);
+    const coachButton = document.createElement("button");
+    coachButton.className = "btn btn-sm btn-outline-info me-1";
+    coachButton.textContent = "Coach";
+    coachButton.onclick = () => openTrainingCoach(model, refreshModelOperations);
+    actions.append(coachButton);
     const experimentButton = document.createElement("button");
     experimentButton.className = "btn btn-sm btn-outline-info me-1";
     experimentButton.textContent = "Experiments";
