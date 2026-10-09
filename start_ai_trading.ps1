@@ -6,15 +6,14 @@ Usage:
   .\start_ai_trading.ps1 -Model "your-model-or-combo"
 
 The API key is kept only in this PowerShell process and is never written to
-disk. Before starting, create and activate an "AI Agent (OpenAI)" strategy at
+disk. Before starting, create and activate a "GPT 5.6 Sol Trading Agent (H1)" strategy at
 http://localhost:8000/ui/strategy.html.
 #>
 [CmdletBinding()]
 param(
     # OmniRoute defaults. Override Model if your OmniRoute dashboard uses a
     # different model alias or routing combo.
-   # [string]$Model = "gpt-5.5",
-    [string]$Model = "my-combo",
+    [string]$Model = "gpt-5.6-sol",
     [int]$TimeoutSeconds = 20,
     [string]$ApiBaseUrl = "http://localhost:20128/v1",
     [string]$TwelveDataApiKey
@@ -83,5 +82,5 @@ else {
 Set-Location $projectRoot
 Write-Host "Starting AI paper trading at http://localhost:8000/ui/"
 Write-Host "Gateway: $env:AI_API_BASE_URL | model: $env:OPENAI_TRADING_MODEL | timeout: $env:OPENAI_TRADING_TIMEOUT_SECONDS seconds"
-Write-Host "Market data: Twelve Data spot XAU/USD on completed M5 candles"
+Write-Host "Market data: Twelve Data spot XAU/USD; GPT Sol uses completed H1 candles"
 & $python run_api.py

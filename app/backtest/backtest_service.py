@@ -217,6 +217,9 @@ class BacktestService:
         return selected
 
     def _run_strategy(self, request, history, strategy, job_id, progress_start=20, progress_end=90, collect_decisions=False):
+        required = getattr(strategy, "required_timeframe", None)
+        if required is not None and request.timeframe.upper() != required:
+            raise ValueError(f"{strategy.name} requires {required} candles; select {required} for this backtest.")
         df = strategy.prepare(history)
         engine, backtest_session = create_session_factory("sqlite:///:memory:")
         Base.metadata.create_all(engine)

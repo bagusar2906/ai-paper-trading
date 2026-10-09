@@ -2,6 +2,7 @@ import logging
 
 from app.engine.result import EngineResult
 from app.enums.trading_mode import TradingMode
+from app.enums.signal_action import SignalAction
 from app.managers.position_manager import PositionManager
 from app.models import account
 from app.risk.risk_manager import RiskManager
@@ -28,8 +29,11 @@ class TradingEngine:
         self.broker = broker
 
         self.symbol = symbol
-        self.timeframe = timeframe
-        self.bars = bars
+        self.timeframe = getattr(strategy, "required_timeframe", timeframe)
+        self.bars = max(bars, strategy.minimum_bars + 1) if getattr(strategy, "next_open_execution", False) else bars
+        bind_broker = getattr(strategy, "bind_broker", None)
+        if bind_broker is not None:
+            bind_broker(broker)
 
         self.respect_trading_mode = respect_trading_mode
         self.resume_pending = resume_pending
@@ -55,6 +59,9 @@ class TradingEngine:
         #
         if df is None:
             df = self._load_data()
+
+        if getattr(self.strategy, "next_open_execution", False):
+            return self._run_next_open(df)
 
         #
         # Validate data
@@ -196,12 +203,23 @@ class TradingEngine:
             return float(df.iloc[-1]["open"])
         return float(df.iloc[-1]["Open"])
 
-    def _generate_signal(self, df):
+    def _generate_signal(self, df, execution_price=None, execution_time=None):
 
         signal = self.strategy.generate_signal(
             self.symbol,
             df,
         )
+
+        if signal is None:
+            return None
+        if execution_price is not None:
+            offset = execution_price - signal.price
+            if signal.stop_loss is not None:
+                signal.stop_loss += offset
+            if signal.take_profit is not None:
+                signal.take_profit += offset
+            signal.price = execution_price
+            signal.time = execution_time
 
         logger.debug(
             "Signal generated: %s",
@@ -245,10 +263,22 @@ class TradingEngine:
 
         positions = self.broker.get_positions()
 
+        if signal.action == SignalAction.CLOSE:
+            trade = self.broker.close_position(signal.symbol, signal.price)
+            signal.execution_diagnostic = {"executed": trade is not None, "reason": "Close position"}
+            return trade
+
+        # The Sol agent uses buy/sell to reverse an opposite position. Check
+        # entry risk before closing; other strategies retain their old behavior.
+        reversal = next((p for p in positions if p.symbol == signal.symbol and p.side != signal.action), None)
+        if not getattr(self.strategy, "next_open_execution", False):
+            reversal = None
+        evaluated_positions = [p for p in positions if p is not reversal]
+
         decision = self.risk_manager.evaluate(
             signal,
             account,
-            positions,
+            evaluated_positions,
         )
 
         if not decision.allowed:
@@ -271,6 +301,10 @@ class TradingEngine:
 
         signal.quantity = decision.quantity
 
+        closed = None
+        if reversal is not None:
+            closed = self.broker.close_position(signal.symbol, signal.price)
+
         logger.info(
             "Executing %s %.2f lot(s)",
             signal.action,
@@ -279,6 +313,53 @@ class TradingEngine:
 
         self.broker.execute(signal)
         signal.execution_diagnostic = {"executed": True, "reason": "Submitted to broker"}
+        return closed
+
+    def _run_next_open(self, df):
+        """Evaluate only the preceding closed candle, then fill at this open.
+
+        No in-memory pending order is needed: recovery replays each execution
+        candle atomically with its checkpoint, including after a worker restart.
+        The agent never sees this candle's high, low or close before execution.
+        """
+        visible = df.iloc[:-1]
+        if not self.strategy.can_run(visible):
+            return EngineResult(account=self.get_account(), message="Not enough data")
+        stamp = df.index[-1]
+        opening = self._get_current_open(df)
+        self.broker.simulation_time = stamp.to_pydatetime()
+        advance = getattr(self.broker, "advance_candle", None)
+        if advance is not None:
+            advance(self.symbol, opening, stamp)
+        self.broker.update_market_price(self.symbol, self._get_current_price(visible))
+        signal = self._generate_signal(self.strategy.prepare(visible), opening, stamp)
+        self.broker.update_market_price(self.symbol, opening)
+        closed = []
+        trade = self._execute_signal(signal)
+        if trade is not None:
+            closed.append(trade)
+        # Cost-aware brokers normally queue orders; this decision was made on
+        # the preceding candle, so this very open is already its next open.
+        if advance is not None:
+            advance(self.symbol, opening, stamp)
+        # Monitor ATR stops/targets on every hourly bar, even off cadence.
+        row = df.iloc[-1]
+        for position in list(self.broker.get_positions()):
+            if position.symbol != self.symbol:
+                continue
+            buy = position.side == "BUY"
+            stop, target = position.stop_loss, position.take_profit
+            stop_hit = stop is not None and (row["Low"] <= stop if buy else row["High"] >= stop)
+            target_hit = target is not None and (row["High"] >= target if buy else row["Low"] <= target)
+            if stop_hit or target_hit:
+                # Stop wins if both occur in one bar; adverse gaps fill at open.
+                price = (min(opening, stop) if buy else max(opening, stop)) if stop_hit else target
+                trade = self.broker.close_position(self.symbol, float(price))
+                if trade is not None:
+                    closed.append(trade)
+        self.broker.update_market_price(self.symbol, self._get_current_price(df))
+        self.equity_history.append({"time": stamp, "equity": self.get_account().equity})
+        return self._build_result(signal, closed)
 
     def _journal_ai_decision(self, signal, context, risk_status):
         if context is None:

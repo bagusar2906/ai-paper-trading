@@ -17,20 +17,19 @@ class ChartService:
     def get_chart(self):
 
         provider = create_provider()
+        strategy = load_active_strategy()
 
         try:
 
             df = provider.get_history(
                 TradingConfig.SYMBOL,
-                TradingConfig.TIMEFRAME,
-                self.HISTORY,
+                getattr(strategy, "required_timeframe", TradingConfig.TIMEFRAME),
+                max(self.HISTORY, strategy.minimum_bars + 1),
             )
 
         finally:
 
             provider.disconnect()
-
-        strategy = load_active_strategy()
 
         df = strategy.prepare(df)
 

@@ -107,11 +107,17 @@ function updateCandidateComparisonAvailability() {
     const contextHint = document.getElementById("btCandidateModelContext");
     const supported = strategy?.strategy_type === "AI_ASSISTED_XGB";
 
+    if (strategy?.strategy_type === "AI_AGENT") {
+        document.getElementById("btTimeframe").value = "H1";
+    }
+
     candidateSelect.disabled = !supported;
 
     if (!supported) {
         candidateSelect.value = "";
-        contextHint.textContent = "Candidate comparison is available only for an AI Assisted XGBoost strategy.";
+        contextHint.textContent = strategy?.strategy_type === "AI_AGENT"
+            ? "GPT Sol uses H1 candles and at least 241 bars with the default warmup."
+            : "Candidate comparison is available only for an AI Assisted XGBoost strategy.";
     }
     else if (!candidateSelect.value) {
         contextHint.textContent = "Select a candidate to compare it with the compatible champion.";

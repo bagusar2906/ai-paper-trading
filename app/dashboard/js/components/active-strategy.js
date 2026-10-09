@@ -13,6 +13,11 @@ export function updateActiveStrategy(strategy) {
     element.className = "badge text-bg-success";
     element.textContent = `${strategy.name} (${strategy.strategy_type})`;
 
+    if (strategy.strategy_type === "AI_AGENT") {
+        riskSettings.textContent = "GPT Sol · H1 · Agent selects ATR-based SL/TP; application controls position size.";
+        return;
+    }
+
     if (
         strategy.stop_loss_pips != null
         && strategy.take_profit_pips != null

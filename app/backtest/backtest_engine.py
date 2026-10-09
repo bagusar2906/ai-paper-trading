@@ -38,7 +38,7 @@ class BacktestEngine:
 
         history = self.provider.get_history(
             symbol,
-            timeframe,
+            getattr(self.engine.strategy, "required_timeframe", timeframe),
             bars,
         )
 
@@ -91,6 +91,8 @@ class BacktestEngine:
             "fill_timing",
             "current_candle_close",
         )
+        if getattr(self.engine.strategy, "next_open_execution", False):
+            fill_timing = "next_candle_open"
 
         logger.info(
             "Backtest finished. Trades=%d NetProfit=%.2f",

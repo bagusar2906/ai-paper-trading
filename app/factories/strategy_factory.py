@@ -76,7 +76,7 @@ def get_supported_strategies():
 
         {
             "value": "AI_AGENT",
-            "label": "AI Agent (OpenAI)",
+            "label": "GPT 5.6 Sol Trading Agent (H1)",
         },
 
         {

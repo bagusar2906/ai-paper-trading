@@ -139,13 +139,15 @@ CATALOG = {
 
     "AI_AGENT": {
 
-        "name": "AI Agent (OpenAI)",
+        "name": "GPT 5.6 Sol Trading Agent (H1)",
 
         "parameters": [
-            {"name": "lookback_bars", "label": "Candles supplied to AI", "type": "int", "default": 30},
-            {"name": "min_confidence", "label": "Minimum AI confidence", "type": "float", "default": 0.65},
-            {"name": "stop_loss_pips", "label": "Stop Loss", "type": "int", "default": 300},
-            {"name": "risk_reward_ratio", "label": "Risk Reward", "type": "float", "default": 2.0},
+            {"name": "decision_every_n_bars", "label": "Decision interval (H1 candles)", "type": "int", "default": 4},
+            {"name": "warmup_days", "label": "Warmup days", "type": "int", "default": 10},
+            {"name": "h1_view_bars", "label": "Hourly candles supplied to agent", "type": "int", "default": 24},
+            {"name": "d1_view_bars", "label": "Daily candles supplied to agent", "type": "int", "default": 10},
+            {"name": "default_sl_atr", "label": "Default stop distance (ATR)", "type": "float", "default": 2.0},
+            {"name": "default_tp_atr", "label": "Default target distance (ATR)", "type": "float", "default": 4.0},
         ],
 
     },

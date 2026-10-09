@@ -96,6 +96,29 @@ paper-trading/
 
 ## Running the API
 
+### GPT 5.6 Sol Trading Agent
+
+The former **AI Agent (OpenAI)** strategy is now **GPT 5.6 Sol Trading Agent
+(H1)**, using the decision core from `GPT_5.6_Sol_Trading_Agent`. Existing
+`AI_AGENT` profiles use the replacement automatically. Edit the profile to
+see its new settings; old confidence, pip-stop and backtest-stride fields are
+ignored. The default model is `gpt-5.6-sol`, with the existing
+`OPENAI_TRADING_MODEL` override and gateway/key settings supported.
+
+The agent uses completed H1 and daily candles, a ten-day warmup (240 hourly
+bars), decisions every four hours, anonymized snapshots, and ATR-based stops
+and targets. Select H1 and at least 241 bars for dashboard backtests. The
+worker and charts automatically use H1 when this strategy is active. Buy and
+sell can reverse an opposite position; close flattens it. Entry sizes remain
+subject to the application's RiskManager and MANUAL mode suppresses agent
+orders. API failures hold.
+
+Paper execution simulates decisions from the preceding closed hour at the
+following hour's open, then checks that hour's high/low for SL/TP. Recovery
+persists the execution candle atomically, so worker restarts do not need an
+in-memory order queue. These are simulated fills recorded after candles are
+available. See [integration details](app/strategy/sol_agent/README.md).
+
 ```bash
 cd paper-trading
 pip install -r requirements.txt   # fastapi, uvicorn, pandas, numpy, yfinance, requests
