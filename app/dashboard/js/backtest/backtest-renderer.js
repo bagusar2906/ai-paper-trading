@@ -98,24 +98,30 @@ function escapeComparisonText(value) {
 
 function renderPredictionQuality(quality) {
     if (!quality) return '';
+    return renderDirectionQuality(quality, "UP") + (quality.downside ? renderDirectionQuality(quality.downside, "DOWN") : "");
+}
+
+function renderDirectionQuality(quality, direction) {
+    if (!quality) return '';
     if (quality.status !== 'completed') {
-        return '<div class="alert alert-warning">Insufficient prediction evidence: no paired valid predictions with known future outcomes. Trading results alone cannot establish prediction quality.</div>';
+        return `<div class="alert alert-warning">${direction}: Insufficient prediction evidence: no paired valid predictions with known future outcomes. Trading results alone cannot establish prediction quality.</div>`;
     }
     const format = value => value == null ? 'Unavailable' : Number(value).toFixed(4);
     const rows = [
         ['Brier score (lower is better)', 'brier_score'],
         ['Log loss (lower is better)', 'log_loss'],
         ['ROC AUC (higher is better)', 'roc_auc'],
+        ['Brier skill vs baseline (positive is better)', 'brier_skill'],
         ['Average probability', 'mean_probability'],
         ['Minimum probability', 'minimum_probability'],
         ['Maximum probability', 'maximum_probability'],
     ].map(([label, key]) => `<tr><th>${label}</th><td>${format(quality.candidate?.[key])}</td><td>${format(quality.champion?.[key])}</td><td>${format(quality.baseline?.[key])}</td></tr>`).join('');
     const bins = ['0–20%', '20–40%', '40–60%', '60–80%', '80–100%'];
     const distribution = bins.map((label, index) => `<tr><th>${label}</th><td>${quality.candidate.probability_bins[index]}</td><td>${quality.champion.probability_bins[index]}</td></tr>`).join('');
-    return `<div class="mb-3"><h6>Prediction quality on the same candles</h6>
-        <p class="small">Scored ${quality.samples} paired predictions; excluded ${quality.excluded_decisions} decisions with missing predictions or unknown future outcomes. Observed positive rate: ${(quality.positive_rate * 100).toFixed(1)}%.<br>Scored window: ${escapeComparisonText(quality.start_time)} to ${escapeComparisonText(quality.end_time)}.</p>
+    return `<div class="mb-3"><h6>Prediction quality on the same candles · ${direction}</h6>
+        <p class="small">Scored ${quality.samples} paired predictions; excluded ${quality.excluded_decisions} decisions with missing predictions or unknown future outcomes. Observed ${direction} event rate: ${(quality.positive_rate * 100).toFixed(1)}%.<br>Scored window: ${escapeComparisonText(quality.start_time)} to ${escapeComparisonText(quality.end_time)}.</p>
         <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Metric</th><th>Candidate</th><th>Champion</th><th>Training-rate baseline</th></tr></thead><tbody>${rows}</tbody></table></div>
-        <p class="small text-muted">${escapeComparisonText(quality.baseline_note)} ROC AUC is unavailable when the scored outcomes contain only one class. Better predictions may still produce identical trades.</p>
+        <p class="small text-muted">${escapeComparisonText(quality.baseline_note)} ROC AUC is unavailable when the scored outcomes contain only one class. Positive Brier skill means better than the baseline; negative means worse. This is not a statistical significance test. Better predictions may still produce identical trades.</p>
         <details><summary>Probability distribution</summary><table class="table table-sm"><thead><tr><th>Probability range</th><th>Candidate candles</th><th>Champion candles</th></tr></thead><tbody>${distribution}</tbody></table></details></div>`;
 }
 

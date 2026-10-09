@@ -164,3 +164,48 @@ def test_real_paper_replays_explain_identical_trades_with_different_predictions(
     assert outcomes["Submitted to broker"] > 0
     assert outcomes["Position already exists for XAUUSD"] > 0
     assert len(saved) == 1
+
+
+def test_downside_uses_learned_probabilities_and_training_down_rate():
+    history = _history()
+    candidate = _trace(history, [.9, .1, .9, .1, .99])
+    champion = _trace(history, [.5] * 5, "champion")
+    for row, probability in zip(candidate, [.1, .9, .1, .9, .01]):
+        row["probability_down"] = probability
+    for row in champion:
+        row["probability_down"] = .5
+    report = prediction_evidence(history, candidate, champion, FutureReturnLabel(1, .01),
+                                 {"prediction_baseline": {"positive_rate": .25, "down_rate": .3}})
+    down = report["downside"]
+    assert down["samples"] == report["samples"] == 4
+    assert down["baseline_probability"] == .3
+    assert down["candidate"]["brier_score"] == pytest.approx(.01)
+    assert down["candidate"]["brier_skill"] > 0
+    assert down["candidate"]["beats_baseline"] is True
+    assert down["baseline"]["brier_skill"] == 0
+    json.dumps(report, allow_nan=False)
+
+
+def test_legacy_model_has_no_down_evidence_and_bool_baseline_is_rejected():
+    history = _history()
+    candidate, champion = _trace(history, [.2] * 5), _trace(history, [.3] * 5, "champion")
+    report = prediction_evidence(history, candidate, champion, FutureReturnLabel(1, .01),
+                                 {"prediction_baseline": {"positive_rate": True}})
+    assert report["downside"]["status"] == "insufficient_evidence"
+    assert report["baseline"] is None
+    assert report["candidate"]["brier_skill"] is None
+
+
+def test_downside_excludes_missing_or_invalid_probabilities_without_inventing_complements():
+    history = _history()
+    candidate, champion = _trace(history, [.2] * 5), _trace(history, [.3] * 5, "champion")
+    for row in candidate + champion:
+        row["probability_down"] = .4
+    candidate[1]["probability_down"] = float("nan")
+    champion[2]["probability_down"] = None
+    report = prediction_evidence(history, candidate, champion, FutureReturnLabel(1, .01),
+                                 {"prediction_baseline": {"down_rate": .1}})
+    assert report["samples"] == 4
+    assert report["downside"]["samples"] == 2
+    assert report["downside"]["candidate"]["maximum_probability"] == .4
+    json.dumps(report, allow_nan=False)

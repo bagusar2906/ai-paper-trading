@@ -9,6 +9,7 @@ from app.factories.repository_factory import RepositoryFactory
 from app.features.core_v1 import FEATURE_SET_ID
 from app.labels.future_return import FutureReturnLabel
 from app.services.model_experiment_service import ModelExperimentService
+from app.services.controlled_model_experiment_service import ControlledModelExperimentService
 from app.services.model_health_service import ModelHealthService
 from app.services.model_lab_assistant_service import ModelLabAssistantService
 from app.services.model_review_guidance_service import ModelReviewGuidanceService
@@ -17,6 +18,7 @@ from app.services.model_lab_data_source_service import ModelLabDataSourceService
 from app.services.model_improvement_service import ModelImprovementService
 from app.services.model_training_service import ModelTrainingService
 from app.services.model_training_settings_service import ModelTrainingSettingsService
+from app.services.model_training_progress_service import ModelTrainingProgressService
 from app.ml.scheduler import ModelMonitoringJob
 from app.scheduler.self_training_scheduler import self_training_scheduler
 
@@ -65,6 +67,29 @@ def train_candidate(request: dict):
         ) from error
 
 
+@router.get("/{model_id}/controlled-experiments")
+def controlled_experiment_plan(model_id: str):
+    try:
+        return ControlledModelExperimentService().plan(model_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{model_id}/controlled-experiments")
+def run_controlled_experiments(model_id: str):
+    try:
+        return ControlledModelExperimentService().run(model_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except (ValueError, RuntimeError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Controlled model experiment failed")
+        raise HTTPException(status_code=500, detail="Experiment failed. Check the server log.") from error
+
+
 @router.get("/{model_id}/training-settings")
 def model_training_settings(model_id: str):
     try:
@@ -73,6 +98,14 @@ def model_training_settings(model_id: str):
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.get("/{model_id}/training-progress")
+def model_training_progress(model_id: str):
+    try:
+        return ModelTrainingProgressService().get(model_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @router.put("/{model_id}/training-settings")

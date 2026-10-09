@@ -68,3 +68,17 @@ test('comparison identifies model probability mode', () => {
     comparison.filter_diagnostics.candidate.entry_modes = { model_probability: 4 };
     assert.match(render(comparison).innerHTML, /technical entry filters off/);
 });
+
+
+test('shows UP and DOWN quality and signed Brier skill without assuming a legacy DOWN score', () => {
+    const comparison = fixture();
+    comparison.prediction_quality.candidate = {...comparison.prediction_quality.candidate, brier_skill: -.25};
+    comparison.prediction_quality.downside = {...comparison.prediction_quality, baseline_note: 'Training DOWN rate'};
+    const html = render(comparison).innerHTML;
+    assert.match(html, /same candles .*UP/);
+    assert.match(html, /same candles .*DOWN/);
+    assert.match(html, /-0\.2500/);
+    assert.match(html, /negative means worse/);
+    delete comparison.prediction_quality.downside;
+    assert.doesNotMatch(render(comparison).innerHTML, /same candles .*DOWN/);
+});

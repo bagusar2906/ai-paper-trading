@@ -3,6 +3,8 @@ import { configureSelfTraining, getSelfTrainingStatus } from "../api.js";
 import { analyzeModel } from "../api.js";
 import { getModelLabDataSource, setModelLabDataSource } from "../api.js";
 import { getModelTrainingSettings, saveModelTrainingSettings } from "../api.js";
+import { openModelProgress } from "./model-progress.js";
+import { openModelExperiments } from "./model-experiments.js";
 
 let pendingReview = null;
 let pendingDeletion = null;
@@ -401,6 +403,16 @@ function row(model, signalModel) {
         finally { analyzeButton.disabled = false; }
     };
     actions.append(analyzeButton);
+    const progressButton = document.createElement("button");
+    progressButton.className = "btn btn-sm btn-outline-info me-1";
+    progressButton.textContent = "Progress";
+    progressButton.onclick = () => openModelProgress(model);
+    actions.append(progressButton);
+    const experimentButton = document.createElement("button");
+    experimentButton.className = "btn btn-sm btn-outline-info me-1";
+    experimentButton.textContent = "Experiments";
+    experimentButton.onclick = () => openModelExperiments(model, refreshModelOperations);
+    actions.append(experimentButton);
     const editSettings = document.createElement("button");
     editSettings.className = "btn btn-sm btn-outline-secondary me-1";
     editSettings.textContent = "Edit settings";

@@ -276,6 +276,30 @@ selected provider and skips inputs already represented in the model registry.
 Data or training failures are shown in the status and retried at the next interval.
 Only one training run can execute at a time, including manual runs.
 
+Each model row offers **Progress**, which opens a chart of recorded validation
+scores across completed runs with the same market, training recipe, and prediction
+type. The selected model is highlighted. Choose a metric and switch to the selected
+model's validation periods to inspect its own folds. Replaced candidates remain
+visible through retained training records. UP and DOWN scores are shown separately;
+missing scores stay missing. Evaluation periods can differ, so use Candidate
+Comparison on the same unseen candles before judging improvement. This chart
+shows saved quality evidence, not a live percentage-complete indicator.
+
+Use **Experiments** beside a model, then **Run 4 experiments**, to test the
+current recipe, alternative features, simpler trees and more capacity. The app
+fetches history once, aligns feature timestamps, and reserves the latest 20%
+of shared labeled observations as a common holdout. A horizon-sized purge
+prevents training labels from inspecting holdout prices. UP and DOWN results
+include a constant historical-rate baseline fitted only on pre-holdout labels.
+Positive Brier skill beats that baseline; negative skill is worse.
+Successful fits remain separate candidates; existing candidates and champions
+are preserved. Results are saved in the selected model's History and reopen in
+Experiments. These holdout scores are separate from the model table's internal
+walk-forward metrics. Use enough history (typically at least 500 candles);
+confirm a preferred recipe on fresh future data before manual promotion.
+Candidate Comparison backtests also show DOWN quality and Brier skill when
+both models provide directional predictions.
+
 Self-training runs while the backend is open, even if its browser tab is closed.
 The setting survives restarts; stopping the backend stops the loop. Disabling
 prevents future runs while an in-progress run may finish. All output models
