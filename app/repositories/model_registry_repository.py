@@ -81,7 +81,7 @@ class ModelRegistryRepository(BaseRepository):
             return []
         history = metadata.get("review_history", [])
         return history if isinstance(history, list) else []
-    def record_candidate(self, result, *, replace_matching=False):
+    def record_candidate(self, result, *, replace_matching=False, replace_model_id=None):
         if result.status != "candidate":
             raise ValueError("only candidate models may be registered in this phase")
         snapshot = result.metadata["feature_snapshot"]
@@ -108,7 +108,7 @@ class ModelRegistryRepository(BaseRepository):
         self.session.add(training)
         self.session.add(model)
         try:
-            model._replaced_candidates = self._replace_matching_candidates(model) if replace_matching else []
+            model._replaced_candidates = self._replace_matching_candidates(model, replace_model_id) if replace_matching or replace_model_id else []
             training.metadata_json = model.metadata_json
             self.session.commit()
         except Exception:
@@ -116,11 +116,15 @@ class ModelRegistryRepository(BaseRepository):
             raise
         return model
 
-    def _replace_matching_candidates(self, replacement):
-        """Remove only older candidates in this explicitly marked training family."""
+    def _replace_matching_candidates(self, replacement, replace_model_id=None):
+        """Replace the selected candidate and older candidates in the new family."""
+        if replace_model_id:
+            selected = self.get(replace_model_id)
+            if selected is None or selected.status != "candidate" or replacement.status != "candidate":
+                raise ValueError("Only existing candidates can be replaced; champions and retired models are kept")
         metadata = json.loads(replacement.metadata_json)
         family = metadata.get("candidate_family")
-        if not isinstance(family, dict) or not family.get("key") or replacement.status != "candidate":
+        if (not isinstance(family, dict) or not family.get("key") or replacement.status != "candidate") and not replace_model_id:
             return []
         removed = []
         history = metadata.get("review_history", [])
@@ -131,8 +135,12 @@ class ModelRegistryRepository(BaseRepository):
             try:
                 previous_metadata = json.loads(previous.metadata_json)
             except (TypeError, ValueError):
-                continue
-            if not isinstance(previous_metadata, dict) or previous_metadata.get("candidate_family") != family:
+                previous_metadata = {}
+            explicitly_selected = previous.model_id == replace_model_id
+            matches_family = (isinstance(family, dict) and family.get("key")
+                              and isinstance(previous_metadata, dict)
+                              and previous_metadata.get("candidate_family") == family)
+            if not explicitly_selected and not matches_family:
                 continue
             record = {"model_id": previous.model_id, "artifact_path": previous.artifact_path}
             evidence = {"previous_model_id": previous.model_id, "previous_training_run_id": previous.training_run_id,
@@ -146,26 +154,30 @@ class ModelRegistryRepository(BaseRepository):
                        .filter_by(model_id=previous.model_id, status="candidate")
                        .delete(synchronize_session="fetch"))
             if not deleted:
+                if explicitly_selected:
+                    raise ValueError("Selected candidate changed during training; replacement was cancelled")
                 continue
             self.session.add(ModelPromotionEntity(model_id=replacement.model_id,
                              previous_model_id=record["model_id"], action="replace_candidate",
-                             reviewer="model_training", rationale="Replaced by a successfully trained candidate with the same source and settings."))
+                             reviewer="model_training", rationale="Replaced after retraining the selected candidate with edited settings." if explicitly_selected else "Replaced by a successfully trained candidate with the same source and settings."))
             history.append({"type": "candidate_replaced", "recorded_at": datetime.now(timezone.utc).isoformat(), "evidence": evidence})
             removed.append(record)
         metadata["review_history"] = history[-50:]
         replacement.metadata_json = json.dumps(metadata, sort_keys=True)
         return removed
 
-    def replace_matching_candidates(self, model_id, family):
+    def replace_matching_candidates(self, model_id, family, *, replace_model_id=None):
         """Apply rolling retention to an unchanged candidate without retraining it."""
         model = self.get(model_id)
         if model is None or model.status != "candidate":
+            if replace_model_id:
+                raise ValueError("The matching model is not a candidate; the selected candidate was kept")
             return []
         try:
             metadata = json.loads(model.metadata_json)
-            if not isinstance(metadata, dict) or metadata.get("candidate_family") != family:
+            if not replace_model_id and (not isinstance(metadata, dict) or metadata.get("candidate_family") != family):
                 return []
-            removed = self._replace_matching_candidates(model)
+            removed = self._replace_matching_candidates(model, replace_model_id)
             self.session.commit()
             return removed
         except Exception:

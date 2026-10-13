@@ -50,6 +50,12 @@ class ModelTrainingService:
         replace_previous = request.get("replace_previous_candidate", True)
         if not isinstance(replace_previous, bool):
             raise ValueError("replace_previous_candidate must be a boolean")
+        replacement = request.get("replace_model_id")
+        if replacement is not None:
+            if not isinstance(replacement, str) or not replacement.strip():
+                raise ValueError("replace_model_id must be a non-empty string")
+            if not replace_previous:
+                raise ValueError("Replacing a selected model requires replacement to be checked")
         data_source = ModelLabDataSourceService.validate(request.get("data_source", "trading"))
         symbol = self._string(request, "symbol", TradingConfig.SYMBOL)
         timeframe = self._string(request, "timeframe", TradingConfig.TIMEFRAME).upper()
@@ -76,10 +82,25 @@ class ModelTrainingService:
             "feature_set_id": feature_set_id,
             "data_source": data_source,
             "replace_previous_candidate": replace_previous,
+            **({"replace_model_id": replacement.strip()} if replacement is not None else {}),
         }
 
     def _train_candidate(self, request: dict, *, backfill: bool = False) -> dict:
         parameters = self.validate_request(request)
+        replace_model_id = parameters.pop("replace_model_id", None)
+        saved_settings = None
+        if replace_model_id:
+            repos = self.repository_factory()
+            try:
+                selected = repos.model_registry.get(replace_model_id)
+                if selected is None or selected.status != "candidate":
+                    raise ValueError("Only an existing candidate can be replaced. Champions and retired models are kept.")
+                try:
+                    saved_settings = json.loads(selected.metadata_json or "{}").get("retraining_settings")
+                except (TypeError, ValueError, AttributeError):
+                    pass
+            finally:
+                repos.close()
         symbol, timeframe, bars = (parameters[key] for key in ("symbol", "timeframe", "bars"))
         horizon, threshold = parameters["horizon_candles"], parameters["up_return_threshold"]
         n_estimators, max_depth = parameters["n_estimators"], parameters["max_depth"]
@@ -129,7 +150,15 @@ class ModelTrainingService:
                 identity["fingerprint"]
             )
             if existing is not None:
-                removed = repos.model_registry.replace_matching_candidates(existing.model_id, family) if parameters["replace_previous_candidate"] else []
+                if replace_model_id:
+                    artifact = Path(existing.artifact_path)
+                    if not artifact.is_file() or sha256(artifact.read_bytes()).hexdigest() != existing.artifact_sha256:
+                        raise ValueError("Existing replacement artifact could not be verified; previous candidate was kept")
+                removed = []
+                if replace_model_id:
+                    removed = repos.model_registry.replace_matching_candidates(existing.model_id, family, replace_model_id=replace_model_id)
+                elif parameters["replace_previous_candidate"]:
+                    removed = repos.model_registry.replace_matching_candidates(existing.model_id, family)
                 cleanup_warnings = self._remove_replaced_artifacts(removed)
                 return {
                     "model_id": existing.model_id,
@@ -152,6 +181,10 @@ class ModelTrainingService:
         if isinstance(getattr(result, "metadata", None), dict):
             result.metadata["candidate_family"] = family
             result.metadata["training_request"] = parameters
+            if replace_model_id:
+                result.metadata["replaces_model_id"] = replace_model_id
+                if isinstance(saved_settings, dict):
+                    result.metadata["retraining_settings"] = {**saved_settings, "training": parameters}
         if parameters["replace_previous_candidate"]:
             artifact = Path(result.artifact_path)
             if not artifact.is_file() or sha256(artifact.read_bytes()).hexdigest() != result.artifact_sha256:
@@ -160,7 +193,10 @@ class ModelTrainingService:
 
         repos = self.repository_factory()
         try:
-            registered = repos.model_registry.record_candidate(result, replace_matching=True) if parameters["replace_previous_candidate"] else repos.model_registry.record_candidate(result)
+            if replace_model_id:
+                registered = repos.model_registry.record_candidate(result, replace_matching=True, replace_model_id=replace_model_id)
+            else:
+                registered = repos.model_registry.record_candidate(result, replace_matching=True) if parameters["replace_previous_candidate"] else repos.model_registry.record_candidate(result)
             # SQLAlchemy expires attributes after commit. Capture these while
             # the session remains open so the response does not access a
             # detached model instance after repos.close().

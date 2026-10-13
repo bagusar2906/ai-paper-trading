@@ -1,3 +1,5 @@
+import { formatChartTime, formatChartTick } from "./chart-time.js";
+
 export class ChartManager {
 
     constructor(containerId, height = 500) {
@@ -30,7 +32,10 @@ export class ChartManager {
                     },
                     timeScale: {
                         borderColor: "#ddd",
+                        timeVisible: true,
+                        tickMarkFormatter: formatChartTick,
                     },
+                    localization: { timeFormatter: formatChartTime },
                 }
             );
 

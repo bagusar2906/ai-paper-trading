@@ -161,3 +161,125 @@ def test_artifacts_outside_managed_directory_are_kept(tmp_path):
 def test_replacement_setting_requires_a_boolean(value):
     with pytest.raises(ValueError, match="must be a boolean"):
         ModelTrainingService().validate_request({"replace_previous_candidate": value})
+
+
+@pytest.mark.parametrize("changed", [{"max_depth": 4}, {"horizon_candles": 4}, {"data_source": "mt5"}])
+def test_edit_replaces_selected_candidate_even_with_changed_settings(repos, monkeypatch, tmp_path, changed):
+    service, request, data = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    old = repos.model_registry.get(first["model_id"])
+    old_artifact, old_run = Path(old.artifact_path), old.training_run_id
+    repos.model_registry.save_training_settings(old.model_id, {"interval_minutes": 15, "training": request})
+    unrelated = service.train_candidate({**request, "learning_rate": .1})
+    second = service.train_candidate({**request, **changed, "replace_model_id": first["model_id"]})
+    assert second["replaced_model_ids"] == [first["model_id"]]
+    assert repos.model_registry.get(first["model_id"]) is None
+    assert repos.model_registry.get(unrelated["model_id"]) is not None
+    assert not old_artifact.exists()
+    assert repos.session.get(TrainingRunEntity, old_run) is not None
+    metadata = json.loads(repos.model_registry.get(second["model_id"]).metadata_json)
+    assert metadata["replaces_model_id"] == first["model_id"]
+    assert metadata["retraining_settings"]["interval_minutes"] == 15
+    assert "replace_model_id" not in metadata["training_request"]
+    for key, value in changed.items():
+        assert metadata["retraining_settings"]["training"][key] == value
+    third = service.train_candidate({**request, **changed, "max_depth": 5, "replace_model_id": second["model_id"]})
+    assert third["replaced_model_ids"] == [second["model_id"]]
+    assert len(repos.model_registry.get_all()) == 2
+    assert len(list(tmp_path.glob("*.pkl"))) == 2
+
+
+def test_selected_legacy_candidate_without_family_can_be_replaced(repos, monkeypatch, tmp_path):
+    service, request, _ = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    old = repos.model_registry.get(first["model_id"])
+    old.metadata_json = '{}'
+    repos.session.commit()
+    second = service.train_candidate({**request, "max_depth": 4, "replace_model_id": first["model_id"]})
+    assert second["replaced_model_ids"] == [first["model_id"]]
+    assert len(repos.model_registry.get_all()) == 1
+
+
+@pytest.mark.parametrize("status", ["champion", "retired", "missing"])
+def test_explicit_replacement_rejects_non_candidates_before_training(repos, monkeypatch, tmp_path, status):
+    service, request, _ = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    old = repos.model_registry.get(first["model_id"])
+    if status != "missing":
+        old.status = status
+        repos.session.commit()
+    service.provider_factory = lambda *args: pytest.fail("Rejected replacement must not download or train")
+    with pytest.raises(ValueError, match="Only an existing candidate"):
+        service.train_candidate({**request, "replace_model_id": "missing" if status == "missing" else old.model_id})
+    assert len(repos.model_registry.get_all()) == 1
+
+
+def test_duplicate_replacement_reuses_model_and_removes_selected_candidate(repos, monkeypatch, tmp_path):
+    service, request, _ = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    other = service.train_candidate({**request, "max_depth": 4})
+    result = service.train_candidate({**request, "max_depth": 4, "replace_model_id": first["model_id"]})
+    assert result["status"] == "duplicate"
+    assert result["model_id"] == other["model_id"]
+    assert result["replaced_model_ids"] == [first["model_id"]]
+    assert len(repos.model_registry.get_all()) == 1
+    assert len(list(tmp_path.glob("*.pkl"))) == 1
+
+
+def test_reusing_legacy_candidate_does_not_remove_unrelated_legacy_models(repos, monkeypatch, tmp_path):
+    service, request, _ = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    other = service.train_candidate({**request, "max_depth": 4})
+    unrelated = service.train_candidate({**request, "max_depth": 5})
+    for item in (other, unrelated):
+        model = repos.model_registry.get(item["model_id"])
+        metadata = json.loads(model.metadata_json)
+        metadata.pop("candidate_family")
+        model.metadata_json = json.dumps(metadata)
+    repos.session.commit()
+    result = service.train_candidate({**request, "max_depth": 4, "replace_model_id": first["model_id"]})
+    assert result["replaced_model_ids"] == [first["model_id"]]
+    assert repos.model_registry.get(unrelated["model_id"]) is not None
+    assert len(repos.model_registry.get_all()) == 2
+
+
+def test_corrupt_duplicate_cannot_replace_selected_candidate(repos, monkeypatch, tmp_path):
+    service, request, _ = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    other = service.train_candidate({**request, "max_depth": 4})
+    Path(repos.model_registry.get(other["model_id"]).artifact_path).write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match="could not be verified"):
+        service.train_candidate({**request, "max_depth": 4, "replace_model_id": first["model_id"]})
+    assert repos.model_registry.get(first["model_id"]) is not None
+
+
+@pytest.mark.parametrize("failure", ["training", "commit", "promoted"])
+def test_failed_explicit_replacement_keeps_old_model_and_artifact(repos, monkeypatch, tmp_path, failure):
+    service, request, _ = setup(repos, monkeypatch, tmp_path)
+    first = service.train_candidate(request)
+    old = repos.model_registry.get(first["model_id"])
+    old_path = Path(old.artifact_path)
+    class Trainer(CandidateTrainer):
+        def train(self, *args):
+            if failure == "training":
+                raise RuntimeError("training failed")
+            result = super().train(*args)
+            if failure == "promoted":
+                repos.model_registry.promote_candidate(old.model_id, "reviewer", "promoted during training")
+            return result
+    service.trainer_factory = Trainer
+    if failure == "commit":
+        monkeypatch.setattr(repos.session, "commit", lambda: (_ for _ in ()).throw(RuntimeError("commit failed")))
+    with pytest.raises((RuntimeError, ValueError)):
+        service.train_candidate({**request, "max_depth": 4, "replace_model_id": first["model_id"]})
+    assert repos.model_registry.get(first["model_id"]) is not None
+    assert old_path.exists()
+    assert len(repos.model_registry.get_all()) == 1
+    assert len(list(tmp_path.glob("*.pkl"))) == 1
+
+
+@pytest.mark.parametrize("payload", [{"replace_model_id": ""}, {"replace_model_id": 1},
+                                      {"replace_model_id": "old", "replace_previous_candidate": False}])
+def test_invalid_explicit_replacement_is_rejected(payload):
+    with pytest.raises(ValueError):
+        ModelTrainingService().validate_request(payload)

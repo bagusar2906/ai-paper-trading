@@ -10,6 +10,7 @@ const INITIAL_VISIBLE_CANDLES = 100;
 let markerPrimitive = null;
 import { updateMarkers } from "./chart-markers.js";
 import { updatePositionLines } from "./chart-position.js";
+import { formatChartTime, formatChartTick } from "./chart-time.js";
 
 export function initializeChart() {
 
@@ -46,7 +47,10 @@ export function initializeChart() {
         timeScale: {
             borderVisible: false,
             timeVisible: true,
+            tickMarkFormatter: formatChartTick,
         },
+
+        localization: { timeFormatter: formatChartTime },
 
         crosshair: {
             mode: LightweightCharts.CrosshairMode.Normal,

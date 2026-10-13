@@ -203,6 +203,47 @@ function trainingControls() {
 }
 const modalMock = {Modal: {getOrCreateInstance: () => ({show() {}})}};
 
+test('editing a candidate targets replacement and subsequent retrains use the new model', async () => {
+    const controls = trainingControls();
+    controls.candidateReplacePrevious.checked = true;
+    const sent = [];
+    const context = load('components/model-operations.js', controls, {
+        trainCandidate: async payload => {
+            sent.push(payload);
+            assert.equal(controls.saveTrainingSettings.disabled, true);
+            assert.equal(controls.candidateMaxDepth.disabled, true);
+            return {status: 'duplicate', model_id: `new-${sent.length}`, message: 'Existing trained model reused'};
+        },
+    });
+    vm.runInContext('selectedTrainingModel = {model_id:"old", status:"candidate"}; updateTrainingAction()', context);
+    assert.equal(controls.submitCandidateTraining.textContent, 'Retrain and replace');
+    controls.candidateMaxDepth.value = '5';
+    await vm.runInContext('train(document.getElementById("submitCandidateTraining"))', context);
+    assert.equal(sent[0].replace_model_id, 'old');
+    assert.equal(sent[0].max_depth, 5);
+    await vm.runInContext('train(document.getElementById("submitCandidateTraining"))', context);
+    assert.equal(sent[1].replace_model_id, 'new-1');
+    assert.equal(controls.saveTrainingSettings.disabled, false);
+    controls.candidateReplacePrevious.checked = false;
+    vm.runInContext('updateTrainingAction()', context);
+    assert.equal(controls.submitCandidateTraining.textContent, 'Train new candidate');
+    await vm.runInContext('train(document.getElementById("submitCandidateTraining"))', context);
+    assert.equal(sent[2].replace_model_id, undefined);
+});
+
+test('failed retraining keeps the original replacement target and unlocks the form', async () => {
+    const controls = trainingControls();
+    controls.candidateReplacePrevious.checked = true;
+    const context = load('components/model-operations.js', controls, {
+        trainCandidate: async () => {throw new Error('Training failed');},
+    });
+    vm.runInContext('selectedTrainingModel = {model_id:"old", status:"candidate"}', context);
+    await vm.runInContext('train(document.getElementById("submitCandidateTraining"))', context);
+    assert.equal(vm.runInContext('selectedTrainingModel.model_id', context), 'old');
+    assert.equal(controls.candidateMaxDepth.disabled, false);
+    assert.match(controls.candidateTrainingStatus.textContent, /Training failed/);
+});
+
 test('selected model editor loads its recipe and saves only that model', async () => {
     const controls = trainingControls();
     const saved = [];

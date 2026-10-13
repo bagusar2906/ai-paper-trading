@@ -24,7 +24,9 @@ export function initializeModelOperations() {
     const saveSettings = document.getElementById("saveTrainingSettings");
     if (saveSettings) saveSettings.addEventListener("click", () => saveTrainingSettings(saveSettings));
     document.getElementById("trainCandidate")?.addEventListener("click", () => {
+        if (trainingSettingsPending) return;
         selectedTrainingModel = null;
+        updateTrainingAction();
         const title = document.getElementById("trainingSettingsTitle");
         if (title) title.textContent = "Train XGBoost Candidate";
         if (!trainingSettingsPending) disableTrainingSettings(false);
@@ -32,7 +34,7 @@ export function initializeModelOperations() {
     for (const id of trainingInputIds()) {
         const input = document.getElementById(id);
         input?.addEventListener("input", () => {trainingFormEdited = true;});
-        input?.addEventListener("change", () => {trainingFormEdited = true;});
+        input?.addEventListener("change", () => {trainingFormEdited = true; updateTrainingAction();});
     }
     const submitButton = document.getElementById("submitCandidateTraining");
     if (submitButton) submitButton.addEventListener("click", () => train(submitButton));
@@ -122,6 +124,13 @@ function disableTrainingSettings(disabled) {
     }
 }
 
+function updateTrainingAction() {
+    const replace = document.getElementById("candidateReplacePrevious")?.checked ?? true;
+    const button = document.getElementById("submitCandidateTraining");
+    if (button) button.textContent = selectedTrainingModel
+        ? (replace ? "Retrain and replace" : "Train new candidate") : "Train Candidate";
+}
+
 async function openTrainingSettings(button, model = null) {
     const status = document.getElementById("candidateTrainingStatus");
     const dialog = document.getElementById("trainCandidateModal");
@@ -142,9 +151,10 @@ async function openTrainingSettings(button, model = null) {
         disableTrainingSettings(true);
         const report = model ? await getModelTrainingSettings(model.model_id) : await getSelfTrainingStatus();
         restoreTrainingSettings(model ? report : report.configuration, true);
+        updateTrainingAction();
         loaded = true;
         if (!model) showSelfTrainingStatus(report);
-        setTrainingStatus(status, "info", model ? `Editing ${model.model_id}. Save settings stores this model's retraining setup. Train Candidate uses these settings now; Enable / update self-training applies them to background training. ${(report.notes || []).join(' ')}` : "Edit any setting, then select Save settings. Training will not start when you save.");
+        setTrainingStatus(status, "info", model ? `Editing ${model.model_id}. Save settings stores the setup without training. With replacement checked, retraining replaces this candidate even if you change settings. Champions and retired models cannot be replaced here; uncheck replacement to train a separate candidate for review. ${(report.notes || []).join(' ')}` : "Edit any setting, then select Save settings. Training will not start when you save.");
     } catch (error) {
         setTrainingStatus(status, "danger", `Could not load saved settings: ${error.message}. Close and click ${model ? 'Edit settings' : 'Training settings'} to retry.`);
     } finally {
@@ -167,7 +177,7 @@ async function saveTrainingSettings(button) {
     try {
         if (selectedTrainingModel) {
             await saveModelTrainingSettings(selectedTrainingModel.model_id, {interval_minutes: payload.interval_minutes, training: payload.training});
-            setTrainingStatus(status, "success", `Settings saved for ${selectedTrainingModel.model_id}. Train Candidate to retrain with these settings, or Enable / update self-training to use them for background training. Existing model predictions and scores stay unchanged until retraining.`);
+            setTrainingStatus(status, "success", `Settings saved for ${selectedTrainingModel.model_id}. Use Retrain and replace with replacement checked to replace this candidate after successful training. Saving settings alone leaves predictions and scores unchanged.`);
         } else {
             const report = await configureSelfTraining(payload);
             showSelfTrainingStatus(report);
@@ -610,10 +620,20 @@ async function train(button) {
     if (trainingSettingsPending) {if (status) setTrainingStatus(status, "info", "Wait for training settings to finish loading or saving."); return;}
     const dialog = document.getElementById("trainCandidateModal");
     if (!bars || !horizon || !threshold || !status || !dialog) return;
+    if (selectedTrainingModel && parameters.replace_previous_candidate) {
+        parameters.replace_model_id = selectedTrainingModel.model_id;
+    }
+    trainingSettingsPending = true;
+    disableTrainingSettings(true);
     button.disabled = true;
     setTrainingStatus(status, "info", "Training paper-only candidate from completed candles…");
     try {
         const result = await trainCandidate(parameters);
+        if (parameters.replace_model_id && result.model_id) {
+            selectedTrainingModel = {model_id: result.model_id, status: "candidate"};
+            const title = document.getElementById("trainingSettingsTitle");
+            if (title) title.textContent = `Edit settings: ${result.model_id}`;
+        }
         if (result.status === "duplicate") {
             setTrainingStatus(status, "warning", `⚠ Training skipped: ${result.message}${result.replaced_model_ids?.length ? ` Removed ${result.replaced_model_ids.length} older candidate(s).` : ''}${result.cleanup_warnings?.length ? ` ${result.cleanup_warnings.join(' ')}` : ''}`);
             if (result.replaced_model_ids?.length) await refreshModelOperations();
@@ -625,6 +645,9 @@ async function train(button) {
     } catch (error) {
         setTrainingStatus(status, "danger", `Candidate training failed: ${error.message}`);
     } finally {
+        trainingSettingsPending = false;
+        disableTrainingSettings(false);
+        updateTrainingAction();
         button.disabled = false;
     }
 }
